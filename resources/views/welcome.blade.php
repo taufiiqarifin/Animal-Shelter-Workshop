@@ -7,44 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gradient-to-br from-purple-600 to-purple-800 min-h-screen flex flex-col">
-    <!-- Navigation Bar -->
-    <nav class="bg-gradient-to-r from-purple-700 to-purple-900 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <!-- Logo/Brand -->
-                <div class="flex items-center space-x-2">
-                    <span class="text-3xl">🐾</span>
-                    <span class="text-white font-bold text-xl">Pawfect Buddy</span>
-                </div>
-
-                <!-- Navigation Links -->
-                <div class="hidden md:flex space-x-8">
-                    @auth
-                        <a href="{{ route('dashboard') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                        Dashboard
-                        </a>
-                        <a href="#" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-
-                        Report
-                        </a>
-                    @endauth
-                    
-                    <a href="#" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                        Contact
-                    </a>
-                </div>
-
-                <!-- Mobile Menu Button -->
-                <div class="md:hidden">
-                    <button class="text-white hover:text-purple-100 focus:outline-none">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
+    
+    <!-- Include Navbar -->
+    @include('navbar')
 
     <!-- Main Content -->
     <div class="flex-1 flex items-center justify-center p-4">
@@ -54,7 +19,7 @@
                 <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-8 md:p-12 flex flex-col justify-center">
                     <div class="text-6xl mb-6">🐾</div>
                     
-                    <h1 class="text-4xl font-bold mb-4">Pawfect Buddy</h1>
+                    <h1 class="text-4xl font-bold mb-4">Stray Animal Shelter</h1>
                     
                     <p class="text-lg text-purple-100 mb-8 leading-relaxed">
                         Dedicated to caring for and managing stray animals in our community with compassion and professionalism.
