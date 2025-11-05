@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void
     {
         // Step 1: Create tables first (without foreign keys)
-        Schema::create('reports', function (Blueprint $table) {
+        Schema::create('report', function (Blueprint $table) {
             $table->id();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('rescues', function (Blueprint $table) {
+        Schema::create('rescue', function (Blueprint $table) {
             $table->id();
             $table->date('date');
             $table->string('status')->nullable();
@@ -31,17 +31,17 @@ return new class extends Migration {
         });
 
         // Step 2: Add foreign key constraints (after tables exist)
-        Schema::table('reports', function (Blueprint $table) {
+        Schema::table('report', function (Blueprint $table) {
             $table->foreign('userID')
                   ->references('id')
                   ->on('users')
                   ->onDelete('cascade');
         });
 
-        Schema::table('rescues', function (Blueprint $table) {
+        Schema::table('rescue', function (Blueprint $table) {
             $table->foreign('reportID')
                   ->references('id')
-                  ->on('reports')
+                  ->on('report')
                   ->onDelete('cascade');
 
             $table->foreign('caretakerID')
@@ -54,17 +54,17 @@ return new class extends Migration {
     public function down(): void
     {
         // Drop foreign keys first
-        Schema::table('rescues', function (Blueprint $table) {
+        Schema::table('rescue', function (Blueprint $table) {
             $table->dropForeign(['reportID']);
             $table->dropForeign(['caretakerID']);
         });
 
-        Schema::table('reports', function (Blueprint $table) {
+        Schema::table('report', function (Blueprint $table) {
             $table->dropForeign(['userID']);
         });
 
         // Then drop the tables
-        Schema::dropIfExists('rescues');
-        Schema::dropIfExists('reports');
+        Schema::dropIfExists('rescue');
+        Schema::dropIfExists('report');
     }
 };
