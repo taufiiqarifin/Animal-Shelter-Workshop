@@ -10,7 +10,7 @@ return new class extends Migration {
         /**
          * Step 1: Create tables first (no foreign keys yet)
          */
-        Schema::create('slots', function (Blueprint $table) {
+        Schema::create('slot', function (Blueprint $table) {
             $table->id();
             $table->string('name')->nullable();
             $table->string('section')->nullable();
@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('clinics', function (Blueprint $table) {
+        Schema::create('clinic', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('address')->nullable();
@@ -27,7 +27,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('vets', function (Blueprint $table) {
+        Schema::create('vet', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->nullable();
@@ -38,7 +38,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('vaccinations', function (Blueprint $table) {
+        Schema::create('vaccination', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('type')->nullable();
@@ -50,7 +50,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('animals', function (Blueprint $table) {
+        Schema::create('animal', function (Blueprint $table) {
             $table->id();
             $table->string('species')->nullable();
             $table->text('health_details')->nullable();
@@ -65,7 +65,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('images', function (Blueprint $table) {
+        Schema::create('image', function (Blueprint $table) {
             $table->id();
             $table->string('image_path');
             $table->unsignedBigInteger('animalID')->nullable(); // FK later
@@ -76,51 +76,51 @@ return new class extends Migration {
         /**
          * Step 2: Add foreign key constraints
          */
-        Schema::table('vets', function (Blueprint $table) {
+        Schema::table('vet', function (Blueprint $table) {
             $table->foreign('clinicID')
                   ->references('id')
-                  ->on('clinics')
+                  ->on('clinic')
                   ->onDelete('set null');
         });
 
-        Schema::table('vaccinations', function (Blueprint $table) {
+        Schema::table('vaccination', function (Blueprint $table) {
             $table->foreign('animalID')
                   ->references('id')
-                  ->on('animals')
+                  ->on('animal')
                   ->onDelete('set null');
 
             $table->foreign('vetID')
                   ->references('id')
-                  ->on('vets')
+                  ->on('vet')
                   ->onDelete('set null');
         });
 
-        Schema::table('animals', function (Blueprint $table) {
+        Schema::table('animal', function (Blueprint $table) {
             $table->foreign('rescueID')
                   ->references('id')
-                  ->on('rescues')
+                  ->on('rescue')
                   ->onDelete('set null');
 
             $table->foreign('slotID')
                   ->references('id')
-                  ->on('slots')
+                  ->on('slot')
                   ->onDelete('set null');
 
             $table->foreign('vaccinationID')
                   ->references('id')
-                  ->on('vaccinations')
+                  ->on('vaccination')
                   ->onDelete('set null');
         });
 
-        Schema::table('images', function (Blueprint $table) {
+        Schema::table('image', function (Blueprint $table) {
             $table->foreign('animalID')
                   ->references('id')
-                  ->on('animals')
+                  ->on('animal')
                   ->onDelete('cascade');
 
             $table->foreign('reportID')
                   ->references('id')
-                  ->on('reports')
+                  ->on('report')
                   ->onDelete('cascade');
         });
     }
@@ -130,34 +130,34 @@ return new class extends Migration {
         /**
          * Drop FKs first (in reverse order)
          */
-        Schema::table('images', function (Blueprint $table) {
+        Schema::table('image', function (Blueprint $table) {
             $table->dropForeign(['animalID']);
             $table->dropForeign(['reportID']);
         });
 
-        Schema::table('animals', function (Blueprint $table) {
+        Schema::table('animal', function (Blueprint $table) {
             $table->dropForeign(['rescueID']);
             $table->dropForeign(['slotID']);
             $table->dropForeign(['vaccinationID']);
         });
 
-        Schema::table('vaccinations', function (Blueprint $table) {
+        Schema::table('vaccination', function (Blueprint $table) {
             $table->dropForeign(['animalID']);
             $table->dropForeign(['vetID']);
         });
 
-        Schema::table('vets', function (Blueprint $table) {
+        Schema::table('vet', function (Blueprint $table) {
             $table->dropForeign(['clinicID']);
         });
 
         /**
          * Then drop the tables
          */
-        Schema::dropIfExists('images');
-        Schema::dropIfExists('animals');
-        Schema::dropIfExists('vaccinations');
-        Schema::dropIfExists('vets');
-        Schema::dropIfExists('clinics');
-        Schema::dropIfExists('slots');
+        Schema::dropIfExists('image');
+        Schema::dropIfExists('animal');
+        Schema::dropIfExists('vaccination');
+        Schema::dropIfExists('vet');
+        Schema::dropIfExists('clinic');
+        Schema::dropIfExists('slot');
     }
 };

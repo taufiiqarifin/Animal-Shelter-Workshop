@@ -10,7 +10,7 @@ return new class extends Migration {
         /**
          * Step 1: Create base tables (no FKs yet)
          */
-        Schema::create('medicals', function (Blueprint $table) {
+        Schema::create('medical', function (Blueprint $table) {
             $table->id();
             $table->date('date_checkup');
             $table->string('treatment_type')->nullable();
@@ -23,14 +23,14 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('categories', function (Blueprint $table) {
+        Schema::create('category', function (Blueprint $table) {
             $table->id();
             $table->string('main')->nullable();
             $table->string('sub')->nullable();
             $table->timestamps();
         });
 
-        Schema::create('inventories', function (Blueprint $table) {
+        Schema::create('inventory', function (Blueprint $table) {
             $table->id();
             $table->string('item_name');
             $table->integer('quantity')->default(0);
@@ -42,16 +42,17 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('bookings', function (Blueprint $table) {
+        Schema::create('booking', function (Blueprint $table) {
             $table->id();
             $table->date('appointment_date')->nullable();
+            $table->time('booking_time');
             $table->string('status')->nullable();
             $table->unsignedBigInteger('animalID')->nullable(); // FK later
             $table->unsignedBigInteger('userID')->nullable();   // FK later
             $table->timestamps();
         });
 
-        Schema::create('transactions', function (Blueprint $table) {
+        Schema::create('transaction', function (Blueprint $table) {
             $table->id();
             $table->decimal('amount', 10, 2)->nullable();
             $table->string('status')->nullable();
@@ -62,7 +63,7 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        Schema::create('adoptions', function (Blueprint $table) {
+        Schema::create('adoption', function (Blueprint $table) {
             $table->id();
             $table->decimal('fee', 10, 2)->nullable();
             $table->text('remarks')->nullable();
@@ -80,34 +81,34 @@ return new class extends Migration {
         /**
          * Step 2: Add foreign key constraints
          */
-        Schema::table('medicals', function (Blueprint $table) {
+        Schema::table('medical', function (Blueprint $table) {
             $table->foreign('vetID')
                   ->references('id')
-                  ->on('vets')
+                  ->on('vet')
                   ->onDelete('set null');
 
             $table->foreign('animalID')
                   ->references('id')
-                  ->on('animals')
+                  ->on('animal')
                   ->onDelete('cascade');
         });
 
-        Schema::table('inventories', function (Blueprint $table) {
+        Schema::table('inventory', function (Blueprint $table) {
             $table->foreign('slotID')
                   ->references('id')
-                  ->on('slots')
+                  ->on('slot')
                   ->onDelete('set null');
 
             $table->foreign('categoryID')
                   ->references('id')
-                  ->on('categories')
+                  ->on('category')
                   ->onDelete('set null');
         });
 
-        Schema::table('bookings', function (Blueprint $table) {
+        Schema::table('booking', function (Blueprint $table) {
             $table->foreign('animalID')
                   ->references('id')
-                  ->on('animals')
+                  ->on('animal')
                   ->onDelete('set null');
 
             $table->foreign('userID')
@@ -116,34 +117,34 @@ return new class extends Migration {
                   ->onDelete('cascade');
         });
 
-        Schema::table('transactions', function (Blueprint $table) {
+        Schema::table('transaction', function (Blueprint $table) {
             $table->foreign('userID')
                   ->references('id')
                   ->on('users')
                   ->onDelete('cascade');
         });
 
-        Schema::table('adoptions', function (Blueprint $table) {
+        Schema::table('adoption', function (Blueprint $table) {
             $table->foreign('bookingID')
                   ->references('id')
-                  ->on('bookings')
+                  ->on('booking')
                   ->onDelete('cascade');
 
             $table->foreign('transactionID')
                   ->references('id')
-                  ->on('transactions')
+                  ->on('transaction')
                   ->onDelete('set null');
         });
 
         Schema::table('animal_booking', function (Blueprint $table) {
             $table->foreign('animalID')
                   ->references('id')
-                  ->on('animals')
+                  ->on('animal')
                   ->onDelete('cascade');
 
             $table->foreign('bookingID')
                   ->references('id')
-                  ->on('bookings')
+                  ->on('booking')
                   ->onDelete('cascade');
         });
     }
@@ -158,26 +159,26 @@ return new class extends Migration {
             $table->dropForeign(['bookingID']);
         });
 
-        Schema::table('adoptions', function (Blueprint $table) {
+        Schema::table('adoption', function (Blueprint $table) {
             $table->dropForeign(['bookingID']);
             $table->dropForeign(['transactionID']);
         });
 
-        Schema::table('transactions', function (Blueprint $table) {
+        Schema::table('transaction', function (Blueprint $table) {
             $table->dropForeign(['userID']);
         });
 
-        Schema::table('bookings', function (Blueprint $table) {
+        Schema::table('booking', function (Blueprint $table) {
             $table->dropForeign(['animalID']);
             $table->dropForeign(['userID']);
         });
 
-        Schema::table('inventories', function (Blueprint $table) {
+        Schema::table('inventory', function (Blueprint $table) {
             $table->dropForeign(['slotID']);
             $table->dropForeign(['categoryID']);
         });
 
-        Schema::table('medicals', function (Blueprint $table) {
+        Schema::table('medical', function (Blueprint $table) {
             $table->dropForeign(['vetID']);
             $table->dropForeign(['animalID']);
         });
@@ -186,11 +187,11 @@ return new class extends Migration {
          * Drop tables
          */
         Schema::dropIfExists('animal_booking');
-        Schema::dropIfExists('adoptions');
-        Schema::dropIfExists('transactions');
-        Schema::dropIfExists('bookings');
-        Schema::dropIfExists('inventories');
-        Schema::dropIfExists('categories');
-        Schema::dropIfExists('medicals');
+        Schema::dropIfExists('adoption');
+        Schema::dropIfExists('transaction');
+        Schema::dropIfExists('bookins');
+        Schema::dropIfExists('inventory');
+        Schema::dropIfExists('category');
+        Schema::dropIfExists('medical');
     }
 };
