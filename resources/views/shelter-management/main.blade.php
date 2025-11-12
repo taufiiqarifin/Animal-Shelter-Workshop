@@ -70,7 +70,7 @@
                         <span class="text-2xl">🔒</span>
                     </div>
                 </div>
-                <p class="text-blue-600 text-sm mt-4">Pending intake</p>
+                <p class="text-blue-600 text-sm mt-4">Pendinggg intake</p>
             </div>
         </div>
 
