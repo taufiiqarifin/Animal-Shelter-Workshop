@@ -90,7 +90,7 @@
                                 @endrole
                                 @role('caretaker')
                                     <div>
-                                        <a href="{{ route('caretaker.rescues') }}" 
+                                        <a href="{{ route('rescues.index') }}" 
                                         class="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold px-5 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition duration-300 shadow-lg">
                                             <span class="text-lg">🐾</span>
                                             <span>View Assigned Rescue Reports</span>

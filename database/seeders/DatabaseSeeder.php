@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             // 2. CreateStaffUserSeeder will be called second, 
             //    and can now rely on roles being present
             CreateStaffUserSeeder::class,
+            CaretakerSeeder::class,
         ]);
     }
 }

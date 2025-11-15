@@ -23,8 +23,8 @@ return new class extends Migration {
 
         Schema::create('rescue', function (Blueprint $table) {
             $table->id();
-            $table->date('date');
             $table->string('status')->nullable();
+            $table->text('remarks')->nullable();
             $table->unsignedBigInteger('reportID')->nullable();   // FK added later
             $table->unsignedBigInteger('caretakerID')->nullable(); // FK added later
             $table->timestamps();

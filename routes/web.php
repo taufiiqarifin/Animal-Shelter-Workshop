@@ -38,8 +38,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/reports/{id}', [StrayReportingManagementController::class, 'show'])->name('reports.show');
     Route::get('/reports/{id}/edit', [StrayReportingManagementController::class, 'edit'])->name('reports.edit');
     Route::delete('/reports/{id}', [StrayReportingManagementController::class, 'destroy'])->name('reports.destroy');
-    Route::patch('/reports/{id}/status', [StrayReportingManagementController::class, 'updateStatus'])->name('reports.update-status');
+    Route::patch('/reports/{id}/assign-caretaker', [StrayReportingManagementController::class, 'assignCaretaker'])->name('reports.assign-caretaker');
+
+    Route::get('/rescues', [StrayReportingManagementController::class, 'indexcaretaker'])->name('rescues.index');
+    Route::patch('/rescues/{id}/update-status', [StrayReportingManagementController::class, 'updateStatusCaretaker'])->name('rescues.update-status');
+    Route::get('/rescues/{id}', [StrayReportingManagementController::class, 'showCaretaker'])->name('rescues.show');
 });
+
 
 //Animal-Management
 Route::middleware('auth')->group(function () {

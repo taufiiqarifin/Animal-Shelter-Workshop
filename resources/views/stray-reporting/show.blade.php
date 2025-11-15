@@ -32,7 +32,17 @@
                 </div>
             </div>
         </div>
-
+        <div class="container mx-auto px-4 py-4 max-w-7xl">
+                @if(session('success'))
+                    <div class="mb-6 px-6 py-4 rounded-2xl bg-green-100 border-l-4 border-green-500 text-green-700 flex items-center gap-3 shadow-lg">
+                        <i class="fas fa-check-circle text-lg"></i>
+                        <span>{{ session('success') }}</span>
+                        <button onclick="this.parentElement.remove()" class="ml-auto text-green-700 hover:text-green-900">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                @endif
+            </div>
         <!-- Main Content -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Report Details -->
@@ -150,58 +160,36 @@
                 <!-- Quick Actions -->
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
                     <div class="p-6 md:p-8">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Report Status & Actions</h2>
-                        
-                        <!-- Status Progress -->
-                        <div class="mb-6">
-                            <!-- <label class="block text-sm font-semibold text-gray-700 mb-3">Progress</label>
-                            
-                            Progress Bar
-                            <div class="w-full bg-gray-200 rounded-full h-3 mb-3">
-                                @php
-                                    $statusProgress = [
-                                        'Pending' => 20,
-                                        'Approved' => 40,
-                                        'In Progress' => 60,
-                                        'Resolved' => 80,
-                                        'Completed' => 100
-                                    ];
-                                    $progress = $statusProgress[$report->report_status] ?? 20;
-                                @endphp
-                                <div class="bg-gradient-to-r from-purple-600 to-purple-700 h-3 rounded-full transition-all duration-500 shadow-lg" 
-                                    style="width: {{ $progress }}%"></div>
-                            </div> -->
-                            
-                            <!-- Current Status -->
-                            <!-- <div class="flex justify-between items-center">
-                                <span class="text-sm font-semibold text-gray-700">{{ $report->report_status }}</span>
-                                <span class="text-sm font-bold text-purple-700">{{ $progress }}%</span>
-                            </div> -->
-                        </div>
-
-                        <!-- Quick Status Update -->
-                        <form action="{{ route('reports.update-status', $report->id) }}" method="POST" class="mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Actions</h2>
+                        <!-- Assign to Caretaker -->
+                        <form action="{{ route('reports.assign-caretaker', $report->id) }}" method="POST" class="mb-6 border-t-2 border-gray-200 pt-6">
                             @csrf
-                            @method('PATCH')
-                            <label class="block text-sm font-semibold text-gray-700 mb-3">Change Status</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button type="submit" name="report_status" value="Pending" 
-                                        class="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-yellow-900 px-3 py-2.5 rounded-lg text-sm font-semibold transition duration-200 flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-clock mr-1"></i> Pending
-                                </button>
-                                <button type="submit" name="report_status" value="Approved" 
-                                        class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-3 py-2.5 rounded-lg text-sm font-semibold transition duration-200 flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-check mr-1"></i> Approve
-                                </button>
-                                <button type="submit" name="report_status" value="In Progress" 
-                                        class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-3 py-2.5 rounded-lg text-sm font-semibold transition duration-200 flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-spinner mr-1"></i> In Progress
-                                </button>
-                                <button type="submit" name="report_status" value="Resolved" 
-                                        class="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-3 py-2.5 rounded-lg text-sm font-semibold transition duration-200 flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-flag-checkered mr-1"></i> Resolve
+                            @method('PATCH') <!-- This tells Laravel to treat the request as PATCH -->
+                            
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Assign to Caretaker</label>
+                            <div class="flex gap-2">
+                                <select name="caretaker_id" required 
+                                        class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
+                                    <option value="">Select a caretaker...</option>
+                                    @foreach($caretakers as $caretaker)
+                                        <option value="{{ $caretaker->id }}" 
+                                                {{ $report->rescue && $report->rescue->caretakerID == $caretaker->id ? 'selected' : '' }}>
+                                            {{ $caretaker->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" 
+                                        class="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold transition duration-200 flex items-center justify-center shadow-lg whitespace-nowrap">
+                                    <i class="fas fa-user-plus mr-2"></i> Assign
                                 </button>
                             </div>
+
+                            @if($report->rescue && $report->rescue->caretaker)
+                                <p class="mt-2 text-sm text-gray-600">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Currently assigned to: <strong>{{ $report->rescue->caretaker->name }}</strong>
+                                </p>
+                            @endif
                         </form>
 
                         <!-- Action Buttons -->

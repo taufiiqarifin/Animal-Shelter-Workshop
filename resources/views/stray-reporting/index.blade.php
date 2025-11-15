@@ -48,11 +48,7 @@
             <div class="bg-white rounded-2xl shadow-2xl p-12 text-center">
                 <div class="text-6xl mb-4">🐾</div>
                 <h3 class="text-2xl font-bold text-gray-800 mb-2">No reports yet</h3>
-                <p class="text-gray-600 mb-6 text-lg">Get started by creating a new report to help stray animals.</p>
-                <a href="{{ route('reports.create') }}" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold px-6 py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
-                    <span class="text-lg">📝</span>
-                    <span>Submit First Report</span>
-                </a>
+                <p class="text-gray-600 mb-6 text-lg"></p> 
             </div>
         @else
             <div class="grid grid-cols-1 gap-6">

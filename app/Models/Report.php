@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Report extends Model
 {
 
-     protected $table = 'report';
+    protected $table = 'report';
     protected $fillable = [
         'latitude', 'longitude', 'address', 'city', 'state',
         'report_status', 'description', 'userID'
@@ -22,5 +22,12 @@ class Report extends Model
     {
         return $this->hasMany(Image::class, 'reportID');
     }
+   
+    public function rescue()
+    {
+        return $this->hasOne(Rescue::class, 'reportID');
+    }
+
+
 }
 

@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Rescue extends Model
 {
-    protected $fillable = ['date', 'status', 'reportID', 'caretakerID'];
-
+    protected $fillable = ['status', 'remarks', 'reportID', 'caretakerID'];
+    protected $table = 'rescue';
     public function report()
     {
         return $this->belongsTo(Report::class, 'reportID');
@@ -22,4 +22,10 @@ class Rescue extends Model
     {
         return $this->hasMany(Animal::class, 'rescueID');
     }
+
+    const STATUS_SCHEDULED = 'Scheduled';
+    const STATUS_IN_PROGRESS = 'In Progress';
+    const STATUS_SUCCESS = 'Success';
+    const STATUS_FAILED = 'Failed';
 }
+   

@@ -15,7 +15,6 @@ class CreateStaffUserSeeder extends Seeder
     {
         // Create roles if they do not exist
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        $caretakerRole = Role::firstOrCreate(['name' => 'caretaker']);
 
         // Create Admin user
         $admin = User::create([
@@ -30,19 +29,6 @@ class CreateStaffUserSeeder extends Seeder
 
         $admin->assignRole($adminRole);
 
-
-        // Create Caretaker user
-        $caretaker = User::create([
-            'name' => 'Caretaker User',
-            'email' => 'caretaker@gmail.com',
-            'password' => bcrypt('password'),
-            'phoneNum' => '0123456789',
-            'address' => '8, Jalan Sejahtera 7, Taman Bukit Tambun Perdana',
-            'city' => 'Durian Tunggal',
-            'state' => 'Melaka',
-        ]);
-
-        $caretaker->assignRole($caretakerRole);
 
     }
 }

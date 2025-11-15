@@ -8,6 +8,8 @@ use App\Models\Image;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Rescue;
+use App\Models\User;
 
 
 
@@ -85,10 +87,14 @@ class StrayReportingManagementController extends Controller
     // Display a single report
     public function show($id)
     {
-        $report = Report::with('images')->findOrFail($id);
+        $report = Report::with(['images', 'rescue.caretaker'])->findOrFail($id);
 
-        return view('stray-reporting.show', compact('report'));
+        // Using Spatie
+        $caretakers = User::role('caretaker')->orderBy('name')->get();
+
+        return view('stray-reporting.show', compact('report', 'caretakers'));
     }
+
 
 
     // For admin/staff - view all reports regardless of user
@@ -116,23 +122,117 @@ class StrayReportingManagementController extends Controller
         // Delete report
         $report->delete();
 
-        return redirect()->route('reports.index')->with('success', 'Report deleted successfully!');
+        return redirect()->route('stray-reporting.index')->with('success', 'Report deleted successfully!');
     }
 
 
-    public function updateStatus(Request $request, $id)
-   {
+    public function assignCaretaker(Request $request, $id)
+    {
+        $request->validate([
+            'caretaker_id' => 'required|exists:users,id'
+        ]);
+
         $report = Report::findOrFail($id);
 
-        $request->validate([
-            'report_status' => 'required|in:Pending,Approved,In Progress,Resolved,Rejected'
-        ]);
+        // Check if rescue already exists for this report
+        $rescue = Rescue::where('reportID', $report->id)->first();
 
+        if ($rescue) {
+            // Update existing rescue
+            $rescue->update([
+                'caretakerID' => $request->caretaker_id
+            ]);
+        } else {
+            // Create new rescue
+            Rescue::create([
+                'reportID' => $report->id,
+                'caretakerID' => $request->caretaker_id,
+                'status' => Rescue::STATUS_SCHEDULED,
+                'date' => null
+            ]);
+        }
+
+        // Update report status to 'In Progress' after assigning a caretaker
         $report->update([
-            'report_status' => $request->report_status
+            'report_status' => 'In Progress'
         ]);
 
-        return redirect()->back()->with('success', 'Report status updated successfully!');
-    } 
+        return redirect()->back()->with('success', 'Caretaker assigned successfully!');
+    }
+
+
+    public function indexcaretaker(Request $request)
+    {
+        $query = Rescue::with(['report.images', 'caretaker'])
+            ->where('caretakerID', Auth::id());
+
+        // Filter by status if provided
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $rescues = $query->orderBy('created_at', 'desc')->paginate(10);
+
+        return view('stray-reporting.index-caretaker', compact('rescues'));
+    }
+
+   public function updateStatusCaretaker(Request $request, $id)
+    {
+        // Validate based on status
+        $rules = [
+            'status' => 'required|in:' . implode(',', [
+                Rescue::STATUS_SCHEDULED,
+                Rescue::STATUS_IN_PROGRESS,
+                Rescue::STATUS_SUCCESS,
+                Rescue::STATUS_FAILED
+            ])
+        ];
+        
+        // If status is Success or Failed, remarks are required
+        if (in_array($request->status, [Rescue::STATUS_SUCCESS, Rescue::STATUS_FAILED])) {
+            $rules['remarks'] = 'required|string|min:10|max:1000';
+        }
+        
+        $request->validate($rules, [
+            'remarks.required' => 'Remarks are required for this status.',
+            'remarks.min' => 'Remarks must be at least 10 characters.',
+            'remarks.max' => 'Remarks must not exceed 1000 characters.',
+        ]);
+
+        $rescue = Rescue::where('id', $id)
+            ->where('caretakerID', Auth::id())
+            ->firstOrFail();
+
+        // Prepare update data
+        $updateData = ['status' => $request->status];
+        
+        // Add remarks if provided
+        if ($request->filled('remarks')) {
+            $updateData['remarks'] = $request->remarks;
+        }
+
+        // Update the Rescue status and remarks
+        $rescue->update($updateData);
+
+        // Update related Report status to 'Resolved' if rescue is completed
+        if (in_array($request->status, ['Success', Rescue::STATUS_FAILED])) {
+            $rescue->report->update([
+                'report_status' => 'Resolved'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Rescue status updated successfully!');
+    }
+
+
+    public function showCaretaker($id)
+    {
+        $rescue = Rescue::with(['report.images', 'caretaker'])
+            ->where('id', $id)
+            ->where('caretakerID', Auth::id())
+            ->firstOrFail();
+
+        return view('stray-reporting.show-caretaker', compact('rescue'));
+    }
 
 }
