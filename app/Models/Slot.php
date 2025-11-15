@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Slot extends Model
 {
+    protected $table = 'slot';
     protected $fillable = ['name', 'section', 'capacity', 'status'];
 
     public function animals()

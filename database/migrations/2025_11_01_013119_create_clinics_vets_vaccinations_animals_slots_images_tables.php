@@ -42,26 +42,24 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->string('type')->nullable();
-            $table->date('date')->nullable();
             $table->date('next_due_date')->nullable();
             $table->text('remarks')->nullable();
+            $table->decimal('costs', 10, 2)->nullable();
+            $table->timestamps();
             $table->unsignedBigInteger('animalID')->nullable(); // FK later
             $table->unsignedBigInteger('vetID')->nullable();    // FK later
-            $table->timestamps();
         });
 
         Schema::create('animal', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
             $table->string('species')->nullable();
             $table->text('health_details')->nullable();
             $table->integer('age')->nullable();
             $table->enum('gender', ['Male', 'Female', 'Unknown'])->default('Unknown');
             $table->string('adoption_status')->nullable();
-            $table->date('arrival_date')->nullable();
-            $table->string('medical_status')->nullable();
             $table->unsignedBigInteger('rescueID')->nullable();     // FK later
             $table->unsignedBigInteger('slotID')->nullable();       // FK later
-            $table->unsignedBigInteger('vaccinationID')->nullable(); // FK later
             $table->timestamps();
         });
 
@@ -104,11 +102,6 @@ return new class extends Migration {
             $table->foreign('slotID')
                   ->references('id')
                   ->on('slot')
-                  ->onDelete('set null');
-
-            $table->foreign('vaccinationID')
-                  ->references('id')
-                  ->on('vaccination')
                   ->onDelete('set null');
         });
 

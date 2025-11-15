@@ -12,15 +12,14 @@ return new class extends Migration {
          */
         Schema::create('medical', function (Blueprint $table) {
             $table->id();
-            $table->date('date_checkup');
             $table->string('treatment_type')->nullable();
             $table->text('diagnosis')->nullable();
             $table->text('action')->nullable();
             $table->text('remarks')->nullable();
             $table->decimal('costs', 10, 2)->nullable();
+            $table->timestamps();
             $table->unsignedBigInteger('vetID')->nullable();    // FK later
             $table->unsignedBigInteger('animalID')->nullable(); // FK later
-            $table->timestamps();
         });
 
         Schema::create('category', function (Blueprint $table) {
