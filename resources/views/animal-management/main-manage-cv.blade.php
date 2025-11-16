@@ -23,7 +23,7 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         @if (session('success'))
-            <div class="bg-green-50 border-l-4 border-green-600 text-green-700 p-4 rounded-lg mb-6">
+            <div class="bg-green-100 border-l-4 border-green-600 text-green-700 p-4 rounded-lg mb-6">
                 <p class="font-semibold">{{ session('success') }}</p>
             </div>
         @endif
@@ -109,9 +109,21 @@
                                     @endif
                                 </div>
                                 <div class="flex space-x-2">
-                                    <button onclick="viewClinicDetails({{ $clinic->id }})" class="flex-1 bg-{{ $color }}-600 hover:bg-{{ $color }}-700 text-white py-2 rounded-lg font-medium transition duration-300">
-                                        <i class="fas fa-info-circle mr-1"></i>Details
-                                    </button>
+                                    @if($clinic->latitude && $clinic->longitude)
+                                        <a href="https://www.google.com/maps/dir/?api=1&destination={{ $clinic->latitude }},{{ $clinic->longitude }}" 
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           class="flex-1 bg-{{ $color }}-600 hover:bg-{{ $color }}-700 text-white py-2 rounded-lg font-medium transition duration-300 text-center">
+                                            <i class="fas fa-location-arrow mr-1"></i>Go to Clinic
+                                        </a>
+                                    @else
+                                        <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($clinic->address) }}" 
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           class="flex-1 bg-{{ $color }}-600 hover:bg-{{ $color }}-700 text-white py-2 rounded-lg font-medium transition duration-300 text-center">
+                                            <i class="fas fa-location-arrow mr-1"></i>Go to Clinic
+                                        </a>
+                                    @endif
                                     @role('admin')
                                     <button onclick="editClinic({{ $clinic->id }})" class="px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition duration-300">
                                         <i class="fas fa-edit"></i>
@@ -136,6 +148,85 @@
                     </button>
                 </div>
             @endif
+        </div>
+
+        <!-- Edit Clinic Modal -->
+        <div id="editClinicModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold">Edit Clinic</h2>
+                        <button onclick="closeEditClinicModal()" class="text-white hover:text-gray-200">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <form id="editClinicForm" method="POST" class="p-6 space-y-4">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">Clinic Name <span class="text-red-600">*</span></label>
+                        <input type="text" id="edit_clinic_name" name="name" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" placeholder="Enter clinic name" required>
+                    </div>
+                    
+                    <!-- Address Search -->
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">Search Address</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="editClinicAddressSearch" placeholder="Enter address to search..." 
+                                class="flex-1 border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition">
+                            <button type="button" id="editClinicSearchBtn" 
+                                    class="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition duration-300">
+                                <i class="fas fa-search mr-1"></i>Search
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">Search for an address or click on the map to pin a location</p>
+                    </div>
+
+                    <!-- Map -->
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">
+                            Select Location on Map <span class="text-red-600">*</span>
+                        </label>
+                        <div id="editClinicMap" class="w-full h-64 rounded-lg border border-gray-300"></div>
+                        <p class="text-sm text-red-600 mt-2 hidden" id="editClinicMapError">Please select a location on the map</p>
+                    </div>
+
+                    <!-- Latitude & Longitude -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Latitude <span class="text-red-600">*</span></label>
+                            <input type="text" id="edit_clinicLatitude" name="latitude" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border bg-gray-50 focus:border-purple-500 focus:ring focus:ring-purple-200 transition" placeholder="Auto-filled" readonly required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Longitude <span class="text-red-600">*</span></label>
+                            <input type="text" id="edit_clinicLongitude" name="longitude" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border bg-gray-50 focus:border-purple-500 focus:ring focus:ring-purple-200 transition" placeholder="Auto-filled" readonly required>
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">Address <span class="text-red-600">*</span></label>
+                        <textarea id="edit_clinicAddress" name="address" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" rows="3" placeholder="Full address will be auto-filled" required></textarea>
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">Phone <span class="text-red-600">*</span></label>
+                        <input type="tel" id="edit_phone" name="contactNum" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" placeholder="+60 3-1234 5678" required>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4">
+                        <button type="button" onclick="closeEditClinicModal()" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition duration-300">
+                            <i class="fas fa-save mr-2"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Veterinarians Section -->
@@ -204,12 +295,14 @@
                                     @endif
                                 </div>
                                 <div class="flex space-x-2">
-                                    <button class="flex-1 bg-{{ $color }}-600 hover:bg-{{ $color }}-700 text-white py-2 rounded-lg font-medium transition duration-300">
-                                        <i class="fas fa-info-circle mr-1"></i>Details
+                                    @role('admin')
+                                    <button onclick="editVet({{ $vet->id }})" class="flex-1 bg-{{ $color }}-600 hover:bg-{{ $color }}-700 text-white py-2 rounded-lg font-medium transition duration-300">
+                                        <i class="fas fa-edit mr-1"></i>Edit
                                     </button>
-                                    @role('admin')<button class="px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition duration-300">
-                                        <i class="fas fa-edit"></i>
-                                    </button>@endrole
+                                    <button onclick="deleteVet({{ $vet->id }})" class="px-4 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition duration-300">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    @endrole
                                 </div>
                             </div>
                         </div>
@@ -367,6 +460,72 @@
         </div>
     </div>
 
+    <!-- Edit Vet Modal -->
+    <div id="editVetModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-2xl font-bold">Edit Veterinarian</h2>
+                    <button onclick="closeEditVetModal()" class="text-white hover:text-gray-200">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+            <form id="editVetForm" method="POST" class="p-6 space-y-4">
+                @csrf
+                @method('PUT')
+                
+                <div>
+                    <label class="block text-gray-800 font-semibold mb-2">Full Name <span class="text-red-600">*</span></label>
+                    <input type="text" id="edit_vet_name" name="name" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-orange-500 focus:ring focus:ring-orange-200 transition" placeholder="Dr. Name" required>
+                </div>
+
+                <div>
+                    <label class="block text-gray-800 font-semibold mb-2">Specialization <span class="text-red-600">*</span></label>
+                    <input type="text" id="edit_vet_specialization" name="specialization" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-orange-500 focus:ring focus:ring-orange-200 transition" placeholder="e.g., Small Animals, Surgery" required>
+                </div>
+
+                <div>
+                    <label class="block text-gray-800 font-semibold mb-2">License Number <span class="text-red-600">*</span></label>
+                    <input type="text" id="edit_vet_license_no" name="license_no" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-orange-500 focus:ring focus:ring-orange-200 transition" placeholder="e.g., 408688" required>
+                </div>
+
+                <div>
+                    <label class="block text-gray-800 font-semibold mb-2">Clinic <span class="text-red-600">*</span></label>
+                    <select id="edit_vet_clinicID" name="clinicID" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border bg-white focus:border-orange-500 focus:ring focus:ring-orange-200 transition" required>
+                        @if($clinics->count() > 0)
+                            <option value="">Select Clinic</option>
+                            @foreach($clinics as $clinic)
+                                <option value="{{ $clinic->id }}">{{ $clinic->name }}</option>
+                            @endforeach
+                        @else
+                            <option disabled>No clinics available — please add one first.</option>
+                        @endif
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">Phone <span class="text-red-600">*</span></label>
+                        <input type="tel" id="edit_vet_contactNum" name="contactNum" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-orange-500 focus:ring focus:ring-orange-200 transition" placeholder="+60 12-345 6789" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-800 font-semibold mb-2">Email <span class="text-red-600">*</span></label>
+                        <input type="email" id="edit_vet_email" name="email" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-orange-500 focus:ring focus:ring-orange-200 transition" placeholder="dr.name@example.com" required>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditVetModal()" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 transition duration-300">
+                        <i class="fas fa-save mr-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script>
         let clinicMap;
         let clinicMarker;
@@ -573,7 +732,266 @@
                 });
             }
         });
-        
+        let editClinicMap;
+        let editClinicMarker;
+        let editClinicGeocoder;
+
+        // Initialize edit map when modal opens
+        function initEditClinicMap(lat, lng) {
+            if (!editClinicMap) {
+                editClinicMap = L.map('editClinicMap').setView([lat || 2.7297, lng || 101.9381], 13);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(editClinicMap);
+
+                editClinicMap.on('click', function(e) {
+                    setEditClinicLocation(e.latlng.lat, e.latlng.lng);
+                });
+            } else {
+                editClinicMap.setView([lat || 2.7297, lng || 101.9381], 13);
+            }
+
+            // Set initial marker if coordinates exist
+            if (lat && lng) {
+                setEditClinicLocation(lat, lng);
+            }
+
+            // Fix map display issue
+            setTimeout(() => {
+                editClinicMap.invalidateSize();
+            }, 100);
+        }
+
+        function setEditClinicLocation(lat, lng) {
+            if (editClinicMarker) {
+                editClinicMap.removeLayer(editClinicMarker);
+            }
+
+            editClinicMarker = L.marker([lat, lng]).addTo(editClinicMap);
+            editClinicMap.setView([lat, lng], 15);
+
+            document.getElementById('edit_clinicLatitude').value = lat.toFixed(6);
+            document.getElementById('edit_clinicLongitude').value = lng.toFixed(6);
+
+            // Reverse geocode to get address
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.display_name) {
+                        document.getElementById('edit_clinicAddress').value = data.display_name;
+                    }
+                });
+        }
+
+        // Search address for edit modal
+        document.getElementById('editClinicSearchBtn')?.addEventListener('click', function() {
+            const address = document.getElementById('editClinicAddressSearch').value;
+            if (!address) return;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        setEditClinicLocation(parseFloat(result.lat), parseFloat(result.lon));
+                    } else {
+                        alert('Address not found. Please try a different search term.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error searching for address');
+                });
+        });
+
+        // Edit Clinic Function
+        function editClinic(clinicId) {
+            fetch(`/clinics/${clinicId}/edit`)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate form fields
+                    document.getElementById('edit_clinic_name').value = data.name || '';
+                    document.getElementById('edit_clinicAddress').value = data.address || '';
+                    document.getElementById('edit_phone').value = data.contactNum || '';
+                    document.getElementById('edit_clinicLatitude').value = data.latitude || '';
+                    document.getElementById('edit_clinicLongitude').value = data.longitude || '';
+                    
+                    // Update form action
+                    document.getElementById('editClinicForm').action = `/clinics/${clinicId}`;
+                    
+                    // Show modal
+                    document.getElementById('editClinicModal').classList.remove('hidden');
+                    
+                    // Initialize map with clinic location
+                    setTimeout(() => {
+                        initEditClinicMap(parseFloat(data.latitude), parseFloat(data.longitude));
+                    }, 100);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to load clinic data');
+                });
+        }
+
+        // Close Edit Modal
+        function closeEditClinicModal() {
+            document.getElementById('editClinicModal').classList.add('hidden');
+            document.getElementById('editClinicForm').reset();
+            
+            // Clear marker
+            if (editClinicMarker && editClinicMap) {
+                editClinicMap.removeLayer(editClinicMarker);
+                editClinicMarker = null;
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('editClinicModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditClinicModal();
+            }
+        });
+
+        // Delete Clinic Function
+        function deleteClinic(clinicId) {
+            if (confirm('Are you sure you want to delete this clinic? This action cannot be undone.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/clinics/${clinicId}`;
+                
+                const csrfToken = document.createElement('input');
+                csrfToken.type = 'hidden';
+                csrfToken.name = '_token';
+                csrfToken.value = '{{ csrf_token() }}';
+                
+                const methodField = document.createElement('input');
+                methodField.type = 'hidden';
+                methodField.name = '_method';
+                methodField.value = 'DELETE';
+                
+                form.appendChild(csrfToken);
+                form.appendChild(methodField);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+        function editVet(vetId) {
+            console.log('Edit vet clicked:', vetId); // Debug
+            
+            const modal = document.getElementById('editVetModal');
+            if (!modal) {
+                console.error('Modal not found!');
+                return;
+            }
+            
+            modal.classList.remove('hidden');
+            
+            const url = `/vets/${vetId}/edit`;
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Vet data received:', data); // Debug
+                
+                // Check if elements exist before setting values
+                const nameInput = document.getElementById('edit_vet_name');
+                const specializationInput = document.getElementById('edit_vet_specialization');
+                const licenseInput = document.getElementById('edit_vet_license_no');
+                const clinicSelect = document.getElementById('edit_vet_clinicID');
+                const contactInput = document.getElementById('edit_vet_contactNum');
+                const emailInput = document.getElementById('edit_vet_email');
+                
+                if (!nameInput || !specializationInput || !licenseInput || !clinicSelect || !contactInput || !emailInput) {
+                    console.error('One or more form fields not found!');
+                    console.log('Name:', nameInput);
+                    console.log('Specialization:', specializationInput);
+                    console.log('License:', licenseInput);
+                    console.log('Clinic:', clinicSelect);
+                    console.log('Contact:', contactInput);
+                    console.log('Email:', emailInput);
+                    alert('Error: Form fields not found. Please refresh the page.');
+                    return;
+                }
+                
+                // Populate form fields
+                nameInput.value = data.name || '';
+                specializationInput.value = data.specialization || '';
+                licenseInput.value = data.license_no || '';
+                clinicSelect.value = data.clinicID || '';
+                contactInput.value = data.contactNum || '';
+                emailInput.value = data.email || '';
+                
+                // Update form action
+                document.getElementById('editVetForm').action = `/vets/${vetId}`;
+            })
+            .catch(error => {
+                console.error('Error details:', error);
+                alert('Failed to load veterinarian data: ' + error.message);
+                closeEditVetModal();
+            });
+        }
+
+        // Close Edit Vet Modal
+        function closeEditVetModal() {
+            const modal = document.getElementById('editVetModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+            const form = document.getElementById('editVetForm');
+            if (form) {
+                form.reset();
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('editVetModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeEditVetModal();
+                    }
+                });
+            }
+        });
+
+        // Delete Vet Function
+        function deleteVet(vetId) {
+            if (confirm('Are you sure you want to delete this veterinarian? This action cannot be undone.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/vets/${vetId}`;
+                
+                const csrfToken = document.createElement('input');
+                csrfToken.type = 'hidden';
+                csrfToken.name = '_token';
+                csrfToken.value = '{{ csrf_token() }}';
+                
+                const methodField = document.createElement('input');
+                methodField.type = 'hidden';
+                methodField.name = '_method';
+                methodField.value = 'DELETE';
+                
+                form.appendChild(csrfToken);
+                form.appendChild(methodField);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    
     </script>
 </body>
 </html>

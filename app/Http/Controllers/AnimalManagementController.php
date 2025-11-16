@@ -158,18 +158,6 @@ class AnimalManagementController extends Controller
 
         return view('animal-management.main', compact('animals'));
     }
-
-    /**
-     * Show the form for creating a new animal
-     */
-    // public function create()
-    // {
-    //     $rescues = Rescue::orderBy('id', 'desc')->get();
-    //     $slots = Slot::where('status', 'available')->get();
-        
-    //     return view('animal-management.create', compact('rescues', 'slots'));
-    // }
-
     /**
      * Display the specified animal
      */
@@ -420,5 +408,95 @@ class AnimalManagementController extends Controller
                 ->withInput()
                 ->with('error', 'Failed to add vaccination record: ' . $e->getMessage());
         }
+    }
+
+    public function editClinic($id)
+    {
+        $clinic = Clinic::findOrFail($id);
+        return response()->json($clinic);
+    }
+
+    public function updateClinic(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'required|string',
+            'contactNum' => 'required|string|max:20',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $clinic = Clinic::findOrFail($id);
+        $clinic->update([
+            'name' => $request->name,
+            'address' => $request->address,
+            'contactNum' => $request->contactNum,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+        ]);
+
+        return redirect()->back()->with('success', 'Clinic updated successfully!');
+    }
+
+    public function destroyClinic($id)
+    {
+        $clinic = Clinic::findOrFail($id);
+        $clinic->delete();
+
+        return redirect()->back()->with('success', 'Clinic deleted successfully!');
+    }
+
+    public function editVet($id)
+    {
+        try {
+            $vet = Vet::findOrFail($id);
+            
+            return response()->json([
+                'id' => $vet->id,
+                'name' => $vet->name,
+                'specialization' => $vet->specialization,
+                'license_no' => $vet->license_no,
+                'clinicID' => $vet->clinicID,
+                'contactNum' => $vet->contactNum,
+                'email' => $vet->email,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Veterinarian not found',
+                'message' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    public function updateVet(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'specialization' => 'required|string|max:255',
+            'license_no' => 'required|string|max:50',
+            'clinicID' => 'required|exists:clinic,id',
+            'contactNum' => 'required|string|max:20',
+            'email' => 'required|email|max:255',
+        ]);
+
+        $vet = Vet::findOrFail($id);
+        $vet->update([
+            'name' => $request->name,
+            'specialization' => $request->specialization,
+            'license_no' => $request->license_no,
+            'clinicID' => $request->clinicID,
+            'contactNum' => $request->contactNum,
+            'email' => $request->email,
+        ]);
+
+        return redirect()->back()->with('success', 'Veterinarian updated successfully!');
+    }
+
+    public function destroyVet($id)
+    {
+        $vet = Vet::findOrFail($id);
+        $vet->delete();
+
+        return redirect()->back()->with('success', 'Veterinarian deleted successfully!');
     }
 }
