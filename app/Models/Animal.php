@@ -6,11 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Animal extends Model
 {
-
+    protected $table = 'animal';
     protected $fillable = [
-        'species', 'health_details', 'age', 'gender',
-        'adoption_status', 'arrival_date', 'medical_status',
-        'rescueID', 'slotID', 'vaccinationID'
+        'species', 'name', 'health_details', 'age', 'gender',
+        'adoption_status', 'rescueID', 'slotID', 'vaccinationID'
     ];
 
     public function rescue()

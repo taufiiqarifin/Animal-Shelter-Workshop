@@ -48,12 +48,12 @@ Route::middleware(['auth'])->group(function () {
 
 //Animal-Management
 Route::middleware('auth')->group(function () {
-    Route::get('/animal:main', [AnimalManagementController::class, 'home'])->name('animal:main');
+    Route::get('/animal:main', [AnimalManagementController::class, 'index'])->name('animal:main');
 });
 
 Route::get('/animal', [AnimalManagementController::class, 'index'])->name('animal-management.index');
-Route::get('/animal/create', [AnimalManagementController::class, 'create'])->name('animal-management.create');
-Route::post('/animal', [AnimalManagementController::class, 'store'])->name('animal-management.store');
+Route::get('/animal/create/rescue-{rescue_id?}', [AnimalManagementController::class, 'create'])->name('animal-management.create');
+Route::post('/animal/store', [AnimalManagementController::class, 'store'])->name('animal-management.store');
 Route::get('/animal/{animal}', [AnimalManagementController::class, 'show'])->name('animal-management.show');
 Route::get('/animal/{animal}/edit', [AnimalManagementController::class, 'edit'])->name('animal-management.edit');
 Route::put('/animal/{animal}', [AnimalManagementController::class, 'update'])->name('animal-management.update');

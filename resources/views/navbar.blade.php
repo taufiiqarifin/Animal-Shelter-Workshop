@@ -18,22 +18,20 @@
             <a href="{{ route('dashboard') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
                 Dashboard
             </a>
-        
-
         <a href="{{ route('reports.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
             Report
         </a>
-
-        <a href="{{ route('animal:main') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-            Animal
-        </a>
-
+        
         <a href="{{ route('booking:main') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
             Adoption
         </a>
-
         <a href="{{ route('slot:main') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
             Slot
+        </a>
+        @endrole
+        @role('caretaker')
+        <a href="{{ route('animal:main') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
+            Animal
         </a>
         @endrole
     @endauth

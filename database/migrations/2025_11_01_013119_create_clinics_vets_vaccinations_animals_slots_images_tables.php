@@ -55,7 +55,7 @@ return new class extends Migration {
             $table->string('name');
             $table->string('species')->nullable();
             $table->text('health_details')->nullable();
-            $table->integer('age')->nullable();
+            $table->string('age')->nullable();
             $table->enum('gender', ['Male', 'Female', 'Unknown'])->default('Unknown');
             $table->string('adoption_status')->nullable();
             $table->unsignedBigInteger('rescueID')->nullable();     // FK later
@@ -131,7 +131,6 @@ return new class extends Migration {
         Schema::table('animal', function (Blueprint $table) {
             $table->dropForeign(['rescueID']);
             $table->dropForeign(['slotID']);
-            $table->dropForeign(['vaccinationID']);
         });
 
         Schema::table('vaccination', function (Blueprint $table) {

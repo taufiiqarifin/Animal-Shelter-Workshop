@@ -223,7 +223,9 @@ class StrayReportingManagementController extends Controller
 
         // Redirect to animal creation page if status is Success
         if ($request->status === Rescue::STATUS_SUCCESS) {
-            return redirect()->route('animal-management.create')->with('success', 'Rescue completed! You can now add the animal.');
+            return redirect()
+                ->route('animal-management.create', ['rescue_id' => $rescue->id])
+                ->with('success', 'Rescue completed! You can now add the animal.');
         }
 
         return redirect()->back()->with('success', 'Rescue status updated successfully!');

@@ -3,14 +3,220 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Animal;
 use App\Models\Slot;  
 use App\Models\Image;  
 use App\Models\Rescue; 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class AnimalManagementController extends Controller
 {
     public function home(){
         return view('animal-management.main');
     }
+     public function create($rescue_id = null)
+    {
+        $rescues = Rescue::all();
+        $slots = Slot::all(); // Only show available slots
+        
+        return view('animal-management.create', ['slots' => $slots, 'rescues' =>$rescues, 'rescue_id' => $rescue_id,]);
+    }
+
+    public function store(Request $request)
+    {
+        // Validate the request
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'species' => 'required|string|max:255',
+            'health_details' => 'required|string',
+            'age_number' => 'required|numeric|min:0',
+            'age_unit' => 'required|in:months,years',
+            'gender' => 'required|in:Male,Female,Unknown',
+            'rescueID' => 'required|exists:rescue,id',
+            'slotID' => 'nullable|exists:slot,id',
+            'images' => 'required|array|min:1',
+            'images.*' => 'required|image|mimes:jpeg,jpg,png,gif|max:5120', // 5MB max
+        ], [
+            'images.required' => 'Please upload at least one image.',
+            'images.*.image' => 'Each file must be an image.',
+            'images.*.mimes' => 'Images must be in JPEG, PNG, or GIF format.',
+            'images.*.max' => 'Each image must not exceed 5MB.',
+        ]);
+
+        $uploadedFiles = [];
+
+        DB::beginTransaction();
+
+        try {
+            // Combine age number and unit
+            $age = $validated['age_number'] . ' ' . $validated['age_unit'];
+
+            // Check if slot is available (only if provided)
+            $slot = null;
+            if ($validated['slotID']) {
+                $slot = Slot::find($validated['slotID']);
+                if (!$slot || $slot->status !== 'available') {
+                    return back()
+                        ->withInput()
+                        ->withErrors(['slotID' => 'Selected slot is not available.']);
+                }
+            }
+
+            // Create the animal record
+            $animal = Animal::create([
+                'name' => $validated['name'],
+                'species' => $validated['species'],
+                'health_details' => $validated['health_details'],
+                'age' => $age, // combined age string
+                'gender' => $validated['gender'],
+                'adoption_status' => 'Not Adopted',
+                'arrival_date' => now(),
+                'medical_status' => 'Pending',
+                'rescueID' => $validated['rescueID'],
+                'slotID' => $validated['slotID'],
+            ]);
+
+            // Handle image uploads
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $imageFile) {
+                    $filename = time() . '_' . uniqid() . '.' . $imageFile->getClientOriginalExtension();
+                    $path = $imageFile->storeAs('animal_images', $filename, 'public');
+                    $uploadedFiles[] = $path;
+
+                    Image::create([
+                        'animalID' => $animal->id,
+                        'image_path' => $path,
+                        'filename' => $filename,
+                        'uploaded_at' => now(),
+                    ]);
+                }
+            }
+
+            // Update slot status to occupied if assigned
+            if ($slot) {
+                $slot->update(['status' => 'occupied']);
+            }
+
+            DB::commit();
+
+            return redirect()->route('animal-management.create', ['rescue_id' => $validated['rescueID']])
+    ->with('success', 'Animal "' . $animal->name . '" added successfully with ' . count($request->file('images')) . ' image(s)! Do you want to add another animal? If so, please fill all the required fields again.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // Delete uploaded files if any error occurs
+            foreach ($uploadedFiles as $filePath) {
+                Storage::disk('public')->delete($filePath);
+            }
+
+            return back()
+                ->withInput()
+                ->withErrors(['error' => 'An error occurred while adding the animal: ' . $e->getMessage()]);
+        }
+    }
+
+
+    /**
+     * Display a listing of animals
+     */
+    public function index(Request $request)
+    {
+        $query = Animal::with(['images', 'slot']);
+
+        // Search by name
+        if ($request->filled('search')) {
+            $query->where('name', 'ILIKE', '%' . $request->search . '%');
+        }
+
+        // Filter by species
+        if ($request->filled('species')) {
+            $query->where('species', 'ILIKE', '%' . $request->species . '%');
+        }
+
+        // Filter by adoption status
+        if ($request->filled('adoption_status')) {
+            $query->where('adoption_status', $request->adoption_status);
+        }
+
+        // Filter by gender
+        if ($request->filled('gender')) {
+            $query->where('gender', $request->gender);
+        }
+
+        // Order by most recent first
+        $query->orderBy('created_at', 'desc');
+
+        // Paginate results (12 per page)
+        $animals = $query->paginate(12)->appends($request->query());
+
+        return view('animal-management.main', compact('animals'));
+    }
+
+    /**
+     * Show the form for creating a new animal
+     */
+    // public function create()
+    // {
+    //     $rescues = Rescue::orderBy('id', 'desc')->get();
+    //     $slots = Slot::where('status', 'available')->get();
+        
+    //     return view('animal-management.create', compact('rescues', 'slots'));
+    // }
+
+    /**
+     * Display the specified animal
+     */
+    public function show($id)
+    {
+        // Fetch the animal with all related data
+        $animal = Animal::with([
+            'images',
+            'slot',
+            'rescue.report'
+        ])->findOrFail($id);
+
+        return view('animal-management.show', compact('animal'));
+    }
+
+    /**
+     * Remove the specified animal from storage
+     */
+    public function destroy(Animal $animal)
+    {
+        DB::beginTransaction();
+
+        try {
+            // Delete all associated images from storage
+            foreach ($animal->images as $image) {
+                Storage::disk('public')->delete($image->image_path);
+                $image->delete();
+            }
+
+            // Free up the slot
+            $slot = Slot::find($animal->slotID);
+            if ($slot) {
+                $slot->update(['status' => 'available']);
+            }
+
+            // Delete the animal
+            $animalName = $animal->name;
+            $animal->delete();
+
+            DB::commit();
+
+            return redirect()->route('animal-management.index')
+                ->with('success', 'Animal "' . $animalName . '" deleted successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            \Log::error('Error deleting animal: ' . $e->getMessage());
+
+            return back()->withErrors(['error' => 'An error occurred while deleting the animal.']);
+        }
+    }
+
 }
