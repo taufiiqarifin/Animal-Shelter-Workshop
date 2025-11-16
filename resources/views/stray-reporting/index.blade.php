@@ -15,25 +15,30 @@
 
     <!-- Include Navbar -->
     @include('navbar')
+    <div class="mb-8 bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg p-8 py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <h1 class="text-4xl font-bold text-white mb-2">
+                  <span class="text-4xl md:text-5xl">📋</span>
+                  Stray Animal Reports
+               </h1>
+               <p class="text-purple-100">View and manage all submitted reports</p>
+            </div>
+         </div>
 
-    <div class="max-w-7xl mx-auto mt-10 p-4 md:p-6 pb-10">
+    <div class="max-w-7xl mx-auto mt-10 p-4 md:p-2 pb-10">
         <!-- Header Section -->
         <div class="bg-white rounded-2xl shadow-2xl overflow-hidden mb-6">
-            <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 md:p-8">
-                <div class="flex items-center justify-between flex-wrap gap-4">
-                    <div class="flex items-center">
-                        <span class="text-4xl md:text-5xl mr-4">📋</span>
+            <!-- <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 md:p-8"> -->
+                <!-- <div class="flex items-center justify-between flex-wrap gap-4"> -->
+                    <!-- <div class="flex items-center"> -->
+                        <!-- <span class="text-4xl md:text-5xl mr-4">📋</span>
                         <div>
                             <h2 class="text-3xl md:text-4xl font-bold">Stray Animal Reports</h2>
                             <p class="text-purple-100 text-sm md:text-base mt-1">View and manage all submitted reports</p>
-                        </div>
-                    </div>
-                    <!-- <a href="{{ route('reports.create') }}" class="inline-flex items-center gap-2 bg-white text-purple-700 font-semibold px-5 py-3 rounded-lg hover:bg-purple-50 transition duration-300 shadow-lg">
-                        <span class="text-lg">➕</span>
-                        <span>New Report</span>
-                    </a> -->
-                </div>
-            </div>
+                        </div> -->
+                    <!-- </div> -->
+                <!-- </div> -->
+            <!-- </div> -->
         </div>
 
         @if (session('success'))

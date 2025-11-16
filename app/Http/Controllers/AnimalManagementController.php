@@ -188,18 +188,44 @@ class AnimalManagementController extends Controller
 
         $animal = Animal::findOrFail($animalId);
 
-        $slot = Slot::findOrFail($request->slot_id);
+        // Store previous slot before reassigning (for recalculation after update)
+        $previousSlotId = $animal->slotID;
 
-        // Assign slot to animal
-        $animal->slotID = $slot->id;
+        // Assign new slot
+        $animal->slotID = $request->slot_id;
         $animal->save();
 
-        // Optionally: update slot status to occupied
-        $slot->status = 'occupied';
-        $slot->save();
+        // --- Update NEW slot status ---
+        $newSlot = Slot::findOrFail($request->slot_id);
+        $newSlotAnimalCount = $newSlot->animals()->count();
+
+        if ($newSlotAnimalCount >= $newSlot->capacity) {
+            $newSlot->status = 'occupied';
+        } else {
+            $newSlot->status = 'available';
+        }
+        $newSlot->save();
+
+        // --- Update PREVIOUS slot status (if reassigning) ---
+        if ($previousSlotId && $previousSlotId != $newSlot->id) {
+            $oldSlot = Slot::find($previousSlotId);
+
+            if ($oldSlot) {
+                $oldSlotAnimalCount = $oldSlot->animals()->count();
+
+                if ($oldSlotAnimalCount >= $oldSlot->capacity) {
+                    $oldSlot->status = 'occupied';
+                } else {
+                    $oldSlot->status = 'available'; // now becomes available again
+                }
+
+                $oldSlot->save();
+            }
+        }
 
         return back()->with('success', 'Slot assigned successfully!');
     }
+
 
 
     /**

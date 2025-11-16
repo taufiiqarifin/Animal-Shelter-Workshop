@@ -12,6 +12,16 @@
     
     <!-- Include Navbar -->
     @include('navbar')
+    <div class="mb-8 bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg p-8 py-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               <h1 class="text-4xl font-bold text-white mb-2">
+                  <span class="text-4xl md:text-5xl">📋</span>
+                  Stray Animal Reports
+               </h1>
+               <p class="text-purple-100">View and manage all submitted reports</p>
+            </div>
+         </div>
+    
 
     <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->

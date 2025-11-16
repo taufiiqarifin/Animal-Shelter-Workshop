@@ -10,7 +10,6 @@ class ShelterManagementController extends Controller
     public function home(){
         return view('shelter-management.main');
     }
-
     public function indexSlot()
     {
         $slots = Slot::with(['animals', 'inventories'])->get();

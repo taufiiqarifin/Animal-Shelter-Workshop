@@ -175,7 +175,7 @@
         </div>
     </div>
 
-    <!-- Add/Edit Slot Modal -->
+    <!-- Add Slot Modal -->
     <div id="slotModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6">

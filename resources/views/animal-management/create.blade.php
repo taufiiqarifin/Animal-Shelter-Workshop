@@ -162,7 +162,7 @@
                                 <option value="" selected>No slot selected</option>
                                 @forelse($slots as $slot)
                                     <option value="{{ $slot->id }}" {{ old('slotID') == $slot->id ? 'selected' : '' }}>
-                                        Slot {{ $slot->slot_number ?? $slot->id }} - {{ $slot->location ?? 'N/A' }}
+                                        Slot {{ $slot->name ?? $slot->id }} - {{ $slot->section ?? 'N/A' }}
                                     </option>
                                 @empty
                                     <option value="" disabled>No available slots</option>

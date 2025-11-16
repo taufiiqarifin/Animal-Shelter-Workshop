@@ -434,7 +434,9 @@
                         <div class="bg-purple-50 rounded-lg p-4">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-gray-700 font-semibold">Slot Name</span>
-                                <span class="text-purple-700 font-bold text-lg">{{ $animal->slot->name ?? $animal->slot->id }}</span>
+                                <span class="text-purple-700 font-bold text-lg">
+                                    {{ $animal->slot->name ?? $animal->slot->id }}
+                                </span>
                             </div>
 
                             <div class="flex items-center justify-between mb-2">
@@ -442,19 +444,40 @@
                                 <span class="text-gray-800">{{ $animal->slot->location ?? 'Main Shelter' }}</span>
                             </div>
 
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between mb-4">
                                 <span class="text-gray-700 font-semibold">Status</span>
                                 <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
                                     {{ $animal->slot->status }}
                                 </span>
                             </div>
-                        </div>
 
+                            {{-- Reassign Slot Form --}}
+                            @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('caretaker'))
+                                <form action="{{ route('animals.assignSlot', $animal->id) }}" method="POST">
+                                    @csrf
+                                    
+                                    <label class="text-gray-700 font-semibold">Reassign Slot</label>
+                                    <select name="slot_id" class="w-full border rounded-lg p-2 mb-3">
+                                        @foreach($slots as $slot)
+                                            <option value="{{ $slot->id }}"
+                                                {{ $animal->slotID == $slot->id ? 'selected' : '' }}>
+                                                Slot {{ $slot->name ?? $slot->id }} ({{ $slot->section }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+
+                                    <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                                        Update Slot
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     @else
                         <div class="bg-gray-50 rounded-lg p-4 text-center text-gray-600">
                             <i class="fas fa-exclamation-circle text-3xl mb-2 text-gray-400"></i>
                             <p class="mb-3">No slot assigned</p>
 
+                            {{-- Assign Slot Form --}}
                             @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('caretaker'))
                                 <form action="{{ route('animals.assignSlot', $animal->id) }}" method="POST">
                                     @csrf
@@ -475,6 +498,7 @@
                             @endif
                         </div>
                     @endif
+
                 </div>
 
                 <!-- Action Card -->
