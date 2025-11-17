@@ -16,6 +16,8 @@
     <!-- Include Navbar -->
     @include('navbar')
     @include('stray-reporting.create')
+    @include('stray-reporting.my-submitted-report')
+
     @if (session('success'))
         <div class="bg-green-50 border-l-4 border-green-600 text-green-700 p-4 rounded-lg mb-6">
                         <p class="font-semibold">{{ session('success') }}</p>
@@ -96,6 +98,12 @@
                                     <button type="button" onclick="openReportModal()" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
                                         <span class="text-lg">📝</span>
                                         <span>Submit Stray Animal Report</span>
+                                    </button>
+                                </div>
+                                <div>
+                                    <button onclick="openMyReportsModal()" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
+                                         <span class="text-lg">📝</span>
+                                        <span>My Submitted Reports</span>
                                     </button>
                                 </div>
                                 @endrole

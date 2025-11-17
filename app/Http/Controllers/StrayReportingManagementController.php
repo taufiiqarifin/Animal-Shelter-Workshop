@@ -20,9 +20,15 @@ class StrayReportingManagementController extends Controller
         return view('stray-reporting.main');
     }
 
-    public function create()
+    public function indexUser()
     {
-        return view('stray-reporting.create');
+        // Get reports for the logged-in user only
+        $userReports = Report::where('userID', auth()->id())
+            ->with(['images'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(5);
+        
+        return view('welcome', compact('userReports'));
     }
 
     public function store(Request $request)

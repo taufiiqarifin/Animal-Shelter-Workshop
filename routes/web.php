@@ -7,9 +7,7 @@ use App\Http\Controllers\ShelterManagementController;
 use App\Http\Controllers\BookingAdoptionController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('welcome');
+Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -98,6 +96,14 @@ Route::middleware('auth')->group(function () {
 //Booking-Adoption
 Route::middleware('auth')->group(function () {
     Route::get('/booking:main', [BookingAdoptionController::class, 'home'])->name('booking:main');
+
+    Route::post('/adoption/book', [BookingAdoptionController::class, 'storeBooking'])->name('adoption.book')->middleware('auth');
+    Route::get('/bookings', [BookingAdoptionController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings/create', [BookingAdoptionController::class, 'create'])->name('bookings.create');
+    Route::post('/bookings', [BookingAdoptionController::class, 'store'])->name('bookings.store');
+    Route::get('/bookings/{booking}', [BookingAdoptionController::class, 'show'])->name('bookings.show');
+    Route::patch('/bookings/{booking}/cancel', [BookingAdoptionController::class, 'cancel'])->name('bookings.cancel');
+
 });
 
 require __DIR__.'/auth.php';

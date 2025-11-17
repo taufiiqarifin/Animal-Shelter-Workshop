@@ -48,7 +48,7 @@
         @endrole
 
         {{-- ALL LOGGED IN USERS: Booking --}}
-        <a href="{{ route('contact') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
+        <a href="{{ route('bookings.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
             My Booking
         </a>
 

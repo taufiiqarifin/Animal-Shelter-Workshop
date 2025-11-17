@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Adoption extends Model
 {
+    protected $table = 'adoption';
     protected $fillable = ['fee', 'remarks', 'bookingID', 'transactionID'];
 
     public function booking()
