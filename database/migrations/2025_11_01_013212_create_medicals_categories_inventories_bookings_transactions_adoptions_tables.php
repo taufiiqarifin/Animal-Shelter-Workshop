@@ -57,7 +57,6 @@ return new class extends Migration {
             $table->decimal('amount', 10, 2)->nullable();
             $table->string('status')->nullable();
             $table->text('remarks')->nullable();
-            $table->timestamp('date')->useCurrent();
             $table->string('type')->nullable();
             $table->unsignedBigInteger('userID')->nullable(); // FK later
             $table->timestamps();

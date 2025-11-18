@@ -18,10 +18,12 @@ use App\Models\Clinic;
 use App\Models\Vet; 
 use App\Models\Medical;
 use App\Models\Vaccination;  
+use App\Models\Transaction;  
 use App\Models\Booking;  
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 
 class BookingAdoptionController extends Controller
@@ -125,7 +127,7 @@ class BookingAdoptionController extends Controller
         return redirect()->route('booking:main')->with('error', 'Cannot cancel this booking.');
     }
 
-    public function confirm(Booking $booking)
+    public function confirm(Booking $booking, Request $request)
     {
         // Make sure the booking belongs to the logged-in user
         if ($booking->userID !== Auth::id()) {
@@ -133,78 +135,270 @@ class BookingAdoptionController extends Controller
         }
 
         // Only allow confirmation if status is pending
-        if (in_array($booking->status, ['Pending', 'pending'])) {
-            $booking->update(['status' => 'Confirmed']);
-            return redirect()->back()->with('success', 'Booking confirmed successfully!');
+        if (!in_array($booking->status, ['Pending', 'pending'])) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot confirm this booking.'
+                ], 400);
+            }
+            return redirect()->route('booking:main')->with('error', 'Cannot confirm this booking.');
         }
 
-        return redirect()->back()->with('error', 'Cannot confirm this booking.');
-    }
-
-    public function pay(Booking $booking)
-   {
-      // Only allow confirmation if status is pending
-      if (in_array($booking->status, ['Pending', 'pending'])) {
-         $booking->update(['status' => 'Confirmed']);}
-   }
-
-    public function showAdoptionFee(Booking $booking)
-    {
-        // Make sure the booking belongs to the logged-in user
-        if ($booking->userID !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        // Load animal with medical and vaccination records
+        // Calculate adoption fee
         $booking->load('animal');
-        
-        // Get medical and vaccination records
         $medicalRecords = Medical::where('animalID', $booking->animalID)->get();
         $vaccinationRecords = Vaccination::where('animalID', $booking->animalID)->get();
-        
-        // Calculate fees
         $feeBreakdown = $this->calculateAdoptionFee($booking->animal, $medicalRecords, $vaccinationRecords);
         
-        return view('booking-adoption.adoption', compact('booking', 'feeBreakdown', 'medicalRecords', 'vaccinationRecords'));
+        // Update booking status to Confirmed (not Completed yet)
+        $booking->update(['status' => 'Confirmed']);
+        
+        // Store fee in session for payment
+        session([
+            'booking_id' => $booking->id,
+            'adoption_fee' => $feeBreakdown['total_fee'],
+            'animal_name' => $booking->animal->name,
+        ]);
+        
+        // Redirect to create bill
+        return $this->createBill($booking, $feeBreakdown['total_fee']);
+    }
+   //ToyyibPay
+    public function createBill(Booking $booking, $adoptionFee)
+    {
+        $user = Auth::user();
+        $animalName = $booking->animal->name;
+
+        $option = [
+            'userSecretKey' => config('toyyibpay.key'),
+            'categoryCode' => config('toyyibpay.category'),
+            'billName' => 'Adopt ' . substr($animalName, 0, 20),
+            'billDescription' => 'Adoption fee for ' . $animalName . ' (Booking #' . $booking->id . ')',
+            'billPriceSetting' => 1,
+            'billPayorInfo' => 1,
+            'billAmount' => ($adoptionFee) * 100, // Convert to cents
+            'billReturnUrl' => route('toyyibpay-status'),
+            'billCallbackUrl' => route('toyyibpay-callback'),
+            'billExternalReferenceNo' => 'BOOKING-' . $booking->id . '-' . time(),
+            'billTo' => $user->name,
+            'billEmail' => $user->email,
+            'billPhone' => $user->phone ?? '0000000000',
+            'billSplitPayment' => 0,
+            'billPaymentChannel' => 0,
+            'billChargeToCustomer' => 1,
+            'billContentEmail' => 'Thank you for adopting ' . $animalName . '!',
+        ];
+
+        $url = 'https://toyyibpay.com/index.php/api/createBill';
+        $response = Http::withoutVerifying()->asForm()->post($url, $option);
+        $data = $response->json();
+
+        Log::info('ToyyibPay Response:', ['response' => $data]);
+
+        if (isset($data[0]['BillCode'])) {
+            $billCode = $data[0]['BillCode'];
+            
+            // Store bill code in session for verification
+            session(['bill_code' => $billCode]);
+            
+            return redirect('https://toyyibpay.com/' . $billCode);
+        } else {
+            Log::error('ToyyibPay Error:', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            // Revert booking status back to Pending
+            $booking->update(['status' => 'Pending']);
+            
+            return redirect()->route('booking.main')->withErrors(['error' => 'Failed to create payment. Please try again.']);
+        }
     }
 
-    private function calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords)
+    public function paymentStatus(Request $request)
     {
-        // Base fee by species
-        $baseFees = [
-            'Dog' => 150.00,
-            'Cat' => 100.00,
-            'Rabbit' => 50.00,
-            'Bird' => 30.00,
-            'Other' => 80.00,
-        ];
+        $statusId = $request->input('status_id');
+        $billCode = $request->input('billcode');
+        $orderId = $request->input('order_id');
         
-        $baseFee = $baseFees[$animal->species] ?? $baseFees['Other'];
+        $bookingId = session('booking_id');
+        $adoptionFee = session('adoption_fee');
+        $animalName = session('animal_name');
         
-        // Medical records fee (RM 20 per record)
-        $medicalRate = 20.00;
-        $medicalCount = $medicalRecords->count();
-        $medicalFee = $medicalCount * $medicalRate;
+        // Get payment status details
+        $paymentStatus = $this->getBillTransactions($billCode);
         
-        // Vaccination records fee (RM 30 per vaccination)
-        $vaccinationRate = 30.00;
-        $vaccinationCount = $vaccinationRecords->count();
-        $vaccinationFee = $vaccinationCount * $vaccinationRate;
+        if ($statusId == 1) {
+            // Payment successful
+            if ($bookingId) {
+                $booking = Booking::find($bookingId);
+                
+                if ($booking) {
+                    // Update booking status to Completed
+                    $booking->update(['status' => 'Completed']);
+                    
+                    // Create transaction record
+                    Transaction::create([
+                        'amount' => $adoptionFee,
+                        'status' => 'Success',
+                        'remarks' => 'Adoption payment for ' . $animalName . ' (Booking #' . $bookingId . ') - Bill Code: ' . $billCode,
+                        'date' => now(),
+                        'type' => 'Online Banking',
+                        'userID' => Auth::id(),
+                    ]);
+                    
+                    // Clear session
+                    session()->forget(['booking_id', 'adoption_fee', 'animal_name', 'bill_code']);
+                    
+                    Log::info('Payment Success', [
+                        'booking_id' => $bookingId,
+                        'amount' => $adoptionFee,
+                        'bill_code' => $billCode
+                    ]);
+                }
+            }
+        } else {
+            // Payment failed or pending
+            if ($bookingId) {
+                $booking = Booking::find($bookingId);
+                
+                if ($booking && $booking->status == 'Confirmed') {
+                    // Keep status as Confirmed (not completed)
+                    Log::info('Payment Failed/Pending', [
+                        'booking_id' => $bookingId,
+                        'status_id' => $statusId,
+                        'bill_code' => $billCode
+                    ]);
+                    
+                    // Optionally create a failed transaction record
+                    Transaction::create([
+                        'amount' => $adoptionFee,
+                        'status' => 'Failed',
+                        'remarks' => 'Failed adoption payment for ' . $animalName . ' (Booking #' . $bookingId . ') - Bill Code: ' . $billCode,
+                        'date' => now(),
+                        'type' => 'Adoption Fee',
+                        'userID' => Auth::id(),
+                    ]);
+                }
+            }
+        }
         
-        // Total fee
-        $totalFee = $baseFee + $medicalFee + $vaccinationFee;
-        
-        return [
-            'base_fee' => $baseFee,
-            'medical_count' => $medicalCount,
-            'medical_rate' => $medicalRate,
-            'medical_fee' => $medicalFee,
-            'vaccination_count' => $vaccinationCount,
-            'vaccination_rate' => $vaccinationRate,
-            'vaccination_fee' => $vaccinationFee,
-            'total_fee' => $totalFee,
-        ];
+        return view('booking-adoption.payment-status', [
+            'status_id' => $statusId,
+            'billcode' => $billCode,
+            'order_id' => $orderId,
+            'booking_id' => $bookingId,
+            'amount' => $adoptionFee,
+            'animal_name' => $animalName,
+            'payment_details' => $paymentStatus,
+        ]);
     }
+
+    public function callback(Request $request)
+    {
+        Log::info('ToyyibPay Callback:', $request->all());
+        
+        $billCode = $request->input('billcode');
+        $statusId = $request->input('status_id');
+        
+        // You can also update booking status here as a backup
+        // Parse the external reference to get booking ID
+        $refNo = $request->input('refno');
+        if (strpos($refNo, 'BOOKING-') !== false) {
+            $parts = explode('-', $refNo);
+            if (isset($parts[1])) {
+                $bookingId = $parts[1];
+                $booking = Booking::find($bookingId);
+                
+                if ($booking && $statusId == 1) {
+                    $booking->update(['status' => 'Completed']);
+                    
+                    // Create transaction if not already created
+                    $existingTransaction = Transaction::where('remarks', 'like', '%' . $billCode . '%')->first();
+                    if (!$existingTransaction) {
+                        Transaction::create([
+                            'amount' => $request->input('amount') / 100, // Convert from cents
+                            'status' => 'Success',
+                            'remarks' => 'Adoption payment (Callback) - Booking #' . $bookingId . ' - Bill Code: ' . $billCode,
+                            'date' => now(),
+                            'type' => 'Adoption Fee',
+                            'userID' => $booking->userID,
+                        ]);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Helper function to get bill transaction details
+    private function getBillTransactions($billCode)
+    {
+        $url = 'https://toyyibpay.com/index.php/api/getBillTransactions';
+        
+        $response = Http::withoutVerifying()->asForm()->post($url, [
+            'billCode' => $billCode,
+            'userSecretKey' => config('toyyibpay.key'),
+        ]);
+        
+        return $response->json();
+    }
+
+    public function showAdoptionFee(Booking $booking)
+   {
+      // Make sure the booking belongs to the logged-in user
+      if ($booking->userID !== Auth::id()) {
+         abort(403, 'Unauthorized action.');
+      }
+
+      // Load animal with medical and vaccination records
+      $booking->load('animal');
+      
+      // Get medical and vaccination records
+      $medicalRecords = Medical::where('animalID', $booking->animalID)->get();
+      $vaccinationRecords = Vaccination::where('animalID', $booking->animalID)->get();
+      
+      // Calculate fees
+      $feeBreakdown = $this->calculateAdoptionFee($booking->animal, $medicalRecords, $vaccinationRecords);
+      
+      return view('booking-adoption.adoption', compact('booking', 'feeBreakdown', 'medicalRecords', 'vaccinationRecords'));
+   }
+
+   private function calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords)
+   {
+      // Base fee by species
+      $baseFees = [
+         'Dog' => 150.00,
+         'Cat' => 100.00,
+      ];
+      
+      $baseFee = $baseFees[$animal->species] ?? $baseFees['Other'];
+      
+      // Medical records fee (RM 20 per record)
+      $medicalRate = 20.00;
+      $medicalCount = $medicalRecords->count();
+      $medicalFee = $medicalCount * $medicalRate;
+      
+      // Vaccination records fee (RM 30 per vaccination)
+      $vaccinationRate = 30.00;
+      $vaccinationCount = $vaccinationRecords->count();
+      $vaccinationFee = $vaccinationCount * $vaccinationRate;
+      
+      // Total fee
+      $totalFee = $baseFee + $medicalFee + $vaccinationFee;
+      
+      return [
+         'base_fee' => $baseFee,
+         'medical_count' => $medicalCount,
+         'medical_rate' => $medicalRate,
+         'medical_fee' => $medicalFee,
+         'vaccination_count' => $vaccinationCount,
+         'vaccination_rate' => $vaccinationRate,
+         'vaccination_fee' => $vaccinationFee,
+         'total_fee' => $totalFee,
+      ];
+   }
+
     public function showModal($id)
       {
          try {
