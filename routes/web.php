@@ -99,13 +99,14 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/adoption/book', [BookingAdoptionController::class, 'storeBooking'])->name('adoption.book')->middleware('auth');
     Route::get('/bookings', [BookingAdoptionController::class, 'index'])->name('bookings.index');
+    Route::get('/bookings/all', [BookingAdoptionController::class, 'indexAdmin'])->name('bookings.index-admin');
     Route::get('/bookings/create', [BookingAdoptionController::class, 'create'])->name('bookings.create');
     Route::post('/bookings', [BookingAdoptionController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [BookingAdoptionController::class, 'show'])->name('bookings.show');
     Route::patch('/bookings/{booking}/cancel', [BookingAdoptionController::class, 'cancel'])->name('bookings.cancel');
 
     Route::get('/bookings/{id}/modal', [BookingAdoptionController::class, 'showModal'])->name('bookings.show.modal')->middleware('auth');
-    Route::get('/bookings/{id}/modal', [BookingAdoptionController::class, 'showModal'])->name('bookings.show.modal')->middleware('auth');
+    Route::get('/bookings/{id}/modal/admin', [BookingAdoptionController::class, 'showModalAdmin'])->name('bookings.show.modal-admin')->middleware('auth');
 
 });
 

@@ -81,6 +81,17 @@ class BookingAdoptionController extends Controller
 
         return view('booking-adoption.main', compact('bookings'));
     }
+
+    public function indexAdmin()
+    {
+        // Get all bookings for the logged-in user with related data
+        $bookings = Booking::with(['animal', 'adoption', 'user'])
+            ->orderBy('appointment_date', 'desc')
+            ->orderBy('appointment_time', 'desc')
+            ->get();
+
+        return view('booking-adoption.admin', compact('bookings'));
+    }
    
     public function show(Booking $booking)
     {
@@ -129,5 +140,34 @@ class BookingAdoptionController extends Controller
             ], 500);
          }
       }
+      public function showModalAdmin($id)
+      {
+         try {
+            // REMOVED: ->where('userID', auth()->id())
+            // An admin should be able to view any booking by its ID.
+            $booking = Booking::with(['animal.images', 'user'])
+                  ->where('id', $id)
+                  ->firstOrFail(); // Throws ModelNotFoundException if booking with $id doesn't exist.
+            
+            return view('booking-adoption.show-admin', compact('booking'));
+            
+         } catch (\Exception $e) {
+            // Log the error for debugging purposes
+            \Log::error('Admin Booking modal error for ID ' . $id . ': ' . $e->getMessage());
+            
+            // Return a 404 (Not Found) if the ModelNotFoundException was caught, 
+            // or a 500 for other errors.
+            if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+                  return response()->json([
+                     'error' => 'Booking Not Found',
+                     'message' => 'The requested booking ID (' . $id . ') does not exist.'
+                  ], 404);
+            }
 
+            return response()->json([
+                  'error' => 'Failed to load booking details',
+                  'message' => 'An internal server error occurred.'
+            ], 500);
+         }
+      }
 }

@@ -46,6 +46,7 @@ return new class extends Migration {
             $table->date('appointment_date')->nullable();
             $table->time('appointment_time');
             $table->string('status')->nullable();
+            $table->text('remarks')->nullable();
             $table->unsignedBigInteger('animalID')->nullable(); // FK later
             $table->unsignedBigInteger('userID')->nullable();   // FK later
             $table->timestamps();

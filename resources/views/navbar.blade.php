@@ -35,7 +35,7 @@
 
         {{-- ADMIN ONLY: Slots --}}
         @role('admin')
-           <a href="{{ route('bookings.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
+           <a href="{{ route('bookings.index-admin') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
                Bookings
             </a>
         @endrole
