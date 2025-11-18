@@ -71,13 +71,20 @@
                         <label class="block text-gray-800 font-semibold mb-2">
                             Species <span class="text-red-600">*</span>
                         </label>
-                        <input type="text" name="species" value="{{ old('species') }}" 
-                               class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" 
-                               placeholder="e.g., Dog, Cat, Rabbit" required>
+
+                        <select name="species" required
+                            class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition">
+                            
+                            <option value="" disabled selected>-- Select Species --</option>
+                            <option value="Dog" {{ old('species') == 'Dog' ? 'selected' : '' }}>Dog</option>
+                            <option value="Cat" {{ old('species') == 'Cat' ? 'selected' : '' }}>Cat</option>
+                        </select>
+
                         @error('species')
                             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
+
 
                     {{-- Age and Gender in Grid --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -18,134 +18,144 @@
     @include('stray-reporting.create')
     @include('stray-reporting.my-submitted-report')
 
-    @if (session('success'))
-        <div class="bg-green-50 border-l-4 border-green-600 text-green-700 p-4 rounded-lg mb-6">
-                        <p class="font-semibold">{{ session('success') }}</p>
-        </div>
-    @endif
+    
 
     <!-- Main Content -->
     <div class="flex-1 flex items-center justify-center p-4">
         <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+            {{-- Success Alert --}}
+            @if (session('success'))
+                <div class="flex items-start gap-3 p-4 mb-6 bg-green-50 border border-green-200 rounded-xl shadow-sm mx-6 mt-6">
+                    <svg class="w-6 h-6 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p class="font-semibold text-green-700">{{ session('success') }}</p>
+                </div>
+            @endif
+
             <div class="grid grid-cols-1 md:grid-cols-2">
+                
                 <!-- Left Section -->
-                <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-8 md:p-12 flex flex-col justify-center">
+                <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-10 md:p-12 flex flex-col justify-center">
                     <div class="text-6xl mb-6">🐾</div>
-                    
+
                     <h1 class="text-4xl font-bold mb-4">Stray Animal Shelter</h1>
-                    
+
                     <p class="text-lg text-purple-100 mb-8 leading-relaxed">
-                        Dedicated to caring for and managing stray animals in our community with compassion and professionalism.
+                        Dedicated to caring for and managing stray animals with compassion and professionalism.
                     </p>
-                    
+
                     <ul class="space-y-3">
-                        <li class="flex items-center">
-                            <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
-                            <span>Track animal records</span>
-                        </li>
-                        <li class="flex items-center">
-                            <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
-                            <span>Manage adoptions</span>
-                        </li>
-                        <li class="flex items-center">
-                            <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
-                            <span>Medical history tracking</span>
-                        </li>
-                        <li class="flex items-center">
-                            <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
-                            <span>Volunteer coordination</span>
-                        </li>
+                        @foreach ([
+                            'Track animal records',
+                            'Manage adoptions',
+                            'Medical history tracking',
+                            'Volunteer coordination'
+                        ] as $item)
+                            <li class="flex items-center">
+                                <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
+                                {{ $item }}
+                            </li>
+                        @endforeach
                     </ul>
                 </div>
 
                 <!-- Right Section -->
-                <div class="p-8 md:p-12 flex flex-col justify-center">
+                <div class="p-10 md:p-12 flex flex-col justify-center">
                     @auth
-                    <!-- Logged In Section -->
-                    <div class="text-center mb-8">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-6">Welcome Back, {{ Auth::user()->name }}!</h2>
-                        
-                        <!-- User Info Card -->
-                        <div class="bg-purple-50 border-l-4 border-purple-600 p-6 rounded-lg mb-8 text-left">
-                            <p class="text-gray-700 mb-3">
-                                <span class="font-semibold text-gray-800">Name:</span>
-                                <span>{{ Auth::user()->name }}</span>
-                            </p>
-                            <p class="text-gray-700 mb-4">
-                                <span class="font-semibold text-gray-800">Email:</span>
-                                <span>{{ Auth::user()->email }}</span>
-                            </p>
-                            <div class="flex items-center justify-between flex-wrap gap-3">
-                                @php
-                                    $userRoles = Auth::user()->getRoleNames(); 
-                                    $rolesToDisplay = $userRoles->isEmpty() ? collect(['user']) : $userRoles; 
 
-                                    $badgeColors = [
-                                        'staff' => 'from-purple-600 to-purple-700',
-                                        'adopter' => 'from-purple-600 to-purple-700',
-                                        'moderator' => 'from-blue-600 to-blue-700',
-                                        'user' => 'from-gray-600 to-gray-700',
-                                        'public user' => 'from-gray-600 to-gray-700',
-                                    ];
-                                @endphp
+                        <!-- Logged In -->
+                        <div class="text-center mb-8">
+                            <h2 class="text-3xl font-bold text-gray-800 mb-6">
+                                Welcome Back, {{ Auth::user()->name }}!
+                            </h2>
 
-                                @foreach ($rolesToDisplay as $role)
+                            <!-- User Info Card -->
+                            <div class="bg-purple-50 border-l-4 border-purple-600 p-6 rounded-xl shadow-sm text-left">
+                                <p class="text-gray-700 mb-2">
+                                    <span class="font-semibold text-gray-800">Name:</span>
+                                    {{ Auth::user()->name }}
+                                </p>
+
+                                <p class="text-gray-700 mb-4">
+                                    <span class="font-semibold text-gray-800">Email:</span>
+                                    {{ Auth::user()->email }}
+                                </p>
+
+                                <!-- Roles Display -->
+                                <div class="flex flex-wrap gap-3 mt-3 mb-4">
                                     @php
-                                        $badgeColor = $badgeColors[$role] ?? 'from-gray-600 to-gray-700';
+                                        $userRoles = Auth::user()->getRoleNames();
+                                        $rolesToDisplay = $userRoles->isEmpty() ? collect(['user']) : $userRoles;
+
+                                        $badgeColors = [
+                                            'staff' => 'from-purple-600 to-purple-700',
+                                            'adopter' => 'from-purple-600 to-purple-700',
+                                            'moderator' => 'from-blue-600 to-blue-700',
+                                            'user' => 'from-gray-600 to-gray-700',
+                                            'public user' => 'from-gray-600 to-gray-700',
+                                            'caretaker' => 'from-green-600 to-green-700',
+                                        ];
                                     @endphp
 
-                                    <span class="inline-block bg-gradient-to-r {{ $badgeColor }} text-white px-4 py-2 rounded-full text-sm font-semibold capitalize mr-2 mb-2">
-                                        {{ $role }}
-                                    </span>
-                                @endforeach
-                                @role('public user')
-                                <div>
-                                    <button type="button" onclick="openReportModal()" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
-                                        <span class="text-lg">📝</span>
-                                        <span>Submit Stray Animal Report</span>
-                                    </button>
+                                    @foreach ($rolesToDisplay as $role)
+                                        <span class="inline-block bg-gradient-to-r {{ $badgeColors[$role] ?? 'from-gray-600 to-gray-700' }} text-white px-4 py-2 rounded-full text-sm font-semibold capitalize shadow-sm">
+                                            {{ $role }}
+                                        </span>
+                                    @endforeach
                                 </div>
-                                <div>
-                                    <button onclick="openMyReportsModal()" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-2 rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
-                                         <span class="text-lg">📝</span>
-                                        <span>My Submitted Reports</span>
-                                    </button>
-                                </div>
-                                @endrole
-                                @role('caretaker')
-                                    <div>
-                                        <a href="{{ route('rescues.index') }}" 
-                                        class="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold px-5 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition duration-300 shadow-lg">
-                                            <span class="text-lg">🐾</span>
-                                            <span>View Assigned Rescue Reports</span>
+
+                                <!-- Action Buttons -->
+                                <div class="flex flex-col gap-3 mt-4">
+
+                                    @hasanyrole('public user|adopter')
+                                        @unlessrole('caretaker')
+                                            <button onclick="openReportModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
+                                                📝 Submit Stray Animal Report
+                                            </button>
+
+                                            <button onclick="openMyReportsModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
+                                                📄 My Submitted Reports
+                                            </button>
+                                        @endunlessrole
+                                    @endhasanyrole
+
+                                    @role('caretaker')
+                                        <a href="{{ route('rescues.index') }}" class="flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-green-700 hover:to-green-800 transition">
+                                            🐾 View Assigned Rescue Reports
                                         </a>
-                                    </div>
-                                @endrole
+                                    @endrole
+
+                                </div>
                             </div>
                         </div>
-                    </div>
+
                     @else
-                    <!-- Not Logged In Section -->
-                    <div class="text-center">
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome to Animal Shelter System</h2>
-                        <p class="text-gray-600 mb-8 text-lg">
-                            Join us in our mission to care for stray animals in our community. Log in to get started.
-                        </p>
-                        
-                        <div class="space-y-3">
-                            <a href="{{ route('login') }}" class="inline-block w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold py-3 px-6 rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
-                                Log In
-                            </a>
-                            <a href="{{ route('register') }}" class="inline-block w-full bg-white border-2 border-purple-600 text-purple-600 font-bold py-3 px-6 rounded-lg hover:bg-purple-50 transition duration-300">
-                                Create Account
-                            </a>
+
+                        <!-- Not Logged In -->
+                        <div class="text-center">
+                            <h2 class="text-3xl font-bold text-gray-800 mb-4">Welcome to Animal Shelter System</h2>
+                            <p class="text-gray-600 mb-8 text-lg">
+                                Join our mission to care for stray animals in the community.
+                            </p>
+
+                            <div class="space-y-3">
+                                <a href="{{ route('login') }}" class="block w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
+                                    Log In
+                                </a>
+                                <a href="{{ route('register') }}" class="block w-full border-2 border-purple-600 text-purple-600 font-bold py-3 rounded-lg hover:bg-purple-50 transition">
+                                    Create Account
+                                </a>
+                            </div>
                         </div>
-                    </div>
+
                     @endauth
                 </div>
             </div>
         </div>
     </div>
+
      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>

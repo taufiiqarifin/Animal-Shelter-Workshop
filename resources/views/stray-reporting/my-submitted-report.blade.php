@@ -128,7 +128,7 @@
                 <!-- Pagination in Modal -->
                 @if($userReports->hasPages())
                     <div class="mt-6 pt-4 border-t border-gray-200">
-                        {{ $userReports->links() }}
+                        {{ $userReports->appends(['open_modal' => 1])->links() }}
                     </div>
                 @endif
             @endif
@@ -214,4 +214,12 @@
             closeImageModal();
         }
     });
+
+     // Re-open modal automatically if pagination triggers a reload with ?open_modal=1
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('open_modal') == 1) {
+        window.addEventListener('load', () => {
+            openMyReportsModal();
+        });
+    }
 </script>
