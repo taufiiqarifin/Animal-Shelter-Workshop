@@ -297,6 +297,53 @@
                 container.innerHTML = '';
             }
         }
+        function openAdoptionFeeModal(bookingId) {
+        const container = document.getElementById('adoptionFeeModalContainer');
+        container.innerHTML = '<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white rounded-lg p-6"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</div></div>';
+        
+        fetch(`/bookings/${bookingId}/adoption-fee`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading adoption fee:', error);
+            alert('Failed to load adoption fee details: ' + error.message);
+            container.innerHTML = '';
+        });
+    }
+
+     function closeAdoptionFeeModal() {
+        document.getElementById('adoptionFeeModal').remove();
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('adoptionFeeModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAdoptionFeeModal();
+        }
+    });
+
+    // Close with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('adoptionFeeModal');
+            if (modal) {
+                closeAdoptionFeeModal();
+            }
+        }
+    });
 </script>
 </body>
 </html>

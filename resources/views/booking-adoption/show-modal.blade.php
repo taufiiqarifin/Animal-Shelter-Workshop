@@ -1,6 +1,6 @@
 <!-- Booking Details Modal -->
 <div id="bookingDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
         <!-- Modal Header -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 sticky top-0 z-10">
             <div class="flex items-center justify-between">
@@ -205,14 +205,45 @@
                         <i class="fas fa-times-circle mr-2"></i>Cancel Booking
                     </button>
                 </form>
-                <form action="{{ route('bookings.cancel', $booking->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to cancel this booking?');">
+                <form action="{{ route('bookings.confirm', $booking->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to confirm this booking?');">
                     @csrf
                     @method('PATCH')
-                    <button type="submit" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition duration-300 shadow-md">
-                        <i class="fas fa-times-circle mr-2"></i>Confirm Booking
+                    <button onclick="openAdoptionFeeModal({{ $booking->id }})" 
+                            class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition duration-300 shadow-md">
+                        <i class="fas fa-check-circle mr-2"></i>Confirm & Pay
                     </button>
                 </form>
             @endif
         </div>
     </div>
 </div>
+
+<div id="adoptionFeeModalContainer"></div>
+<script>
+    function openAdoptionFeeModal(bookingId) {
+        const container = document.getElementById('adoptionFeeModalContainer');
+        container.innerHTML = '<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white rounded-lg p-6"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</div></div>';
+        
+        fetch(`/bookings/${bookingId}/adoption-fee`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading adoption fee:', error);
+            alert('Failed to load adoption fee details: ' + error.message);
+            container.innerHTML = '';
+        });
+    }
+</script>

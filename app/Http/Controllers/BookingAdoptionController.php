@@ -124,6 +124,84 @@ class BookingAdoptionController extends Controller
 
         return redirect()->route('booking:main')->with('error', 'Cannot cancel this booking.');
     }
+
+    public function confirm(Booking $booking)
+   {
+      // Make sure the booking belongs to the logged-in user
+      if ($booking->userID !== Auth::id()) {
+         abort(403, 'Unauthorized action.');
+      }
+
+      // Only allow confirmation if status is pending
+      if (in_array($booking->status, ['Pending', 'pending'])) {
+         $booking->update(['status' => 'Confirmed']);
+         
+         // You can store the fee in the booking or pass it to payment
+         return redirect()->route('booking.pay', $booking->id)->with('success', 'Booking confirmed successfully!');
+      }
+
+      return redirect()->route('booking:main')->with('error', 'Cannot confirm this booking.');
+   }
+
+    public function showAdoptionFee(Booking $booking)
+   {
+      // Make sure the booking belongs to the logged-in user
+      if ($booking->userID !== Auth::id()) {
+         abort(403, 'Unauthorized action.');
+      }
+
+      // Load animal with medical and vaccination records
+      $booking->load('animal');
+      
+      // Get medical and vaccination records
+      $medicalRecords = Medical::where('animalID', $booking->animalID)->get();
+      $vaccinationRecords = Vaccination::where('animalID', $booking->animalID)->get();
+      
+      // Calculate fees
+      $feeBreakdown = $this->calculateAdoptionFee($booking->animal, $medicalRecords, $vaccinationRecords);
+      
+      return view('booking-adoption.adoption', compact('booking', 'feeBreakdown', 'medicalRecords', 'vaccinationRecords'));
+   }
+
+   private function calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords)
+   {
+      // Base fee by species
+      $baseFees = [
+         'Dog' => 150.00,
+         'Cat' => 100.00,
+         'Rabbit' => 50.00,
+         'Bird' => 30.00,
+         'Other' => 80.00,
+      ];
+      
+      $baseFee = $baseFees[$animal->species] ?? $baseFees['Other'];
+      
+      // Medical records fee (RM 20 per record)
+      $medicalRate = 20.00;
+      $medicalCount = $medicalRecords->count();
+      $medicalFee = $medicalCount * $medicalRate;
+      
+      // Vaccination records fee (RM 30 per vaccination)
+      $vaccinationRate = 30.00;
+      $vaccinationCount = $vaccinationRecords->count();
+      $vaccinationFee = $vaccinationCount * $vaccinationRate;
+      
+      // Total fee
+      $totalFee = $baseFee + $medicalFee + $vaccinationFee;
+      
+      return [
+         'base_fee' => $baseFee,
+         'medical_count' => $medicalCount,
+         'medical_rate' => $medicalRate,
+         'medical_fee' => $medicalFee,
+         'vaccination_count' => $vaccinationCount,
+         'vaccination_rate' => $vaccinationRate,
+         'vaccination_fee' => $vaccinationFee,
+         'total_fee' => $totalFee,
+      ];
+   }
+
+    
     public function showModal($id)
       {
          try {

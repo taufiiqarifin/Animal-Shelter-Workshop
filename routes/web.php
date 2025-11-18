@@ -104,6 +104,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/bookings', [BookingAdoptionController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [BookingAdoptionController::class, 'show'])->name('bookings.show');
     Route::patch('/bookings/{booking}/cancel', [BookingAdoptionController::class, 'cancel'])->name('bookings.cancel');
+    Route::patch('/bookings/{booking}/confirm', [BookingAdoptionController::class, 'confirm'])->name('bookings.confirm');
+    Route::get('/bookings/{booking}/adoption-fee', [BookingAdoptionController::class, 'showAdoptionFee'])->name('bookings.adoption.fee');
+     Route::get('/bookings/{booking}/pay-fee', [BookingAdoptionController::class, 'showAdoptionFee'])->name('booking.pay');
 
     Route::get('/bookings/{id}/modal', [BookingAdoptionController::class, 'showModal'])->name('bookings.show.modal')->middleware('auth');
     Route::get('/bookings/{id}/modal/admin', [BookingAdoptionController::class, 'showModalAdmin'])->name('bookings.show.modal-admin')->middleware('auth');
