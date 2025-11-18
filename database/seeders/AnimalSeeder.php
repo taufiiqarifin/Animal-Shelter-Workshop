@@ -13,6 +13,7 @@ class AnimalSeeder extends Seeder
     {
         $species = ['Cat', 'Dog'];
         $genders = ['Male', 'Female'];
+        $adoptionStatuses = ['Not Adopted', 'Adopted'];
 
         $catNames = ['Milo', 'Coco', 'Luna', 'Oyen', 'Mimi', 'Snowy', 'Kitty', 'Nala', 'Bella'];
         $dogNames = ['Buddy', 'Rocky', 'Max', 'Shadow', 'Charlie', 'Bella', 'Duke', 'Lucky', 'Hunter'];
@@ -39,7 +40,7 @@ class AnimalSeeder extends Seeder
                 'age'             => rand(1, 10) . ' years',
                 'weight'          => rand(2, 35),
                 'gender'          => $genders[array_rand($genders)],
-                'adoption_status' => 'Available',
+                'adoption_status' => $adoptionStatuses[array_rand($adoptionStatuses)],
                 'rescueID'        => null,
                 'slotID'          => null,
                 'created_at'      => $createdAt,

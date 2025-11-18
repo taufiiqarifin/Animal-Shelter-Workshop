@@ -20,7 +20,9 @@ class Dashboard extends Component
     public function mount()
     {
         $this->selectedYear = date('Y');
-        $this->years = Booking::select(DB::raw('EXTRACT(YEAR FROM created_at) as year'))
+        
+        // Cross-database compatible year extraction
+        $this->years = Booking::selectRaw($this->getYearExpression('created_at') . ' as year')
             ->distinct()
             ->orderBy('year', 'desc')
             ->pluck('year')
@@ -48,12 +50,6 @@ class Dashboard extends Component
 
         // Booking Volume vs Average Value
         $volumeVsValue = $this->getVolumeVsAverageValue();
-// dd([
-//         'bookingTypeBreakdown' => $bookingTypeBreakdown,
-//         'bookingsByMonth' => $bookingsByMonth,
-//         'volumeVsValue' => $volumeVsValue,
-//         'topAnimals' => $topAnimals
-//     ]);
 
         return view('livewire.dashboard', [
             'totalBookings' => $totalBookings,
@@ -68,32 +64,92 @@ class Dashboard extends Component
         ]);
     }
 
+    /**
+     * Get database-specific YEAR extraction expression
+     */
+    private function getYearExpression($column)
+    {
+        $driver = DB::connection()->getDriverName();
+        
+        switch ($driver) {
+            case 'pgsql':
+                return "EXTRACT(YEAR FROM {$column})";
+            case 'mysql':
+                return "YEAR({$column})";
+            case 'sqlite':
+                return "CAST(strftime('%Y', {$column}) AS INTEGER)";
+            case 'sqlsrv':
+                return "YEAR({$column})";
+            default:
+                return "YEAR({$column})"; // Fallback to MySQL syntax
+        }
+    }
+
+    /**
+     * Get database-specific MONTH extraction expression
+     */
+    private function getMonthExpression($column)
+    {
+        $driver = DB::connection()->getDriverName();
+        
+        switch ($driver) {
+            case 'pgsql':
+                return "EXTRACT(MONTH FROM {$column})";
+            case 'mysql':
+                return "MONTH({$column})";
+            case 'sqlite':
+                return "CAST(strftime('%m', {$column}) AS INTEGER)";
+            case 'sqlsrv':
+                return "MONTH({$column})";
+            default:
+                return "MONTH({$column})";
+        }
+    }
+
+    /**
+     * Get WHERE clause for year filtering
+     */
+    private function whereYear($query, $column)
+    {
+        $driver = DB::connection()->getDriverName();
+        
+        if ($driver === 'pgsql') {
+            return $query->whereRaw("EXTRACT(YEAR FROM {$column}) = ?", [$this->selectedYear]);
+        } else {
+            return $query->whereYear($column, $this->selectedYear);
+        }
+    }
+
     private function getTotalBookings()
     {
-        return Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])->count();
+        return $this->whereYear(Booking::query(), 'created_at')->count();
     }
 
     private function getSuccessfulBookings()
     {
-        return Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
+        return $this->whereYear(Booking::query(), 'created_at')
             ->where('status', 'Completed')
             ->count();
     }
 
     private function getCancelledBookings()
     {
-        return Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
+        return $this->whereYear(Booking::query(), 'created_at')
             ->where('status', 'Cancelled')
             ->count();
     }
 
     private function getRepeatCustomerRate()
     {
-        $totalCustomers = Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
-            ->distinct('userID')
+        $query = $this->whereYear(Booking::query(), 'created_at');
+        
+        // Clone query for total customers
+        $totalCustomers = (clone $query)
+            ->distinct()
             ->count('userID');
 
-        $repeatCustomers = Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
+        // Get repeat customers using subquery (works across all databases)
+        $repeatCustomers = (clone $query)
             ->select('userID')
             ->groupBy('userID')
             ->havingRaw('COUNT(*) > 1')
@@ -106,28 +162,35 @@ class Dashboard extends Component
 
     private function getTopAnimalsByRevenue()
     {
-        return Adoption::join('booking', 'adoption.bookingID', '=', 'booking.id')
-            ->join('animal', 'booking.animalID', '=', 'animal.id')
-            ->whereRaw('EXTRACT(YEAR FROM adoption.created_at) = ?', [$this->selectedYear])
+        $query = Adoption::join('booking', 'adoption.bookingID', '=', 'booking.id')
+            ->join('animal', 'booking.animalID', '=', 'animal.id');
+        
+        $query = $this->whereYear($query, 'adoption.created_at');
+        
+        $results = $query
             ->select('animal.species as name', DB::raw('SUM(adoption.fee) as total_revenue'))
             ->groupBy('animal.species')
             ->orderBy('total_revenue', 'desc')
             ->limit(5)
-            ->get()
-            ->map(function($item) {
-                $totalRevenue = Adoption::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
-                    ->sum('fee');
-                $item->percentage = $totalRevenue > 0 ? 
-                    round(($item->total_revenue / $totalRevenue) * 100, 2) : 0;
-                return $item;
-            });
+            ->get();
+
+        // Calculate total revenue for percentage
+        $totalRevenueQuery = Adoption::query();
+        $totalRevenue = $this->whereYear($totalRevenueQuery, 'created_at')->sum('fee');
+
+        return $results->map(function($item) use ($totalRevenue) {
+            $item->percentage = $totalRevenue > 0 ? 
+                round(($item->total_revenue / $totalRevenue) * 100, 2) : 0;
+            return $item;
+        });
     }
 
     private function getBookingTypeBreakdown()
     {
-
-        $total = Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])->count();
-        $breakdown = Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
+        $query = $this->whereYear(Booking::query(), 'created_at');
+        $total = (clone $query)->count();
+        
+        $breakdown = (clone $query)
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->get()
@@ -142,12 +205,14 @@ class Dashboard extends Component
 
     private function getBookingsByMonth()
     {
-        return Booking::whereRaw('EXTRACT(YEAR FROM created_at) = ?', [$this->selectedYear])
-            ->select(
-                DB::raw('EXTRACT(MONTH FROM created_at)::integer as month'),
-                DB::raw('COUNT(*) as count')
-            )
-            ->groupBy('month')
+        $monthExpression = $this->getMonthExpression('created_at');
+        
+        $query = $this->whereYear(Booking::query(), 'created_at');
+        
+        return $query
+            ->selectRaw("{$monthExpression} as month")
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy(DB::raw($monthExpression))
             ->orderBy('month')
             ->get()
             ->map(function($item) {
@@ -158,14 +223,16 @@ class Dashboard extends Component
 
     private function getVolumeVsAverageValue()
     {
-        return Adoption::join('booking', 'adoption.bookingID', '=', 'booking.id')
-            ->whereRaw('EXTRACT(YEAR FROM adoption.created_at) = ?', [$this->selectedYear])
-            ->select(
-                DB::raw('EXTRACT(MONTH FROM adoption.created_at)::integer as month'),
-                DB::raw('COUNT(*) as volume'),
-                DB::raw('AVG(adoption.fee) as avg_value')
-            )
-            ->groupBy('month')
+        $monthExpression = $this->getMonthExpression('adoption.created_at');
+        
+        $query = Adoption::join('booking', 'adoption.bookingID', '=', 'booking.id');
+        $query = $this->whereYear($query, 'adoption.created_at');
+        
+        return $query
+            ->selectRaw("{$monthExpression} as month")
+            ->selectRaw('COUNT(*) as volume')
+            ->selectRaw('AVG(adoption.fee) as avg_value')
+            ->groupBy(DB::raw($monthExpression))
             ->orderBy('month')
             ->get()
             ->map(function($item) {
