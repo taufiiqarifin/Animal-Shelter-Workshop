@@ -25,6 +25,11 @@
                 <p class="font-semibold">{{ session('success') }}</p>
             </div>
         @endif
+        @if (session('error'))
+            <div class="bg-red-50 border-l-4 border-red-600 text-green-700 p-4 rounded-lg mb-6">
+                <p class="font-semibold">{{ session('error') }}</p>
+            </div>
+        @endif
 
         <!-- Filters and Search -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">

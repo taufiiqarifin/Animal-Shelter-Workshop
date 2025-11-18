@@ -127,20 +127,16 @@ class BookingAdoptionController extends Controller
 
     public function confirm(Booking $booking)
    {
-      // Make sure the booking belongs to the logged-in user
-      if ($booking->userID !== Auth::id()) {
-         abort(403, 'Unauthorized action.');
-      }
-
       // Only allow confirmation if status is pending
       if (in_array($booking->status, ['Pending', 'pending'])) {
-         $booking->update(['status' => 'Confirmed']);
-         
-         // You can store the fee in the booking or pass it to payment
-         return redirect()->route('booking.pay', $booking->id)->with('success', 'Booking confirmed successfully!');
-      }
+         $booking->update(['status' => 'Confirmed']);}
+   }
 
-      return redirect()->route('booking:main')->with('error', 'Cannot confirm this booking.');
+    public function pay(Booking $booking)
+   {
+      // Only allow confirmation if status is pending
+      if (in_array($booking->status, ['Pending', 'pending'])) {
+         $booking->update(['status' => 'Confirmed']);}
    }
 
     public function showAdoptionFee(Booking $booking)

@@ -44,6 +44,11 @@
                 <p class="font-semibold">{{ session('success') }}</p>
             </div>
         @endif
+        @if (session('error'))
+            <div class="bg-red-50 border-l-4 border-red-600 text-red-700 p-4 rounded-lg mb-6">
+                <p class="font-semibold">{{ session('error') }}</p>
+            </div>
+        @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Left Column - Images -->
