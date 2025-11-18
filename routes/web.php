@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    return view('dashboard.main');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
