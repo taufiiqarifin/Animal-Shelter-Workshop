@@ -13,9 +13,6 @@ Route::get('/rescue-map', [RescueMapController::class, 'index'])->name('rescue.m
 Route::get('/api/rescue-clusters', [RescueMapController::class, 'getClusterData'])->name('rescue.clusters');
 
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
-Route::get('/stray-map', function () {
-    return view('stray-map');
-})->name('stray.map');
 
 Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');
 

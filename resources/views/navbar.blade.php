@@ -22,6 +22,9 @@
             <a href="{{ route('dashboard') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
                 Dashboard
             </a>
+            <a href="{{ route('rescue.map') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
+                Map
+            </a>
 
             <a href="{{ route('reports.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
                 Report
@@ -61,10 +64,11 @@
     @endauth
 
     {{-- Public: Contact Us --}}
-    <a href="{{ route('contact') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-        Contact Us
-    </a>
-
+    @unlessrole('admin')
+        <a href="{{ route('contact') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
+            Contact Us
+        </a>
+    @endunlessrole
 </div>
 
 

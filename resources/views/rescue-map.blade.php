@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Rescue Reports Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -95,6 +96,8 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-50 to-slate-100">
+    @include('navbar')
+    
     <div class="flex flex-col h-screen">
         <!-- Modern Header -->
         <div class="glassmorphism shadow-lg p-6">
