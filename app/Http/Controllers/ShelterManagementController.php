@@ -9,19 +9,21 @@ use App\Models\Animal;
 use App\Models\Image;
 use App\Models\Category;
 
-
 class ShelterManagementController extends Controller
 {
-    public function home(){
+    public function home()
+    {
         return view('shelter-management.main');
     }
+
     public function indexSlot()
     {
         $slots = Slot::with(['animals', 'inventories'])->get();
         $categories = Category::all();
         return view('shelter-management.index', compact('slots', 'categories'));
     }
-     public function storeSlot(Request $request)
+
+    public function storeSlot(Request $request)
     {
         try {
             $validated = $request->validate([
@@ -29,6 +31,7 @@ class ShelterManagementController extends Controller
                 'section' => 'required|string|max:255',
                 'capacity' => 'required|integer|min:1',
             ]);
+            
             $validated['status'] = 'available';
             Slot::create($validated);
 
@@ -66,9 +69,6 @@ class ShelterManagementController extends Controller
         }
     }
 
-    /**
-     * Update an existing slot
-     */
     public function updateSlot(Request $request, $id)
     {
         try {
@@ -91,15 +91,11 @@ class ShelterManagementController extends Controller
         }
     }
 
-    /**
-     * Delete a slot
-     */
     public function deleteSlot($id)
     {
         try {
             $slot = Slot::findOrFail($id);
             
-            // Check if slot has animals
             if ($slot->animals()->count() > 0) {
                 return redirect()->back()
                     ->with('error', 'Cannot delete slot with animals. Please relocate them first.');
@@ -114,18 +110,15 @@ class ShelterManagementController extends Controller
                 ->with('error', 'Failed to delete slot: ' . $e->getMessage());
         }
     }
-    /**
-     * Get animal details with medical and vaccination records
-     */
+
     public function getAnimalDetails($id)
     {
         try {
             $animal = Animal::findOrFail($id);
             
-            // Load relationships separately with error handling
             $medicals = $animal->medicals()->with('vet')->get();
             $vaccinations = $animal->vaccinations()->with('vet')->get();
-            $images = $animal->images()->get(); // Load images
+            $images = $animal->images()->get();
             
             return response()->json([
                 'id' => $animal->id,
@@ -173,6 +166,7 @@ class ShelterManagementController extends Controller
             ], 500);
         }
     }
+
     public function getSlotDetails($id)
     {
         try {
@@ -231,7 +225,9 @@ class ShelterManagementController extends Controller
                 'brand' => 'nullable|string|max:255',
                 'status' => 'required|in:available,low,out',
             ]);
+            
             Inventory::create($validated);
+            
             return redirect()->back()->with('success', 'Inventory item added successfully!');
         } catch (\Exception $e) {
             return redirect()->back()
@@ -264,9 +260,6 @@ class ShelterManagementController extends Controller
         }
     }
 
-    /**
-     * Update inventory
-     */
     public function updateInventory(Request $request, $id)
     {
         try {
@@ -291,9 +284,6 @@ class ShelterManagementController extends Controller
         }
     }
 
-    /**
-     * Delete inventory
-     */
     public function deleteInventory($id)
     {
         try {

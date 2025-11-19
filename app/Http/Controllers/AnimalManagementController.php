@@ -21,17 +21,21 @@ class AnimalManagementController extends Controller
     public function home(){
         return view('animal-management.main');
     }
-     public function create($rescue_id = null)
+    
+    public function create($rescue_id = null)
     {
         $rescues = Rescue::all();
-        $slots = Slot::all(); // Only show available slots
+        $slots = Slot::all();
         
-        return view('animal-management.create', ['slots' => $slots, 'rescues' =>$rescues, 'rescue_id' => $rescue_id,]);
+        return view('animal-management.create', [
+            'slots' => $slots, 
+            'rescues' => $rescues, 
+            'rescue_id' => $rescue_id,
+        ]);
     }
 
     public function store(Request $request)
     {
-        // Validate the request
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'species' => 'required|string|max:255',
@@ -42,7 +46,7 @@ class AnimalManagementController extends Controller
             'rescueID' => 'required|exists:rescue,id',
             'slotID' => 'nullable|exists:slot,id',
             'images' => 'required|array|min:1',
-            'images.*' => 'required|image|mimes:jpeg,jpg,png,gif|max:5120', // 5MB max
+            'images.*' => 'required|image|mimes:jpeg,jpg,png,gif|max:5120',
         ], [
             'images.required' => 'Please upload at least one image.',
             'images.*.image' => 'Each file must be an image.',
@@ -55,10 +59,8 @@ class AnimalManagementController extends Controller
         DB::beginTransaction();
 
         try {
-            // Combine age number and unit
             $age = $validated['age_number'] . ' ' . $validated['age_unit'];
 
-            // Check if slot is available (only if provided)
             $slot = null;
             if ($validated['slotID']) {
                 $slot = Slot::find($validated['slotID']);
@@ -69,19 +71,17 @@ class AnimalManagementController extends Controller
                 }
             }
 
-            // Create the animal record
             $animal = Animal::create([
                 'name' => $validated['name'],
                 'species' => $validated['species'],
                 'health_details' => $validated['health_details'],
-                'age' => $age, // combined age string
+                'age' => $age,
                 'gender' => $validated['gender'],
                 'adoption_status' => 'Not Adopted',
                 'rescueID' => $validated['rescueID'],
                 'slotID' => $validated['slotID'],
             ]);
 
-            // Handle image uploads
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $imageFile) {
                     $filename = time() . '_' . uniqid() . '.' . $imageFile->getClientOriginalExtension();
@@ -100,12 +100,11 @@ class AnimalManagementController extends Controller
             DB::commit();
 
             return redirect()->route('animal-management.create', ['rescue_id' => $validated['rescueID']])
-    ->with('success', 'Animal "' . $animal->name . '" added successfully with ' . count($request->file('images')) . ' image(s)! Do you want to add another animal? If so, please fill all the required fields again.');
+                ->with('success', 'Animal "' . $animal->name . '" added successfully with ' . count($request->file('images')) . ' image(s)! Do you want to add another animal? If so, please fill all the required fields again.');
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            // Delete uploaded files if any error occurs
             foreach ($uploadedFiles as $filePath) {
                 Storage::disk('public')->delete($filePath);
             }
@@ -116,55 +115,42 @@ class AnimalManagementController extends Controller
         }
     }
 
-
-    /**
-     * Display a listing of animals
-     */
     public function index(Request $request)
     {
         $query = Animal::with(['images', 'slot']);
 
-        // Search by name
+        // Cross-RDBMS case-insensitive search
         if ($request->filled('search')) {
-            $query->where('name', 'ILIKE', '%' . $request->search . '%');
+            $query->where(DB::raw('LOWER(name)'), 'LIKE', '%' . strtolower($request->search) . '%');
         }
 
-        // Filter by species
         if ($request->filled('species')) {
-            $query->where('species', 'ILIKE', '%' . $request->species . '%');
+            $query->where(DB::raw('LOWER(species)'), 'LIKE', '%' . strtolower($request->species) . '%');
         }
 
-        // Filter by adoption status
         if ($request->filled('adoption_status')) {
             $query->where('adoption_status', $request->adoption_status);
         }
 
-        // Filter by gender
         if ($request->filled('gender')) {
             $query->where('gender', $request->gender);
         }
 
-        // Order by most recent first
         $query->orderBy('created_at', 'desc');
 
-        // Paginate results (12 per page)
         $animals = $query->paginate(12)->appends($request->query());
 
         return view('animal-management.main', compact('animals'));
     }
-    /**
-     * Display the specified animal
-     */
+
     public function show($id)
     {
-        // Fetch the animal with all related data
         $animal = Animal::with([
             'images',
             'slot',
             'rescue.report',
         ])->findOrFail($id);
         
-        // Get medical and vaccination records for THIS animal only
         $medicals = Medical::with('vet')
             ->where('animalID', $id)
             ->get();
@@ -175,8 +161,8 @@ class AnimalManagementController extends Controller
         
         $vets = Vet::all();
         $slots = Slot::where('status', 'available')->get();
-         $bookedSlots = $animal->bookings->map(function($booking) {
-            // Combine date and time
+        
+        $bookedSlots = $animal->bookings->map(function($booking) {
             $dateTime = \Carbon\Carbon::parse($booking->appointment_date . ' ' . $booking->appointment_time);
             
             return [
@@ -185,7 +171,6 @@ class AnimalManagementController extends Controller
                 'datetime' => $dateTime->format('Y-m-d\TH:i'),
             ];
         });
-        // dd($bookedSlots);
         
         return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots'));
     }
@@ -197,15 +182,11 @@ class AnimalManagementController extends Controller
         ]);
 
         $animal = Animal::findOrFail($animalId);
-
-        // Store previous slot before reassigning (for recalculation after update)
         $previousSlotId = $animal->slotID;
 
-        // Assign new slot
         $animal->slotID = $request->slot_id;
         $animal->save();
 
-        // --- Update NEW slot status ---
         $newSlot = Slot::findOrFail($request->slot_id);
         $newSlotAnimalCount = $newSlot->animals()->count();
 
@@ -216,7 +197,6 @@ class AnimalManagementController extends Controller
         }
         $newSlot->save();
 
-        // --- Update PREVIOUS slot status (if reassigning) ---
         if ($previousSlotId && $previousSlotId != $newSlot->id) {
             $oldSlot = Slot::find($previousSlotId);
 
@@ -226,7 +206,7 @@ class AnimalManagementController extends Controller
                 if ($oldSlotAnimalCount >= $oldSlot->capacity) {
                     $oldSlot->status = 'occupied';
                 } else {
-                    $oldSlot->status = 'available'; // now becomes available again
+                    $oldSlot->status = 'available';
                 }
 
                 $oldSlot->save();
@@ -236,29 +216,21 @@ class AnimalManagementController extends Controller
         return back()->with('success', 'Slot assigned successfully!');
     }
 
-
-
-    /**
-     * Remove the specified animal from storage
-     */
     public function destroy(Animal $animal)
     {
         DB::beginTransaction();
 
         try {
-            // Delete all associated images from storage
             foreach ($animal->images as $image) {
                 Storage::disk('public')->delete($image->image_path);
                 $image->delete();
             }
 
-            // Free up the slot
             $slot = Slot::find($animal->slotID);
             if ($slot) {
                 $slot->update(['status' => 'available']);
             }
 
-            // Delete the animal
             $animalName = $animal->name;
             $animal->delete();
 
@@ -276,16 +248,16 @@ class AnimalManagementController extends Controller
         }
     }
 
-    public function indexClinic(){
+    public function indexClinic()
+    {
         $clinics = Clinic::all();
         $vets = Vet::with('clinic')->get(); 
         return view('animal-management.main-manage-cv', ['clinics' => $clinics, 'vets' => $vets]);
     }
 
-     public function storeClinic(Request $request)
+    public function storeClinic(Request $request)
     {
         try {
-            // Validate the incoming request
             $validated = $request->validate([
                 'clinic_name' => 'required|string|max:255',
                 'address' => 'required|string|max:500',
@@ -294,7 +266,6 @@ class AnimalManagementController extends Controller
                 'longitude' => 'required|numeric|between:-180,180',
             ]);
 
-            // Create new clinic record
             $clinic = Clinic::create([
                 'name' => $validated['clinic_name'],
                 'address' => $validated['address'],
@@ -303,17 +274,14 @@ class AnimalManagementController extends Controller
                 'longitude' => $validated['longitude'],
             ]);
 
-            // Redirect back with success message
             return redirect()->back()->with('success', 'Clinic added successfully!');
             
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Handle validation errors
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput()
                 ->with('error', 'Please check the form and try again.');
         } catch (\Exception $e) {
-            // Handle any other errors
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to add clinic: ' . $e->getMessage());
@@ -322,9 +290,7 @@ class AnimalManagementController extends Controller
 
     public function storeVet(Request $request)
     {
-       
         try {
-            // Validate the incoming request
             $validated = $request->validate([
                 'full_name' => 'required|string|max:255',
                 'specialization' => 'required|string|max:255',
@@ -333,6 +299,7 @@ class AnimalManagementController extends Controller
                 'phone' => 'required|string|max:20',
                 'email' => 'required|email|max:255|unique:vet,email',
             ]);
+            
             $dataToInsert = [
                 'name' => $validated['full_name'],
                 'specialization' => $validated['specialization'],
@@ -341,38 +308,25 @@ class AnimalManagementController extends Controller
                 'contactNum' => $validated['phone'],
                 'email' => $validated['email'],
             ];
-            // Create new vet record
+            
             $vet = Vet::create($dataToInsert);
-            // Redirect back with success message
+            
             return redirect()->back()->with('success', 'Veterinarian added successfully!');
             
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Handle validation errors
-            dd('Validation Error', [
-                'errors' => $e->errors(),
-                'message' => $e->getMessage()
-            ]);
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput()
                 ->with('error', 'Please check the form and try again.');
         } catch (\Exception $e) {
-            // Handle any other errors
-            dd('General Error', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]); 
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to add veterinarian: ' . $e->getMessage());
         }
     }
+
     public function storeMedical(Request $request)
     {
-        // Debug: Check incoming request data
-        // dd($request->all());
         try {
             $validated = $request->validate([
                 'animalID' => 'required|exists:animal,id',
@@ -383,45 +337,24 @@ class AnimalManagementController extends Controller
                 'vetID' => 'required|exists:vet,id',
                 'costs' => 'nullable|numeric|min:0',
             ]);
-            // Debug: Check validated data
-            // dd($validated);
+            
             $medical = Medical::create($validated);
-            // Debug: Check created record
-            // dd($medical);
+            
             return redirect()->back()->with('success', 'Medical record added successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Debug: Check validation errors
-            dd([
-                'validation_errors' => $e->errors(),
-                'request_data' => $request->all()
-            ]);
-            
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput()
                 ->with('error', 'Please check the form and try again.');
         } catch (\Exception $e) {
-            // Debug: Check exception details
-            dd([
-                'error_message' => $e->getMessage(),
-                'error_line' => $e->getLine(),
-                'error_file' => $e->getFile(),
-                'request_data' => $request->all()
-            ]);
-            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to add medical record: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Store vaccination record
-     */
     public function storeVaccination(Request $request)
     {
-        // Debug: Check incoming request data
-        // dd($request->all());
         try {
             $validated = $request->validate([
                 'animalID' => 'required|exists:animal,id',
@@ -432,32 +365,16 @@ class AnimalManagementController extends Controller
                 'vetID' => 'required|exists:vet,id',
                 'costs' => 'nullable|numeric|min:0',
             ]);
-            // Debug: Check validated data
-            // dd($validated);
+            
             $vaccination = Vaccination::create($validated);
-            // Debug: Check created record
-            // dd($vaccination);
+            
             return redirect()->back()->with('success', 'Vaccination record added successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Debug: Check validation errors
-            dd([
-                'validation_errors' => $e->errors(),
-                'request_data' => $request->all()
-            ]);
-            
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput()
                 ->with('error', 'Please check the form and try again.');
         } catch (\Exception $e) {
-            // Debug: Check exception details
-            dd([
-                'error_message' => $e->getMessage(),
-                'error_line' => $e->getLine(),
-                'error_file' => $e->getFile(),
-                'request_data' => $request->all()
-            ]);
-            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to add vaccination record: ' . $e->getMessage());
