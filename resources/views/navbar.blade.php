@@ -51,7 +51,7 @@
         @endrole
 
         {{-- Caretaker and Public User: Booking --}}
-         @role('public user|caretaker')
+         @role('public user|caretaker|adopter')
         <a href="{{ route('bookings.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
             My Booking
         </a>

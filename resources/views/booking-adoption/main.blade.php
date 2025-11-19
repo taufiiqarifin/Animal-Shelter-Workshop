@@ -14,7 +14,7 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 class="text-5xl font-bold mb-4">My Bookings</h1>
-                    <p class="text-xl text-purple-100">View and manage your appointment bookings</p>
+                    <p class="text-xl text-purple-100">View and manage your appointment bookings for adoptions</p>
                 </div>
                 {{-- FIX: Close the @unless block and the div properly --}}
                 @unless($bookings->isEmpty())
@@ -102,7 +102,7 @@
                 </div>
                 <h3 class="text-3xl font-bold text-gray-700 mb-3">No Bookings Yet</h3>
                 <p class="text-gray-500 text-lg mb-8">You haven't made any bookings. Start by creating your first appointment!</p>
-                <a href="{{ route('bookings.create') }}" class="inline-flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-8 py-3 rounded-lg font-semibold transition duration-300 shadow-lg">
+                <a href="{{ route('animal:main') }}" class="inline-flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-8 py-3 rounded-lg font-semibold transition duration-300 shadow-lg">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>

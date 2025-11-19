@@ -553,7 +553,7 @@
                 </div>
 
                 <!-- Action Card -->
-                @role('public user|caretaker')
+                @role('public user|caretaker|adopter')
                     @if($animal->adoption_status == 'Not Adopted')
                         <div class="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg shadow-lg p-6 text-white">
                             <h3 class="text-xl font-bold mb-2">Interested in adopting?</h3>
