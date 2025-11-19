@@ -47,8 +47,8 @@ class AnimalManagementController extends Controller
             'gender' => 'required|in:Male,Female,Unknown',
             'rescueID' => 'required|exists:rescue,id',
             'slotID' => 'nullable|exists:slot,id',
-            'images' => 'required|array|min:1',
-            'images.*' => 'required|image|mimes:jpeg,jpg,png,gif|max:5120',
+            'images' => 'nullable|array|min:1',
+            'images.*' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:5120',
         ], [
             'images.required' => 'Please upload at least one image.',
             'images.*.image' => 'Each file must be an image.',

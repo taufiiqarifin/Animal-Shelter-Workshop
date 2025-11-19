@@ -105,11 +105,12 @@
                     </div>
                 </div>
 
+                //nanti letak required lps multiple accept="image/*" 
                 <div>
                     <label class="block text-gray-800 font-semibold mb-2">
                         Upload Images <span class="text-red-600">*</span>
                     </label>
-                    <input type="file" name="images[]" multiple accept="image/*" required
+                    <input type="file" name="images[]" multiple accept="image/*" 
                            class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition">
                     <p class="text-sm text-gray-600 mt-2">You can upload multiple images (hold Ctrl/Cmd to select multiple files)</p>
                 </div>

@@ -112,7 +112,7 @@
             <!-- Booking Type Breakdown -->
             <div class="bg-white rounded-lg shadow">
                 <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-xl font-bold text-gray-800">Booking Type Breakdown</h2>
+                    <h2 class="text-xl font-bold text-gray-800">Booking Status Breakdown</h2>
                 </div>
                 <div class="p-6">
                     <div class="h-80 flex justify-center items-center">

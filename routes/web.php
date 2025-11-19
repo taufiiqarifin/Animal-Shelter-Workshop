@@ -7,8 +7,15 @@ use App\Http\Controllers\ShelterManagementController;
 use App\Http\Controllers\BookingAdoptionController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Dashboard;
+use App\Http\Controllers\RescueMapController;
+
+Route::get('/rescue-map', [RescueMapController::class, 'index'])->name('rescue.map');
+Route::get('/api/rescue-clusters', [RescueMapController::class, 'getClusterData'])->name('rescue.clusters');
 
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
+Route::get('/stray-map', function () {
+    return view('stray-map');
+})->name('stray.map');
 
 Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');
 
