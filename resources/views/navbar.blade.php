@@ -11,65 +11,59 @@
         </a>
     </div>
 
-   <!-- Navigation Links -->
-   <div class="hidden md:flex space-x-8">
+   <div class="hidden md:flex space-x-3">
+        {{-- Must be logged in for everything except Contact Us --}}
+        @auth
+            {{-- ADMIN ONLY: Dashboard, Report, Slots --}}
+            @role('admin')
+                <a href="{{ route('dashboard') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                    Dashboard
+                </a>
+                <a href="{{ route('rescue.map') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                    Map
+                </a>
+                <a href="{{ route('reports.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                    Report
+                </a>
+            @endrole
 
-    {{-- Must be logged in for everything except Contact Us --}}
-    @auth
-
-        {{-- ADMIN ONLY: Dashboard, Report, Slots --}}
-        @role('admin')
-            <a href="{{ route('dashboard') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                Dashboard
+            {{-- ADMIN + CARETAKER + USER: Animal --}}
+            <a href="{{ route('animal:main') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                Animal
             </a>
-            <a href="{{ route('rescue.map') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                Map
+
+            {{-- ADMIN ONLY: Slots --}}
+            @role('admin')
+            <a href="{{ route('bookings.index-admin') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                Bookings
+                </a>
+            @endrole
+
+            {{-- ADMIN + CARETAKER: Clinics & Vets --}}
+            @role('admin|caretaker')
+                <a href="{{ route('shelter-management.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                    Slots
+                </a>
+                <a href="{{ route('animal-management.clinic-index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                    Clinics & Vets
+                </a>
+            @endrole
+
+            {{-- Caretaker and Public User: Booking --}}
+            @role('public user|caretaker|adopter')
+            <a href="{{ route('bookings.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                My Booking
             </a>
+            @endrole
+        @endauth
 
-            <a href="{{ route('reports.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                Report
+        {{-- Public: Contact Us --}}
+        @unlessrole('admin')
+            <a href="{{ route('contact') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium px-3 py-2">
+                Contact Us
             </a>
-        @endrole
-
-        {{-- ADMIN + CARETAKER + USER: Animal --}}
-        <a href="{{ route('animal:main') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-            Animal
-        </a>
-
-        {{-- ADMIN ONLY: Slots --}}
-        @role('admin')
-           <a href="{{ route('bookings.index-admin') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-               Bookings
-            </a>
-        @endrole
-
-        {{-- ADMIN + CARETAKER: Clinics & Vets --}}
-        @role('admin|caretaker')
-            <a href="{{ route('shelter-management.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                Slots
-            </a>
-            <a href="{{ route('animal-management.clinic-index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-                Clinics & Vets
-            </a>
-        @endrole
-
-        {{-- Caretaker and Public User: Booking --}}
-         @role('public user|caretaker|adopter')
-        <a href="{{ route('bookings.index') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-            My Booking
-        </a>
-        @endrole
-
-
-    @endauth
-
-    {{-- Public: Contact Us --}}
-    @unlessrole('admin')
-        <a href="{{ route('contact') }}" class="text-purple-100 hover:text-white transition duration-300 font-medium">
-            Contact Us
-        </a>
-    @endunlessrole
-</div>
+        @endunlessrole
+    </div>
 
 
    <!-- Profile Logo -->

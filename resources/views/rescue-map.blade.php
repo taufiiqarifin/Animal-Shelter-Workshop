@@ -103,7 +103,7 @@
         <div class="glassmorphism shadow-lg p-6">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    <h1 class="text-3xl font-bold text-gray-800">
                         Animal Rescue Reports
                     </h1>
                     <p class="text-sm text-gray-500 mt-1">Real-time rescue operations dashboard</p>

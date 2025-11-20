@@ -281,7 +281,7 @@
 
                             <div>
                                 <label class="block text-gray-800 font-semibold mb-2">
-                                    Weight (kg) <span class="text-red-600">*</span>
+                                    Weight during treatment (kg) <span class="text-red-600">*</span>
                                 </label>
                                 <input 
                                     type="number" 
@@ -373,7 +373,7 @@
 
                             <div>
                                 <label class="block text-gray-800 font-semibold mb-2">
-                                    Weight (kg) <span class="text-red-600">*</span>
+                                    Weight during taking the vaccine (kg) <span class="text-red-600">*</span>
                                 </label>
                                 <input 
                                     type="number" 
