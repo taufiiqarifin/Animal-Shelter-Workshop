@@ -12,6 +12,11 @@ class Animal extends Model
         'adoption_status', 'rescueID', 'slotID', 'vaccinationID'
     ];
 
+    public function profile()
+    {
+        return $this->hasOne(AnimalProfile::class, 'animalID', 'id');
+    }
+
     public function rescue()
     {
         return $this->belongsTo(Rescue::class, 'rescueID');

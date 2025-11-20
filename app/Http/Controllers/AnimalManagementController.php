@@ -22,75 +22,156 @@ use Illuminate\Validation\Rule;
 
 class AnimalManagementController extends Controller
 {
-    public function match()
+    public function getMatches()
     {
-        // Get the adopter profile (logged-in user)
-        $adopter = auth()->user()->adopterProfile;
-
-        if (!$adopter) {
-            return back()->with('error', 'Please complete your Adopter Profile first.');
+        $user = Auth::user();
+        
+        // Get adopter profile
+        $adopterProfile = AdopterProfile::where('adopterID', $user->id)->first();
+        
+        if (!$adopterProfile) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please complete your adopter profile first.'
+            ]);
         }
 
-        // Get all animals with their profiles
-        $animals = Animal::with('profile')->get();
+        // Get all available animals with their profiles
+        $animals = Animal::with('profile')
+             ->whereIn('adoption_status', ['Not Adopted', 'not adopted'])
+             ->get();
 
-        // Score calculation
-        $matched = $animals->map(function($animal) use ($adopter) {
-            $score = 0;
-
-            // Avoid animals with missing profile
-            if (!$animal->profile) {
-                $animal->score = 0;
-                return $animal;
+        // Calculate match scores
+        $matches = [];
+        foreach ($animals as $animal) {
+            if ($animal->profile) {
+                $score = $this->calculateMatchScore($adopterProfile, $animal->profile);
+                $matches[] = [
+                    'animal' => $animal,
+                    'profile' => $animal->profile,
+                    'score' => $score,
+                    'match_details' => $this->getMatchDetails($adopterProfile, $animal->profile)
+                ];
             }
+        }
 
-            // Species match
-            if ($adopter->preferred_species == $animal->species) $score += 15;
-
-            // Size match
-            if ($adopter->preferred_size == $animal->profile->size) $score += 10;
-
-            // Energy level
-            if ($adopter->activity_level == $animal->profile->energy_level) $score += 10;
-
-            // Good with kids
-            if ($adopter->has_children && $animal->profile->good_with_kids) {
-                $score += 10;
-            }
-
-            // Not good with kids but adopter has kids
-            if ($adopter->has_children && !$animal->profile->good_with_kids) {
-                $score -= 20;
-            }
-
-            // Good with other pets
-            if ($adopter->has_other_pets && $animal->profile->good_with_pets) {
-                $score += 10;
-            }
-
-            // Conflict: adopter has pets but animal cannot
-            if ($adopter->has_other_pets && !$animal->profile->good_with_pets) {
-                $score -= 20;
-            }
-
-            // Housing type constraint
-            if ($adopter->housing_type == 'condo' && $animal->profile->size == 'large') {
-                $score -= 15;
-            }
-
-            // Calm animals for beginners
-            if ($adopter->experience == 'beginner' && $animal->profile->temperament == 'calm') {
-                $score += 10;
-            }
-
-            $animal->score = $score;
-            return $animal;
+        // Sort by score (highest first)
+        usort($matches, function($a, $b) {
+            return $b['score'] <=> $a['score'];
         });
 
-        // Sort by highest score
-        $results = $matched->sortByDesc('score')->values();
+        // Get top 5 matches
+        $topMatches = array_slice($matches, 0, 5);
 
-        return view('matching.results', compact('results'));
+        return response()->json([
+            'success' => true,
+            'matches' => $topMatches
+        ]);
+    }
+
+    private function calculateMatchScore($adopterProfile, $animalProfile)
+    {
+        $score = 0;
+        $maxScore = 100;
+
+        // Species match (20 points)
+        if ($adopterProfile->preferred_species === $animalProfile->animal->species) {
+            $score += 20;
+        }
+
+        // Size match (15 points)
+        if ($adopterProfile->preferred_size === $animalProfile->size) {
+            $score += 15;
+        }
+
+        // Energy level / Activity level match (20 points)
+        $energyMatch = $this->matchEnergyLevel($adopterProfile->activity_level, $animalProfile->energy_level);
+        $score += $energyMatch * 20;
+
+        // Kids compatibility (15 points)
+        if ($adopterProfile->has_children) {
+            if ($animalProfile->good_with_kids) {
+                $score += 15;
+            }
+        } else {
+            $score += 15; // No constraint
+        }
+
+        // Pets compatibility (15 points)
+        if ($adopterProfile->has_other_pets) {
+            if ($animalProfile->good_with_pets) {
+                $score += 15;
+            }
+        } else {
+            $score += 15; // No constraint
+        }
+
+        // Housing type consideration (15 points)
+        $housingScore = $this->matchHousingType($adopterProfile->housing_type, $animalProfile);
+        $score += $housingScore;
+
+        return round(($score / $maxScore) * 100);
+    }
+
+    private function matchEnergyLevel($activityLevel, $energyLevel)
+    {
+        $levels = ['low' => 1, 'medium' => 2, 'high' => 3];
+        
+        $activityValue = $levels[$activityLevel] ?? 2;
+        $energyValue = $levels[$energyLevel] ?? 2;
+        
+        $difference = abs($activityValue - $energyValue);
+        
+        if ($difference === 0) return 1.0;
+        if ($difference === 1) return 0.6;
+        return 0.2;
+    }
+
+    private function matchHousingType($housingType, $animalProfile)
+    {
+        // Apartment dwellers better with smaller, lower energy animals
+        if ($housingType === 'apartment') {
+            if (in_array($animalProfile->size, ['small', 'medium']) && 
+                $animalProfile->energy_level !== 'high') {
+                return 15;
+            }
+            return 5;
+        }
+        
+        // House with yard - most animals suitable
+        if ($housingType === 'house_with_yard') {
+            return 15;
+        }
+        
+        return 10; // Default
+    }
+
+    private function getMatchDetails($adopterProfile, $animalProfile)
+    {
+        $details = [];
+
+        if ($adopterProfile->preferred_species === $animalProfile->animal->species) {
+            $details[] = "Matches your preferred species";
+        }
+
+        if ($adopterProfile->preferred_size === $animalProfile->size) {
+            $details[] = "Perfect size match";
+        }
+
+        if ($adopterProfile->has_children && $animalProfile->good_with_kids) {
+            $details[] = "Great with children";
+        }
+
+        if ($adopterProfile->has_other_pets && $animalProfile->good_with_pets) {
+            $details[] = "Gets along with other pets";
+        }
+
+        $energyMatch = $this->matchEnergyLevel($adopterProfile->activity_level, $animalProfile->energy_level);
+        if ($energyMatch >= 0.6) {
+            $details[] = "Energy level matches your lifestyle";
+        }
+
+        return $details;
     }
 
     public function storeOrUpdate(Request $request, $animalId)

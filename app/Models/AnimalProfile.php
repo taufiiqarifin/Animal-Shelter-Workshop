@@ -21,8 +21,8 @@ class AnimalProfile extends Model
         'animalID'
     ];
 
-    public function animal()
+   public function animal()
     {
-        return $this->belongsTo(Animal::class, 'animal_id');
+        return $this->belongsTo(Animal::class, 'animalID');
     }
 }

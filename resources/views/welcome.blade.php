@@ -142,8 +142,8 @@
                                         <button onclick="openAdopterModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
                                             📖 Help Us Know You Better
                                         </button>
-
-                                        <button onclick="openAdopterModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
+                                    @include('adopter-animal-matching.result')
+                                        <button onclick="openResultModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
                                             🐾 Animal You Might Want To Adopt
                                         </button>
                                     @endrole

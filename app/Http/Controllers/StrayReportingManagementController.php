@@ -6,11 +6,13 @@ use Illuminate\Http\Request;
 use App\Models\Report;  
 use App\Models\Image;  
 use App\Models\AdopterProfile;  
+use App\Models\AnimalProfile;  
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Rescue;
 use App\Models\User;
+use App\Models\Animal;
 
 class StrayReportingManagementController extends Controller
 {
@@ -26,8 +28,27 @@ class StrayReportingManagementController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(5);
         $adopterProfile = AdopterProfile::where('adopterID', auth()->id())->first();
+        // get profile manually
+        $profile = AdopterProfile::where('adopterID', auth()->id())->first();
+
+        if (!$profile) {
+            return back()->with('error', 'Please complete your adopter profile first.');
+        }
+
+        $matches = AnimalProfile::with('animal') 
+        ->when($profile->preferred_species, function ($q) use ($profile) {
+            $q->whereHas('animal', fn($a) =>
+                $a->where('species', $profile->preferred_species)
+            );
+        })
+        ->when($profile->preferred_size, function ($q) use ($profile) {
+            $q->where('size', $profile->preferred_size);
+        })
+        ->get();
+
+        // dd($matches);
         
-        return view('welcome', compact('userReports', 'adopterProfile'));
+        return view('welcome', compact('userReports', 'adopterProfile', 'matches'));
     }
 
     public function store(Request $request)

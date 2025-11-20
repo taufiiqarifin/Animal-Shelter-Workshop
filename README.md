@@ -65,19 +65,11 @@ The system provides different roles and dashboards for administrators, caretaker
 | ----------------------- | ------------------------------ |
 | **Backend**             | Laravel 11 (PHP 8+)            |
 | **Frontend**            | Blade Templates + Tailwind CSS |
-| **Database**            | PostgreSQL                     |
-| **Authentication**      | Laravel Breeze / Fortify       |
+| **Database**            | PostgreSQL + MySQL             |
+|                         | + Microsoft SQL Server         |
+| **Authentication**      | Laravel Breeze                 |
 | **Authorization**       | Spatie Laravel Permission      |
 | **Email Notifications** | Laravel Mail                   |
 | **Version Control**     | Git / GitHub                   |
 
 ---
-
-## ⚙️ Installation Guide
-
-### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/your-username/animal-rescue-system.git
-cd animal-rescue-system
-```

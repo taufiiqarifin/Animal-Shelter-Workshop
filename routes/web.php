@@ -25,14 +25,13 @@ Route::get('/about', function () {
     return view('contact');
 })->name('contact');
 
-// Routes for Animal Profile
-Route::post('/animal/profile/store/{animal}', [AnimalManagementController::class, 'storeOrUpdate'])->name('animal.profile.store');
-// Note: The animal profile form action in your code currently points to 'animal.profile.store'.
 
-// Routes for Adopter Profile (Linked to the storeOrUpdate method)
+Route::post('/animal/profile/store/{animal}', [AnimalManagementController::class, 'storeOrUpdate'])->name('animal.profile.store');
 Route::post('/adopter/profile/store', [ProfileController::class, 'storeOrUpdate'])->name('adopter.profile.store');
 
-
+Route::middleware('auth')->group(function () {
+    Route::get('/animal-matches', [AnimalManagementController::class, 'getMatches'])->name('animal.matches');
+});
 
 //Stray-Reporting
 Route::middleware(['auth'])->group(function () {
