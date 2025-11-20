@@ -151,6 +151,7 @@
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script>
         let bookingTypeChart, bookingsByMonthChart, volumeVsValueChart;
 
@@ -198,53 +199,57 @@
             
             if (bookingsByMonthCtx && bookingsByMonthData.length > 0) {
                 bookingsByMonthChart = new Chart(bookingsByMonthCtx, {
-                    type: 'line',
-                    data: {
-                        labels: bookingsByMonthData.map(item => item.month_name),
-                        datasets: [{
-                            label: 'Bookings',
-                            data: bookingsByMonthData.map(item => item.count),
-                            borderColor: '#7C3AED',
-                            backgroundColor: 'rgba(124, 58, 237, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            borderWidth: 3,
-                            pointRadius: 5,
-                            pointHoverRadius: 7
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                labels: {
-                                    font: {
-                                        size: 14
-                                    }
-                                }
+                type: 'line',
+                data: {
+                    labels: bookingsByMonthData.map(item => item.month_name),
+                    datasets: [{
+                        label: 'Bookings',
+                        data: bookingsByMonthData.map(item => item.count),
+                        borderColor: '#7C3AED',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                plugins: [ChartDataLabels],   // ← ENABLE plugin
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#333',
+                            font: {
+                                weight: 'bold',
+                                size: 14
+                            },
+                            formatter: function(value) {
+                                return value; // show exact number
                             }
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    font: {
-                                        size: 12
-                                    }
-                                }
-                            },
-                            x: {
-                                ticks: {
-                                    font: {
-                                        size: 12
-                                    }
-                                }
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: { size: 14 }
                             }
                         }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 12 } }
+                        },
+                        x: {
+                            ticks: { font: { size: 12 } }
+                        }
                     }
-                });
+                }
+            });
+
             }
 
             // Volume vs Average Value Chart
