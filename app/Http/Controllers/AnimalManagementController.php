@@ -16,10 +16,47 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\AnimalProfile;  
+use Illuminate\Validation\Rule;
+
 
 
 class AnimalManagementController extends Controller
 {
+    public function storeOrUpdate(Request $request, $animalId = null)
+    {
+        // 1. Validation Rules
+        $validated = $request->validate([
+            'age' => ['required', Rule::in(['kitten', 'puppy', 'adult', 'senior'])],
+            'size' => ['required', Rule::in(['small', 'medium', 'large'])],
+            'energy_level' => ['required', Rule::in(['low', 'medium', 'high'])],
+            'good_with_kids' => ['required', 'boolean'], // 1 or 0
+            'good_with_pets' => ['required', 'boolean'], // 1 or 0
+            'temperament' => ['required', Rule::in(['calm', 'active', 'shy', 'friendly', 'independent'])],
+            'medical_needs' => ['required', Rule::in(['none', 'minor', 'moderate', 'special'])],
+        ]);
+
+        // 2. Find or Create the Profile
+        // Assuming animalId is passed, otherwise, find a record based on some unique key (e.g., animal_id if linked)
+        if ($animalId) {
+            $profile = AnimalProfile::findOrFail($animalId);
+            $profile->update($validated);
+            $message = 'Animal Profile updated successfully!';
+        } else {
+            // For a 'store' action, you would typically link this to a specific Animal model here.
+            // Example: $animal = Animal::create([...]);
+            // $profile = $animal->profile()->create($validated);
+            
+            // Placeholder: Creates a new profile record
+            $profile = AnimalProfile::create(array_merge($validated, [
+                'animalID' => 1 // Replace with actual logic to determine the animal's ID
+            ]));
+            $message = 'Animal Profile saved successfully!';
+        }
+
+        // 3. Redirect back with success message
+        return redirect()->back()->with('success', $message);
+    }
     public function home(){
         return view('animal-management.main');
     }
@@ -307,8 +344,9 @@ public function update(Request $request, $id)
                 'datetime' => $dateTime->format('Y-m-d\TH:i'),
             ];
         });
+        $animalProfile = AnimalProfile::where('animalID', $id)->first();
         
-        return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots'));
+        return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots', 'animalProfile'));
     }
 
     public function assignSlot(Request $request, $animalId)

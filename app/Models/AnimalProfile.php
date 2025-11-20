@@ -3,13 +3,26 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 
 class AnimalProfile extends Model
 {
     protected $table = 'AnimalProfile';
-    protected $fillable = 'AdopterProfile';
-    public function user()
+    protected $fillable = [
+        'animal_id',
+        'age',
+        'size',
+        'energy_level',
+        'good_with_kids',
+        'good_with_pets',
+        'temperament',
+        'medical_needs',
+        'animalID'
+    ];
+
+    public function animal()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Animal::class, 'animal_id');
     }
 }

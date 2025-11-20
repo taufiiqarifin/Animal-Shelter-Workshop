@@ -23,7 +23,6 @@
     <!-- Main Content -->
     <div class="flex-1 flex items-center justify-center p-4">
         <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden">
-
             {{-- Success Alert --}}
             @if (session('success'))
                 <div class="flex items-start gap-3 p-4 mb-6 bg-green-50 border border-green-200 rounded-xl shadow-sm mx-6 mt-6">
@@ -108,7 +107,23 @@
 
                                 <!-- Action Buttons -->
                                 <div class="flex flex-col gap-3 mt-4">
+                                    @include('adopter-animal-matching.adopter-modal')
+                                    <script>
+                                    function openAdopterModal() {
+                                        document.getElementById('adopterModal').classList.remove('hidden');
+                                        document.getElementById('adopterModal').classList.add('flex');
+                                    }
 
+                                    function closeAdopterModal() {
+                                        document.getElementById('adopterModal').classList.add('hidden');
+                                        document.getElementById('adopterModal').classList.remove('flex');
+                                    }
+
+                                    // Close modal when clicking outside
+                                    document.getElementById('adopterModal')?.addEventListener('click', function(e) {
+                                        if (e.target === this) closeAdopterModal();
+                                    });
+                                    </script>
                                     @hasanyrole('public user|adopter')
                                         @unlessrole('caretaker')
                                             <button onclick="openReportModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
@@ -118,6 +133,10 @@
                                             <button onclick="openMyReportsModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
                                                 📄 My Submitted Reports
                                             </button>
+                                            <!-- Buttons to open modals -->
+                                            <button onclick="openAdopterModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold px-5 py-3 rounded-lg shadow hover:from-purple-700 hover:to-purple-800 transition">
+                                                📖 Help Us Know You Better
+                                            </button>
                                         @endunlessrole
                                     @endhasanyrole
 
@@ -126,6 +145,9 @@
                                             🐾 View Assigned Rescue Reports
                                         </a>
                                     @endrole
+
+                                    
+                                    
 
                                 </div>
                             </div>

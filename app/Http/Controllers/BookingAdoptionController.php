@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 
+
 class BookingAdoptionController extends Controller
 {
     public function userBookings()

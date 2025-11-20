@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Report;  
 use App\Models\Image;  
+use App\Models\AdopterProfile;  
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -24,8 +25,9 @@ class StrayReportingManagementController extends Controller
             ->with(['images'])
             ->orderBy('created_at', 'desc')
             ->paginate(5);
+        $adopterProfile = AdopterProfile::where('adopterID', auth()->id())->first();
         
-        return view('welcome', compact('userReports'));
+        return view('welcome', compact('userReports', 'adopterProfile'));
     }
 
     public function store(Request $request)

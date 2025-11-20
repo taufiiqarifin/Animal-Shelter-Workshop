@@ -11,7 +11,6 @@ use App\Http\Controllers\RescueMapController;
 
 Route::get('/rescue-map', [RescueMapController::class, 'index'])->name('rescue.map');
 Route::get('/api/rescue-clusters', [RescueMapController::class, 'getClusterData'])->name('rescue.clusters');
-
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
 Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');
@@ -25,6 +24,13 @@ Route::middleware('auth')->group(function () {
 Route::get('/about', function () {
     return view('contact');
 })->name('contact');
+
+// Routes for Animal Profile
+Route::post('/animal/profile/store', [AnimalManagementController::class, 'storeOrUpdate'])->name('animal.profile.store');
+// Note: The animal profile form action in your code currently points to 'animal.profile.store'.
+
+// Routes for Adopter Profile (Linked to the storeOrUpdate method)
+Route::post('/adopter/profile/store', [ProfileController::class, 'storeOrUpdate'])->name('adopter.profile.store');
 
 
 //Stray-Reporting

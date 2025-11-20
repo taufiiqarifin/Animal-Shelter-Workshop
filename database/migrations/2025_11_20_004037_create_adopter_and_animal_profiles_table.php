@@ -42,15 +42,12 @@ return new class extends Migration
                   ->references('id')->on('animal')
                   ->onDelete('cascade');
             $table->timestamps();
-          
-
         });
-    
     }
 
     public function down(): void
     {
         Schema::dropIfExists('AdopterProfile');
-        Schema::dropIfExists('AdopterProfile');
+        Schema::dropIfExists('AnimalProfile');
     }
 };
