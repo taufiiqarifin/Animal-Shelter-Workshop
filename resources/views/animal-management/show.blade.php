@@ -478,9 +478,9 @@
                    <!-- Header with Edit Button: This is displayed when the profile exists -->
                    <div class="flex justify-between items-center mb-4 border-b pb-2">
                        <!-- Button to open the modal for editing -->
-                       <button type="button" onclick="openAnimalModal()" class="text-sm text-purple-600 hover:text-purple-800 font-semibold transition flex items-center">
+                       @role('caretaker')<button type="button" onclick="openAnimalModal()" class="text-sm text-purple-600 hover:text-purple-800 font-semibold transition flex items-center">
                            <i class="fas fa-edit mr-1"></i> Edit Profile
-                       </button>
+                       </button>@endrole
                    </div>
 
                    <div class="space-y-3">
@@ -532,9 +532,9 @@
                    <p class="text-gray-500 mb-4">This animal does not have a profile yet. Click below to add one.</p>
                    
                    <!-- Button to open the modal for creation -->
-                   <button type="button" onclick="openAnimalModal()" class="w-full bg-purple-100 text-purple-700 py-3 rounded-lg font-semibold hover:bg-purple-200 transition duration-300 shadow-sm">
+                   @role('caretaker')<button type="button" onclick="openAnimalModal()" class="w-full bg-purple-100 text-purple-700 py-3 rounded-lg font-semibold hover:bg-purple-200 transition duration-300 shadow-sm">
                        <i class="fas fa-plus mr-2"></i>Add Profile
-                   </button>
+                   </button>@endrole
 
                @endif
     

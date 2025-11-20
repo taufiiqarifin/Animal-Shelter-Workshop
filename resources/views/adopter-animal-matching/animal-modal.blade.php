@@ -18,7 +18,7 @@
             </button>
         </div>
 
-        <form action="{{ route('animal.profile.store') }}" method="POST" class="p-6 space-y-5">
+        <form action="{{ route('animal.profile.store', ['animal' => $animal->id]) }}" method="POST" class="p-6 space-y-5">
             @csrf
             
             {{-- Optionally include a hidden field for the Animal Profile ID if updating --}}
