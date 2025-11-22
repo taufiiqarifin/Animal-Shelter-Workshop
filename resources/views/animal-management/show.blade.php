@@ -472,8 +472,31 @@
                 </span>
                             @endif
                         </div>
+                        <div class="flex justify-between items-center mb-4">
+                            <!-- Left: Title -->
+                            <h2 class="text-xl font-bold text-gray-800">Animal Information</h2>
 
-                        <h2 class="text-xl font-bold text-gray-800 mb-4">Animal Information</h2>
+                            <!-- Right: Action Buttons -->
+                            <div class="flex space-x-3">
+                                <button onclick="openEditModal({{ $animal->id }})"
+                                        class="bg-white text-purple-700 px-6 py-2 rounded-lg font-medium hover:bg-purple-50 transition duration-300">
+                                    <i class="fas fa-edit mr-2"></i>Edit
+                                </button>
+
+                                <form action="{{ route('animal-management.destroy', $animal->id) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Are you sure you want to delete this animal record?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                            class="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700 transition duration-300">
+                                        <i class="fas fa-trash mr-2"></i>Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+
 
                         <!-- Animal Details -->
                         <div class="space-y-3">
@@ -498,24 +521,6 @@
                                 <span class="text-gray-800">{{ \Carbon\Carbon::parse($animal->arrival_date)->format('M d, Y') }}</span>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Buttons on the right -->
-                    <div class="flex flex-col space-y-2 ml-6">
-                        <button onclick="openEditModal({{ $animal->id }})"
-                                class="bg-white text-purple-700 px-6 py-2 rounded-lg font-medium hover:bg-purple-50 transition duration-300">
-                            <i class="fas fa-edit mr-2"></i>Edit
-                        </button>
-
-                        <form action="{{ route('animal-management.destroy', $animal->id) }}" method="POST"
-                              onsubmit="return confirm('Are you sure you want to delete this animal record?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                    class="bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-700 transition duration-300">
-                                <i class="fas fa-trash mr-2"></i>Delete
-                            </button>
-                        </form>
                     </div>
                 </div>
 

@@ -349,7 +349,7 @@
                         <button type="submit"
                                 id="submitBtn-{{ $booking->id }}"
                                 class="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                            Complete Adoption
+                            Complete Adoptions
                         </button>
                     </div>
                 </div>

@@ -215,41 +215,6 @@ class BookingAdoptionController extends Controller
         }
     }
 
-    public function storeBooking(Request $request) //store booking wiith multiple animals
-    {
-        $request->validate([
-            'animal_ids' => 'required|array|min:1',
-            'animal_ids.*' => 'exists:animal,id',
-            'appointment_date' => 'required|date|after:now',
-            'terms' => 'required|accepted',
-        ]);
-
-        $dateTime = Carbon::parse($request->appointment_date);
-
-        $booking = Booking::create([
-            'userID' => auth()->id(),
-            'appointment_date' => $dateTime->toDateString(),
-            'appointment_time' => $dateTime->toTimeString(),
-            'status' => 'Pending',
-            'notes' => $request->notes,
-        ]);
-
-        $pivotData = [];
-
-        foreach ($request->animal_ids as $animalId) {
-            $pivotData[$animalId] = [
-                'remarks' => $request->remarks[$animalId] ?? null
-            ];
-        }
-
-        $booking->animals()->attach($pivotData);
-
-        session()->forget('visit_list');
-
-        return redirect()->route('visit.list')->with('success', 'Appointment booked successfully!');
-    }
-
-
     public function index()
     {
         $bookings = Booking::where('userID', Auth::id())
@@ -311,61 +276,102 @@ class BookingAdoptionController extends Controller
         return redirect()->route('booking:main')->with('error', 'Cannot cancel this booking.');
     }
 
-    // Confirm adoption of a specific animal in a booking
-    public function confirm(Request $request, Booking $booking)
-    {
-        if ($booking->userID !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $request->validate([
-            'animal_id' => 'required|exists:animal,id',
-        ]);
-
-        $animalId = $request->animal_id;
-
-        // Make sure the animal belongs to this booking
-        if (!$booking->animals->contains('id', $animalId)) {
-            return redirect()->route('booking:main')->with('error', 'Selected animal does not belong to this booking.');
-        }
-
-        // Case-insensitive status check
-        $currentStatus = strtolower($booking->status);
-        if (!in_array($currentStatus, ['pending', 'confirmed'])) {
-            return redirect()->route('booking:main')->with('error', 'Cannot confirm this booking.');
-        }
-
-        // Load the selected animal
-        $animal = $booking->animals()->where('id', $animalId)->first();
-        if (!$animal) {
-            return redirect()->route('booking:main')->with('error', 'Animal not found.');
-        }
-
-        // Fetch medical and vaccination records
-        $medicalRecords = Medical::where('animalID', $animal->id)->get();
-        $vaccinationRecords = Vaccination::where('animalID', $animal->id)->get();
-
-        // Calculate adoption fee
-        $feeBreakdown = $this->calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords);
-
-        // Optionally, mark this animal as adopted (if you have a pivot column like `status` in booking_animal table)
-        $booking->animals()->updateExistingPivot($animal->id, ['status' => 'Confirmed']);
-
-        // Update booking status to confirmed if not already
-        if ($currentStatus === 'pending') {
-            $booking->update(['status' => 'Confirmed']);
-        }
-
-        // Store session info for checkout/payment
-        session([
-            'booking_id' => $booking->id,
-            'adoption_fee' => $feeBreakdown['total_fee'],
-            'animal_name' => $animal->name,
-        ]);
-
-        // Create bill / redirect to payment page
-        return $this->createBill($booking, $feeBreakdown['total_fee']);
-    }
+//    // Confirm adoption of a specific animal in a booking
+//    public function confirm(Request $request, Booking $booking)
+//    {
+//        // Check authorization
+//        if ($booking->userID !== Auth::id()) {
+//            abort(403, 'Unauthorized action.');
+//        }
+//
+//        // Validate the request
+//        $validated = $request->validate([
+//            'animal_ids' => 'required|array|min:1',
+//            'animal_ids.*' => 'required|exists:animal,id',
+//            'agree_terms' => 'required|accepted',
+//        ], [
+//            'animal_ids.required' => 'Please select at least one animal.',
+//            'animal_ids.min' => 'Please select at least one animal.',
+//            'agree_terms.required' => 'You must agree to the terms.',
+//            'agree_terms.accepted' => 'You must agree to the terms.',
+//        ]);
+//
+//        try {
+//            // Verify the booking status
+//            $currentStatus = strtolower($booking->status);
+//            if (!in_array($currentStatus, ['pending'])) {
+//                return back()->with('error', 'This booking cannot be confirmed at this time.');
+//            }
+//
+//            // Get the selected animals and verify they belong to this booking
+//            $selectedAnimalIds = $validated['animal_ids'];
+//            $bookingAnimalIds = $booking->animals->pluck('id')->toArray();
+//
+//            $invalidAnimals = array_diff($selectedAnimalIds, $bookingAnimalIds);
+//            if (!empty($invalidAnimals)) {
+//                return back()->with('error', 'Some selected animals do not belong to this booking.');
+//            }
+//
+//            // Get the selected animals
+//            $selectedAnimals = $booking->animals()->whereIn('id', $selectedAnimalIds)->get();
+//
+//            // Calculate adoption fees for selected animals
+//            $totalFee = 0;
+//            $animalNames = [];
+//            $feeBreakdowns = [];
+//
+//            foreach ($selectedAnimals as $animal) {
+//                // Fetch medical and vaccination records
+//                $medicalRecords = Medical::where('animalID', $animal->id)->get();
+//                $vaccinationRecords = Vaccination::where('animalID', $animal->id)->get();
+//
+//                // Calculate fee for this animal
+//                $feeBreakdown = $this->calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords);
+//                $totalFee += $feeBreakdown['total_fee'];
+//                $animalNames[] = $animal->name;
+//                $feeBreakdowns[$animal->id] = $feeBreakdown;
+//            }
+//
+//            // Update booking status to Confirmed
+//            $booking->update(['status' => 'Confirmed']);
+//
+//            // Store selected animal IDs in the booking (you might need to add a field to track this)
+//            // Or mark them in the pivot table
+//            foreach ($selectedAnimalIds as $animalId) {
+//                // Update pivot table to mark these animals as confirmed
+//                $booking->animals()->updateExistingPivot($animalId, [
+//                    'updated_at' => now(),
+//                ]);
+//            }
+//
+//            // Store session info for payment
+//            session([
+//                'booking_id' => $booking->id,
+//                'adoption_fee' => $totalFee,
+//                'animal_ids' => $selectedAnimalIds,
+//                'animal_names' => implode(', ', $animalNames),
+//                'fee_breakdowns' => $feeBreakdowns,
+//            ]);
+//
+//            Log::info('Booking Confirmed', [
+//                'booking_id' => $booking->id,
+//                'animal_ids' => $selectedAnimalIds,
+//                'total_fee' => $totalFee,
+//            ]);
+//
+//            // Redirect to payment
+//            return $this->createBill($booking, $totalFee, $selectedAnimals);
+//
+//        } catch (\Exception $e) {
+//            Log::error('Booking Confirmation Error: ' . $e->getMessage(), [
+//                'booking_id' => $booking->id,
+//                'user_id' => Auth::id(),
+//                'trace' => $e->getTraceAsString(),
+//            ]);
+//
+//            return back()->with('error', 'Failed to confirm booking. Please try again.');
+//        }
+//    }
 
     public function showAdoptionFee(Booking $booking, Request $request)
     {
@@ -457,30 +463,137 @@ class BookingAdoptionController extends Controller
         ];
     }
 
-    public function createBill(Booking $booking, $adoptionFee)
+    public function confirm(Request $request, Booking $booking)
+    {
+        // Check authorization
+        if ($booking->userID !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            $validated = $request->validate([
+                'animal_ids'   => 'required|array|min:1',
+                'animal_ids.*' => 'required|exists:animal,id',
+                'total_fee'    => 'required|numeric|min:0',
+                'agree_terms'  => 'required|accepted',
+            ], [
+                'animal_ids.required' => 'Please select at least one animal.',
+                'animal_ids.min'      => 'Please select at least one animal.',
+                'total_fee.required'  => 'Adoption fee is required.',
+                'agree_terms.required' => 'You must agree to the terms.',
+                'agree_terms.accepted' => 'You must agree to the terms.',
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            Log::error('Validation failed for adoption booking:', [
+                'errors' => $e->errors(),           // full validation message array
+                'input'  => $request->all(),        // what user submitted
+            ]);
+
+            throw $e; // rethrow so Laravel returns normal errors to the view
+        }
+
+        try {
+            // Verify the booking status
+            $currentStatus = strtolower($booking->status);
+            if (!in_array($currentStatus, ['pending'])) {
+                return back()->with('error', 'This booking cannot be confirmed at this time.');
+            }
+
+            // Get the selected animals and verify they belong to this booking
+            $selectedAnimalIds = $validated['animal_ids'];
+            $bookingAnimalIds = $booking->animals->pluck('id')->toArray();
+
+            $invalidAnimals = array_diff($selectedAnimalIds, $bookingAnimalIds);
+            if (!empty($invalidAnimals)) {
+                return back()->with('error', 'Some selected animals do not belong to this booking.');
+            }
+
+            // Get the selected animals
+            $selectedAnimals = $booking->animals()->whereIn('id', $selectedAnimalIds)->get();
+
+            // Get animal names
+            $animalNames = $selectedAnimals->pluck('name')->toArray();
+            $totalFee = $validated['total_fee'];
+
+            // Update booking status to Confirmed
+            $booking->update(['status' => 'Confirmed']);
+
+            // Update pivot table to mark these animals as part of confirmed adoption
+            foreach ($selectedAnimalIds as $animalId) {
+                $booking->animals()->updateExistingPivot($animalId, [
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // Store session info for payment
+            session([
+                'booking_id' => $booking->id,
+                'adoption_fee' => $totalFee,
+                'animal_ids' => $selectedAnimalIds,
+                'animal_names' => implode(', ', $animalNames),
+            ]);
+
+            Log::info('Booking Confirmed', [
+                'booking_id' => $booking->id,
+                'animal_ids' => $selectedAnimalIds,
+                'total_fee' => $totalFee,
+            ]);
+
+            // Redirect to payment
+            return $this->createBill($booking, $totalFee, $selectedAnimals);
+
+        } catch (\Exception $e) {
+            Log::error('Booking Confirmation Error: ' . $e->getMessage(), [
+                'booking_id' => $booking->id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Failed to confirm booking. Please try again.');
+        }
+    }
+
+    public function createBill(Booking $booking, $adoptionFee, $selectedAnimals)
     {
         $user = Auth::user();
-        $animalName = $booking->animal->name;
+
+        // Get animal names
+        $animalNames = $selectedAnimals->pluck('name')->toArray();
+        $animalCount = count($animalNames);
+
+        // Create bill name and description
+        if ($animalCount === 1) {
+            $billName = 'Adopt ' . substr($animalNames[0], 0, 20);
+            $billDescription = 'Adoption fee for ' . $animalNames[0] . ' (Booking #' . $booking->id . ')';
+        } else {
+            $billName = 'Adopt ' . $animalCount . ' Animals';
+            $billDescription = 'Adoption fee for ' . implode(', ', array_slice($animalNames, 0, 3)) .
+                ($animalCount > 3 ? ' and ' . ($animalCount - 3) . ' more' : '') .
+                ' (Booking #' . $booking->id . ')';
+        }
+
         $referenceNo = 'BOOKING-' . $booking->id . '-' . time();
 
         $option = [
             'userSecretKey' => config('toyyibpay.key'),
             'categoryCode' => config('toyyibpay.category'),
-            'billName' => 'Adopt ' . substr($animalName, 0, 20),
-            'billDescription' => 'Adoption fee for ' . $animalName . ' (Booking #' . $booking->id . ')',
+            'billName' => $billName,
+            'billDescription' => $billDescription,
             'billPriceSetting' => 1,
             'billPayorInfo' => 1,
             'billAmount' => ($adoptionFee) * 100,
             'billReturnUrl' => route('toyyibpay-status'),
             'billCallbackUrl' => route('toyyibpay-callback'),
-            'billExternalReferenceNo' => $referenceNo, // Store this
+            'billExternalReferenceNo' => $referenceNo,
             'billTo' => $user->name,
             'billEmail' => $user->email,
             'billPhone' => $user->phone ?? '0000000000',
             'billSplitPayment' => 0,
             'billPaymentChannel' => 0,
             'billChargeToCustomer' => 1,
-            'billContentEmail' => 'Thank you for adopting ' . $animalName . '!',
+            'billContentEmail' => 'Thank you for adopting from our shelter!',
         ];
 
         $url = 'https://dev.toyyibpay.com/index.php/api/createBill';
@@ -490,16 +603,30 @@ class BookingAdoptionController extends Controller
         if (isset($data[0]['BillCode'])) {
             $billCode = $data[0]['BillCode'];
 
-            // Store both bill code and reference number in session
+            // Store bill info in session
             session([
                 'bill_code' => $billCode,
                 'reference_no' => $referenceNo
             ]);
 
+            Log::info('Bill Created', [
+                'booking_id' => $booking->id,
+                'bill_code' => $billCode,
+                'reference_no' => $referenceNo,
+                'amount' => $adoptionFee,
+            ]);
+
             return redirect('https://dev.toyyibpay.com/' . $billCode);
         } else {
+            // If bill creation fails, revert booking status back to Pending
             $booking->update(['status' => 'Pending']);
-            return redirect()->route('booking.main')->withErrors(['error' => 'Failed to create payment. Please try again.']);
+
+            Log::error('Bill Creation Failed', [
+                'booking_id' => $booking->id,
+                'response' => $data,
+            ]);
+
+            return redirect()->route('booking:main')->withErrors(['error' => 'Failed to create payment. Please try again.']);
         }
     }
 
@@ -509,38 +636,49 @@ class BookingAdoptionController extends Controller
         $billCode = $request->input('billcode');
         $orderId = $request->input('order_id');
 
+        // Get session data
         $bookingId = session('booking_id');
         $adoptionFee = session('adoption_fee');
-        $animalName = session('animal_name');
-        $referenceNo = session('reference_no'); // Get reference number from session
+        $animalIds = session('animal_ids', []);
+        $animalNames = session('animal_names');
+        $referenceNo = session('reference_no');
 
         $paymentStatus = $this->getBillTransactions($billCode);
 
         if ($statusId == 1) {
+            // Payment Success
             if ($bookingId) {
                 $booking = Booking::find($bookingId);
 
                 if ($booking) {
+                    // Update booking status to Completed
                     $booking->update(['status' => 'Completed']);
-                    $booking->animal->update(['adoption_status' => 'Adopted']);
 
+                    // Update all selected animals to Adopted
+                    foreach ($animalIds as $animalId) {
+                        Animal::where('id', $animalId)->update(['adoption_status' => 'Adopted']);
+                    }
+
+                    // Create transaction record
                     $transaction = Transaction::create([
                         'amount' => $adoptionFee,
                         'status' => 'Success',
-                        'remarks' => 'Adoption payment for ' . $animalName . ' (Booking #' . $bookingId . ')',
+                        'remarks' => 'Adoption payment for ' . $animalNames . ' (Booking #' . $bookingId . ')',
                         'type' => 'FPX Online Banking',
-                        'bill_code' => $billCode, // Store bill code
-                        'reference_no' => $referenceNo, // Store reference number
+                        'bill_code' => $billCode,
+                        'reference_no' => $referenceNo,
                         'userID' => Auth::id(),
                     ]);
 
+                    // Create adoption record
                     Adoption::create([
                         'fee' => $adoptionFee,
-                        'remarks' => $animalName . ' Adopted',
+                        'remarks' => count($animalIds) . ' animal(s) adopted: ' . $animalNames,
                         'bookingID' => $bookingId,
                         'transactionID' => $transaction->id,
                     ]);
 
+                    // Update user role
                     $user = Auth::user();
                     if ($user->hasRole('public user')) {
                         $user->removeRole('public user');
@@ -552,17 +690,19 @@ class BookingAdoptionController extends Controller
                     }
 
                     // Clean up session
-                    session()->forget(['booking_id', 'adoption_fee', 'animal_name', 'bill_code', 'reference_no']);
+                    session()->forget(['booking_id', 'adoption_fee', 'animal_ids', 'animal_names', 'bill_code', 'reference_no', 'fee_breakdowns']);
 
                     Log::info('Payment Success', [
                         'booking_id' => $bookingId,
                         'amount' => $adoptionFee,
+                        'animal_ids' => $animalIds,
                         'bill_code' => $billCode,
                         'reference_no' => $referenceNo
                     ]);
                 }
             }
         } else {
+            // Payment Failed/Pending - Booking remains in 'Confirmed' status
             if ($bookingId) {
                 $booking = Booking::find($bookingId);
 
@@ -570,18 +710,19 @@ class BookingAdoptionController extends Controller
                     Log::info('Payment Failed/Pending', [
                         'booking_id' => $bookingId,
                         'status_id' => $statusId,
+                        'animal_ids' => $animalIds,
                         'bill_code' => $billCode,
                         'reference_no' => $referenceNo
                     ]);
 
-                    // Store bill code and reference for failed transactions too
+                    // Create failed transaction record
                     Transaction::create([
                         'amount' => $adoptionFee,
                         'status' => 'Failed',
-                        'remarks' => 'Failed adoption payment for ' . $animalName . ' (Booking #' . $bookingId . ')',
+                        'remarks' => 'Failed adoption payment for ' . $animalNames . ' (Booking #' . $bookingId . ')',
                         'type' => 'Adoption Fee',
-                        'bill_code' => $billCode, // Store bill code
-                        'reference_no' => $referenceNo, // Store reference number
+                        'bill_code' => $billCode,
+                        'reference_no' => $referenceNo,
                         'userID' => Auth::id(),
                     ]);
                 }
@@ -594,7 +735,8 @@ class BookingAdoptionController extends Controller
             'order_id' => $orderId,
             'booking_id' => $bookingId,
             'amount' => $adoptionFee,
-            'animal_name' => $animalName,
+            'animal_names' => $animalNames,
+            'animal_count' => count($animalIds),
             'reference_no' => $referenceNo,
             'payment_details' => $paymentStatus,
         ]);
@@ -606,7 +748,7 @@ class BookingAdoptionController extends Controller
 
         $billCode = $request->input('billcode');
         $statusId = $request->input('status_id');
-        $referenceNo = $request->input('refno'); // This is your reference number
+        $referenceNo = $request->input('refno');
 
         if (strpos($referenceNo, 'BOOKING-') !== false) {
             $parts = explode('-', $referenceNo);
@@ -615,22 +757,34 @@ class BookingAdoptionController extends Controller
                 $booking = Booking::find($bookingId);
 
                 if ($booking && $statusId == 1) {
+                    // Payment successful - update booking to Completed
                     $booking->update(['status' => 'Completed']);
 
-                    // Check if transaction already exists using bill_code
+                    // Update all animals in this booking to Adopted
+                    $animalIds = $booking->animals->pluck('id')->toArray();
+                    foreach ($animalIds as $animalId) {
+                        Animal::where('id', $animalId)->update(['adoption_status' => 'Adopted']);
+                    }
+
+                    // Check if transaction already exists
                     $existingTransaction = Transaction::where('bill_code', $billCode)->first();
                     if (!$existingTransaction) {
                         Transaction::create([
                             'amount' => $request->input('amount') / 100,
                             'status' => 'Success',
-                            'remarks' => 'Adoption payment (Callback) - Booking #' . $bookingId,
+                            'remarks' => 'Adoption payment (Callback) - Booking #' . $bookingId . ' (' . count($animalIds) . ' animals)',
                             'date' => now(),
                             'type' => 'Adoption Fee',
-                            'bill_code' => $billCode, // Store bill code
-                            'reference_no' => $referenceNo, // Store reference number
+                            'bill_code' => $billCode,
+                            'reference_no' => $referenceNo,
                             'userID' => $booking->userID,
                         ]);
                     }
+
+                    Log::info('Callback: Booking Completed', [
+                        'booking_id' => $bookingId,
+                        'animal_count' => count($animalIds),
+                    ]);
                 }
             }
         }

@@ -122,9 +122,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/bookings/store', [BookingAdoptionController::class, 'store'])->name('bookings.store');
     Route::get('/bookings/{booking}', [BookingAdoptionController::class, 'show'])->name('bookings.show');
     Route::patch('/bookings/{booking}/cancel', [BookingAdoptionController::class, 'cancel'])->name('bookings.cancel');
-   // Route to show the fee modal (GET request)
-    Route::get('/bookings/{booking}/adoption-fee', [BookingAdoptionController::class, 'showAdoptionFee'])
-        ->name('bookings.adoption-fee');
+
 
     Route::patch('/bookings/{booking}/confirm', [BookingAdoptionController::class, 'confirm'])
         ->name('bookings.confirm');
