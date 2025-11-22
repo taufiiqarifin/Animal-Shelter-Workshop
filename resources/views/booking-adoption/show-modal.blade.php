@@ -55,19 +55,21 @@
                             @foreach($animals as $animal)
                                 <label class="cursor-pointer">
                                     <div class="bg-white rounded-xl p-4 shadow-md border-2 border-transparent hover:border-purple-500 transition relative">
-                                        <input type="radio" name="selected_animal_id" value="{{ $animal->id }}" class="absolute top-2 right-2 w-5 h-5" @if($loop->first) checked @endif required>
+                                        <input type="checkbox" name="selected_animal_ids[]" value="{{ $animal->id }}"
+                                               class="absolute top-2 right-2 w-5 h-5"
+                                               @if($loop->first) checked @endif>
                                         @if($animal->images && $animal->images->count() > 0)
                                             <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
                                                  alt="{{ $animal->name }}"
                                                  class="w-full h-40 object-cover rounded-lg mb-3">
                                         @else
                                             <div class="w-full h-40 bg-gradient-to-br from-purple-300 to-purple-400 rounded-lg flex items-center justify-center mb-3">
-                                        <span class="text-5xl">
-                                            @if(strtolower($animal->species) == 'dog') 🐕
-                                            @elseif(strtolower($animal->species) == 'cat') 🐈
-                                            @else 🐾
-                                            @endif
-                                        </span>
+                            <span class="text-5xl">
+                                @if(strtolower($animal->species) == 'dog') 🐕
+                                @elseif(strtolower($animal->species) == 'cat') 🐈
+                                @else 🐾
+                                @endif
+                            </span>
                                             </div>
                                         @endif
                                         <div class="text-gray-800 font-semibold">{{ $animal->name }}</div>
@@ -204,21 +206,34 @@
     // Open Adoption Fee modal
     function openAdoptionFeeModal(bookingId) {
         const container = document.getElementById('adoptionFeeModalContainer');
-        container.innerHTML = '<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white rounded-lg p-6"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</div></div>';
+        container.innerHTML = `<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</div>
+    </div>`;
 
-        fetch(`/bookings/${bookingId}/adoption-fee`, {
+        // Get all selected animal IDs
+        const selectedCheckboxes = document.querySelectorAll('#selectAnimalForm input[name="selected_animal_ids[]"]:checked');
+        if(selectedCheckboxes.length === 0){
+            container.innerHTML = `<div class="text-center p-6 text-red-600">Please select at least one animal.</div>`;
+            return;
+        }
+
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+        // Fetch adoption fee for all selected animals
+        fetch(`/bookings/${bookingId}/adoption-fee?animal_ids[]=${selectedIds.join('&animal_ids[]=')}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-            .then(response => {
-                if(!response.ok) throw new Error('HTTP error! status: ' + response.status);
-                return response.text();
+            .then(res => {
+                if(!res.ok) throw new Error('HTTP error ' + res.status);
+                return res.text();
             })
             .then(html => {
                 container.innerHTML = html;
             })
-            .catch(error => {
-                console.error('Error loading adoption fee:', error);
-                container.innerHTML = '<div class="text-red-600 text-center p-6">Failed to load adoption fee.</div>';
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = `<div class="text-red-600 text-center p-6">Failed to load adoption fee.</div>`;
             });
     }
+
 </script>

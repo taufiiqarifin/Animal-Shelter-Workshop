@@ -239,22 +239,93 @@ class BookingAdoptionController extends Controller
 
     public function showAdoptionFee(Booking $booking, Request $request)
     {
-        if ($booking->userID !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
+        try {
+            // Authorization
+            if ($booking->userID !== Auth::id()) {
+                abort(403, 'Unauthorized action.');
+            }
+
+            // Get selected animals from request (support multiple IDs)
+            $animalIds = $request->query('animal_ids', $booking->animals->pluck('id')->toArray());
+
+            // Avoid ambiguous 'id' by prefixing table name
+            $animals = $booking->animals()
+                ->whereIn('animal.id', $animalIds)
+                ->with(['medicals', 'vaccinations']) // eager load
+                ->get();
+
+            $totalFee = 0;
+            $allFeeBreakdowns = [];
+
+            foreach ($animals as $animal) {
+                $medicalRecords = $animal->medicalRecords ?? collect();
+                $vaccinationRecords = $animal->vaccinations ?? collect();
+
+                // Calculate fee per animal
+                $feeBreakdown = $this->calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords);
+
+                $totalFee += $feeBreakdown['total_fee'];
+                $allFeeBreakdowns[$animal->id] = $feeBreakdown;
+            }
+
+            // Return view with all animals and fees
+            return view('booking-adoption.adoption', compact('booking', 'animals', 'allFeeBreakdowns', 'totalFee'));
+
+        } catch (\Throwable $e) {
+            \Log::error('Show Adoption Fee Error: BookingID=' . $booking->id . ' | ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Return a JSON error for AJAX requests
+            if ($request->ajax()) {
+                return response()->json(['error' => 'Failed to load adoption fee details.'], 500);
+            }
+
+            // Or fallback for normal requests
+            abort(500, 'Failed to load adoption fee details.');
         }
-
-        // Get the selected animal
-        $animalId = $request->query('animal_id');
-        $animal = $booking->animals()->findOrFail($animalId);
-
-        $medicalRecords = Medical::where('animalID', $animal->id)->get();
-        $vaccinationRecords = Vaccination::where('animalID', $animal->id)->get();
-
-        $feeBreakdown = $this->calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords);
-
-        return view('booking-adoption.adoption-fee', compact('booking', 'animal', 'feeBreakdown', 'medicalRecords', 'vaccinationRecords'));
     }
 
+    protected function calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords): array
+    {
+        // Base adoption fee (can be customized per species)
+        $speciesBaseFees = [
+            'dog' => 150,
+            'cat' => 120,
+            // Add other species if needed
+        ];
+
+        $species = strtolower($animal->species);
+        $baseFee = $speciesBaseFees[$species] ?? 100; // default RM 100 if species not listed
+
+        // Medical fee
+        $medicalRate = 20; // RM 20 per medical record
+        $medicalCount = $medicalRecords->count();
+        $medicalFee = $medicalCount * $medicalRate;
+
+        // Vaccination fee
+        $vaccinationRate = 15; // RM 15 per vaccination
+        $vaccinationCount = $vaccinationRecords->count();
+        $vaccinationFee = $vaccinationCount * $vaccinationRate;
+
+        // Total fee
+        $totalFee = $baseFee + $medicalFee + $vaccinationFee;
+
+        // Return detailed breakdown
+        return [
+            'animal_id' => $animal->id,
+            'animal_name' => $animal->name,
+            'animal_species' => $animal->species,
+            'base_fee' => $baseFee,
+            'medical_rate' => $medicalRate,
+            'medical_count' => $medicalCount,
+            'medical_fee' => $medicalFee,
+            'vaccination_rate' => $vaccinationRate,
+            'vaccination_count' => $vaccinationCount,
+            'vaccination_fee' => $vaccinationFee,
+            'total_fee' => $totalFee,
+        ];
+    }
 
     public function createBill(Booking $booking, $adoptionFee)
     {

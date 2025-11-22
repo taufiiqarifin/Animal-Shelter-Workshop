@@ -121,9 +121,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/bookings/{booking}', [BookingAdoptionController::class, 'show'])->name('bookings.show');
     Route::patch('/bookings/{booking}/cancel', [BookingAdoptionController::class, 'cancel'])->name('bookings.cancel');
    // Route to show the fee modal (GET request)
-    Route::get('//bookings/{id}/adoption-fee', [BookingAdoptionController::class, 'showAdoptionFee'])->name('bookings.adoption-fee');
-    // Route to confirm booking (PATCH request - only updates status)
-    Route::patch('/bookings/{booking}/confirm', [BookingAdoptionController::class, 'confirm'])->name('bookings.confirm')->middleware('auth');
+    Route::get('/bookings/{booking}/adoption-fee', [BookingAdoptionController::class, 'showAdoptionFee'])
+        ->name('bookings.adoption-fee');
+
+    Route::patch('/bookings/{booking}/confirm', [BookingAdoptionController::class, 'confirm'])
+        ->name('bookings.confirm');
 
     Route::get('/payment/status', [BookingAdoptionController::class, 'paymentStatus'])->name('toyyibpay-status');
     Route::post('/payment/callback', [BookingAdoptionController::class, 'callback'])->name('toyyibpay-callback');
