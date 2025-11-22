@@ -192,6 +192,7 @@
                                            id="appointmentTime"
                                            name="appointment_time"
                                            required
+                                           step="1"
                                            class="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-gray-700 rounded-xl p-3.5 text-base transition-all duration-200">
                                 </div>
                             </div>
@@ -251,11 +252,14 @@
 </form>
 
 <script>
-    // Remove animal function (replaces nested form)
+    // Set base URL for remove action (using route helper)
+    const removeBaseUrl = "{{ url('visit-list/remove') }}/";
+
+    // Remove animal from visit list
     function removeAnimal(animalId, animalName) {
         if (confirm(`Remove ${animalName} from your visit list?`)) {
             const form = document.getElementById('removeAnimalForm');
-            form.action = `{{ url('visit/list/remove') }}/${animalId}`;
+            form.action = removeBaseUrl + animalId;
             form.submit();
         }
     }
@@ -285,13 +289,16 @@
 
     // Enable / Disable Confirm Button
     function updateConfirmButton() {
-        const appointmentInput = document.getElementById('appointmentDate');
+        const appointmentDate = document.getElementById('appointmentDate');
+        const appointmentTime = document.getElementById('appointmentTime');
         const termsCheckbox = document.querySelector('input[name="terms"]');
         const confirmBtn = document.getElementById('confirmBookingBtn');
 
-        if (!appointmentInput || !termsCheckbox) return;
+        if (!appointmentDate || !appointmentTime || !termsCheckbox) return;
 
-        const isValid = appointmentInput.value.trim() !== '' && termsCheckbox.checked;
+        const isValid = appointmentDate.value.trim() !== '' &&
+            appointmentTime.value.trim() !== '' &&
+            termsCheckbox.checked;
 
         confirmBtn.disabled = !isValid;
         if (isValid) {
@@ -306,12 +313,17 @@
     // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('visitListForm');
-        const appointmentInput = document.getElementById('appointmentDate');
+        const appointmentDate = document.getElementById('appointmentDate');
+        const appointmentTime = document.getElementById('appointmentTime');
         const termsCheckbox = document.querySelector('input[name="terms"]');
 
-        if(appointmentInput){
-            appointmentInput.addEventListener('input', updateConfirmButton);
-            appointmentInput.addEventListener('change', updateConfirmButton);
+        if(appointmentDate){
+            appointmentDate.addEventListener('input', updateConfirmButton);
+            appointmentDate.addEventListener('change', updateConfirmButton);
+        }
+        if(appointmentTime){
+            appointmentTime.addEventListener('input', updateConfirmButton);
+            appointmentTime.addEventListener('change', updateConfirmButton);
         }
         if(termsCheckbox){
             termsCheckbox.addEventListener('change', updateConfirmButton);
@@ -319,10 +331,14 @@
 
         if(form) {
             form.addEventListener('submit', function(e){
-                if(!appointmentInput.value || !termsCheckbox.checked){
+                if(!appointmentDate.value || !appointmentTime.value || !termsCheckbox.checked){
                     e.preventDefault();
-                    alert('Please select a date and accept terms.');
-                    appointmentInput.focus();
+                    alert('Please select a date, time and accept terms.');
+                    if(!appointmentDate.value) {
+                        appointmentDate.focus();
+                    } else if(!appointmentTime.value) {
+                        appointmentTime.focus();
+                    }
                 }
             });
         }

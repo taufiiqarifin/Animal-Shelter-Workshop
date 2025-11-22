@@ -193,7 +193,7 @@ class BookingAdoptionController extends Controller
             \Log::info('=== CONFIRM APPOINTMENT COMPLETED SUCCESSFULLY ===');
 
             return redirect()->route('animal-management.index')
-                ->with('success', 'Your visit appointment has been scheduled! We will notify you once it\'s confirmed.');
+                ->with('success', 'Your visit appointment has been scheduled!');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed', ['errors' => $e->errors()]);
