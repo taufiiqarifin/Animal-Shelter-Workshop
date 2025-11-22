@@ -192,7 +192,6 @@
                                            id="appointmentTime"
                                            name="appointment_time"
                                            required
-                                           step="1"
                                            class="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-gray-700 rounded-xl p-3.5 text-base transition-all duration-200">
                                 </div>
                             </div>
