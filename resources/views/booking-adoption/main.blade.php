@@ -260,10 +260,10 @@
         }
     });
 
-    // Back to booking details from adoption fee modal
+    // Back to booking details - just close adoption fee modal
+    // Booking details modal is still open underneath
     function backToBookingDetails(bookingId) {
         closeModal('adoptionFeeModal-' + bookingId);
-        openModal('bookingModal-' + bookingId);
     }
 
     // Update selection count and estimated fee in booking details modal
@@ -314,12 +314,14 @@
             const animalSpecies = cb.dataset.animalSpecies;
             const baseFee = parseFloat(cb.dataset.baseFee) || 0;
             const medicalFee = parseFloat(cb.dataset.medicalFee) || 0;
+            const medicalCount = parseInt(cb.dataset.medicalCount) || 0;
             const vaccinationFee = parseFloat(cb.dataset.vaccinationFee) || 0;
+            const vaccinationCount = parseInt(cb.dataset.vaccinationCount) || 0;
             const totalFee = parseFloat(cb.dataset.fee) || 0;
 
             grandTotal += totalFee;
 
-            // Create animal card (read-only)
+            // Create animal card (read-only) with detailed breakdown
             const animalCard = document.createElement('div');
             animalCard.className = 'flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200';
             animalCard.innerHTML = `
@@ -332,9 +334,9 @@
                         <div>
                             <p class="font-semibold text-gray-800">${animalName} (${animalSpecies})</p>
                             <p class="text-sm text-gray-600">
-                                Base: RM ${baseFee.toFixed(2)},
-                                Medical: RM ${medicalFee.toFixed(2)},
-                                Vaccination: RM ${vaccinationFee.toFixed(2)}
+                                Base: RM ${baseFee.toFixed(2)} |
+                                Medical: RM ${medicalFee.toFixed(2)} (${medicalCount} record${medicalCount !== 1 ? 's' : ''}) |
+                                Vaccination: RM ${vaccinationFee.toFixed(2)} (${vaccinationCount} shot${vaccinationCount !== 1 ? 's' : ''})
                             </p>
                         </div>
                     </div>

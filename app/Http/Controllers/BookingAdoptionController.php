@@ -38,23 +38,19 @@ class BookingAdoptionController extends Controller
         return view('booking-adoption.main', compact('bookings'));
     }
 
-    public function addToVisitList($animalId) //book multiple animals to adopt
-    {
-        $list = session()->get('visit_list', []);
-
-        if (!in_array($animalId, $list)) {
-            $list[] = $animalId;
-        }
-
-        session()->put('visit_list', $list);
-
-        return back()->with('success', 'Animal added to your visit list.');
-    }
-
+    // Show visit list
     public function indexList()
     {
         $list = session()->get('visit_list', []);
-        $animals = Animal::whereIn('id', $list)->get();
+
+        // Only fetch animals in the session list
+        $animals = Animal::whereIn('id', $list)
+            ->orderByRaw("FIELD(id," . implode(',', $list) . ")") // optional: keep order
+            ->get();
+
+        // Clean session: remove any IDs that no longer exist
+        $validIds = $animals->pluck('id')->toArray();
+        session()->put('visit_list', $validIds);
 
         return view('booking-adoption.visit-list', compact('animals'));
     }
@@ -64,28 +60,29 @@ class BookingAdoptionController extends Controller
     {
         $list = session()->get('visit_list', []);
 
-        if (!in_array($animalId, $list)) {
+        // Only add if exists in DB
+        if (Animal::where('id', $animalId)->exists() && !in_array($animalId, $list)) {
             $list[] = $animalId;
         }
 
-        session()->put('visit_list', $list);
+        session()->put('visit_list', array_values($list));
 
-        return back()->with('success', 'Animal added to your visit list. View the list in the main animal page.');
+        return back()->with('success', 'Animal added to your visit list.');
     }
 
     // Remove animal from visit list
     public function removeList($animalId)
     {
         $list = session()->get('visit_list', []);
-
-        $list = array_filter($list, function ($id) use ($animalId) {
-            return $id != $animalId;
-        });
-
+        $list = array_values(array_diff($list, [$animalId])); // removes ID safely
         session()->put('visit_list', $list);
+
+        session()->flash('open_visit_modal', true);
 
         return back()->with('success', 'Animal removed from visit list.');
     }
+
+
 
 
     public function storeBooking(Request $request) //store booking wiith multiple animals

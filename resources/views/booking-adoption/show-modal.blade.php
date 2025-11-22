@@ -6,16 +6,34 @@
     $allFeeBreakdowns = [];
     $totalFee = 0;
 
+    // Species-based fee structure (same as controller)
+    $speciesBaseFees = [
+        'dog' => 150,
+        'cat' => 100,
+    ];
+    $medicalRate = 20;      // RM 20 per medical record
+    $vaccinationRate = 15;  // RM 15 per vaccination
+
     if ($animals->isNotEmpty()) {
         foreach ($animals as $animal) {
-            $baseFee = 50;
-            $medicalFee = $animal->medicals ? $animal->medicals->sum('cost') : 0;
-            $vaccinationFee = $animal->vaccinations ? $animal->vaccinations->sum('cost') : 0;
+            $species = strtolower($animal->species);
+            $baseFee = $speciesBaseFees[$species] ?? 100; // default RM 100
+
+            $medicalCount = $animal->medicals ? $animal->medicals->count() : 0;
+            $medicalFee = $medicalCount * $medicalRate;
+
+            $vaccinationCount = $animal->vaccinations ? $animal->vaccinations->count() : 0;
+            $vaccinationFee = $vaccinationCount * $vaccinationRate;
+
             $animalTotal = $baseFee + $medicalFee + $vaccinationFee;
 
             $allFeeBreakdowns[$animal->id] = [
                 'base_fee' => $baseFee,
+                'medical_rate' => $medicalRate,
+                'medical_count' => $medicalCount,
                 'medical_fee' => $medicalFee,
+                'vaccination_rate' => $vaccinationRate,
+                'vaccination_count' => $vaccinationCount,
                 'vaccination_fee' => $vaccinationFee,
                 'total_fee' => $animalTotal,
             ];

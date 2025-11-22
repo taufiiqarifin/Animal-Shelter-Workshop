@@ -67,9 +67,9 @@
                             Fee Information
                         </h4>
                         <ul class="text-sm text-blue-700 space-y-1">
-                            <li><strong>Base Fee:</strong> RM 50.00 per animal (covers shelter care & processing)</li>
-                            <li><strong>Medical Fee:</strong> Covers any treatments the animal received</li>
-                            <li><strong>Vaccination Fee:</strong> Covers all vaccinations administered</li>
+                            <li><strong>Base Fee:</strong> RM 150 (Dog) / RM 100 (Cat) — covers shelter care & processing</li>
+                            <li><strong>Medical Fee:</strong> RM 20 per medical record/treatment</li>
+                            <li><strong>Vaccination Fee:</strong> RM 15 per vaccination administered</li>
                         </ul>
                     </div>
 

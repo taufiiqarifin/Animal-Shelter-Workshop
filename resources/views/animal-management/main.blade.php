@@ -12,12 +12,25 @@
 
     <!-- Page Header -->
     <div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 class="text-4xl font-bold mb-2">Our Animals</h1>
-            <p class="text-purple-100">Browse all animals currently in our care</p>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+
+            <!-- Left: Title -->
+            <div>
+                <h1 class="text-4xl font-bold mb-2">Our Animals</h1>
+                <p class="text-purple-100">Browse all animals currently in our care</p>
+            </div>
+
+            <!-- Right: Visit List Button -->
+            <button onclick="openVisitModal()"
+                    class="bg-white/20 hover:bg-white/30 text-white px-4 py-3 rounded-xl
+           transition flex items-center gap-2 shadow-lg backdrop-blur">
+                <i class="fas fa-list text-xl"></i>
+                <span class="hidden sm:inline font-semibold">Visit List</span>
+            </button>
         </div>
     </div>
 
+    @include('booking-adoption.visit-list')
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         @if (session('success'))
@@ -86,8 +99,8 @@
                         <!-- Animal Image -->
                         <div class="h-48 bg-gradient-to-br from-purple-300 to-purple-400 flex items-center justify-center overflow-hidden">
                             @if($animal->images && $animal->images->count() > 0)
-                                <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}" 
-                                     alt="{{ $animal->name }}" 
+                                <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
+                                     alt="{{ $animal->name }}"
                                      class="w-full h-full object-cover">
                             @else
                                 @if(strtolower($animal->species) == 'dog')
@@ -116,7 +129,7 @@
                                 <p><span class="font-semibold">Species:</span> {{ $animal->species }}</p>
                                 <p><span class="font-semibold">Age:</span> {{ $animal->age }} </p>
                                 <p><span class="font-semibold">Gender:</span> {{ $animal->gender }}</p>
-                                <p><span class="font-semibold">Location:</span> 
+                                <p><span class="font-semibold">Location:</span>
                                     @if($animal->slot)
                                         Slot {{ $animal->slot->name ?? $animal->slot->id }} - {{ $animal->slot->section }}
                                     @else
@@ -128,7 +141,7 @@
                             <p class="text-gray-700 text-sm mb-4 line-clamp-2">{{ Str::limit($animal->health_details, 100) }}</p>
 
                             <div class="flex space-x-2">
-                                <a href="{{ route('animal-management.show', $animal->id) }}" 
+                                <a href="{{ route('animal-management.show', $animal->id) }}"
                                    class="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-2 rounded-lg font-medium transition duration-300 text-center">
                                     View Details
                                 </a>
