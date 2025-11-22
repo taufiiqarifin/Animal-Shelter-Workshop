@@ -352,6 +352,14 @@
             hiddenInputsContainer.appendChild(hiddenInput);
         });
 
+        // *** ADD THIS: Create hidden input for total fee ***
+        const totalFeeInput = document.createElement('input');
+        totalFeeInput.type = 'hidden';
+        totalFeeInput.name = 'total_fee';
+        totalFeeInput.value = grandTotal.toFixed(2);
+        hiddenInputsContainer.appendChild(totalFeeInput);
+        // *** END OF ADDITION ***
+
         // Update grand total
         grandTotalEl.innerText = 'RM ' + grandTotal.toFixed(2);
 

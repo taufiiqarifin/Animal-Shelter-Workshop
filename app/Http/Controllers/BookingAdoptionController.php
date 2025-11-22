@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Animal;
 use App\Models\VisitList;
 use App\Models\Medical;
-use App\Models\Vaccination;
+use App\Models\AnimalBooking;
 use App\Models\Transaction;
 use App\Models\Booking;
 use App\Models\Adoption;
@@ -405,7 +405,7 @@ class BookingAdoptionController extends Controller
             }
 
             // Return view with all animals and fees
-            return view('booking-adoption.adoption', compact('booking', 'animals', 'allFeeBreakdowns', 'totalFee'));
+            return view('booking-adoption.main', compact('booking', 'animals', 'allFeeBreakdowns', 'totalFee'));
 
         } catch (\Throwable $e) {
             \Log::error('Show Adoption Fee Error: BookingID=' . $booking->id . ' | ' . $e->getMessage(), [
@@ -463,97 +463,125 @@ class BookingAdoptionController extends Controller
         ];
     }
 
-    public function confirm(Request $request, Booking $booking)
+    public function confirm(Request $request, $bookingId)
     {
-        // Check authorization
-        if ($booking->userID !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
+        // Log raw received input
+        Log::info('Confirm Booking - Raw Request Input', [
+            'booking_id' => $bookingId,
+            'input' => $request->all(),
+            'user' => auth()->id()
+        ]);
 
         try {
+
+            Log::info("Running validation for booking confirmation...", ['booking_id' => $bookingId]);
+
+            // Validate
             $validated = $request->validate([
-                'animal_ids'   => 'required|array|min:1',
+                'animal_ids' => 'required|array|min:1',
                 'animal_ids.*' => 'required|exists:animal,id',
-                'total_fee'    => 'required|numeric|min:0',
-                'agree_terms'  => 'required|accepted',
+                'total_fee'   => 'required|numeric|min:0',
+                'agree_terms' => 'required|accepted',
             ], [
                 'animal_ids.required' => 'Please select at least one animal.',
                 'animal_ids.min'      => 'Please select at least one animal.',
-                'total_fee.required'  => 'Adoption fee is required.',
                 'agree_terms.required' => 'You must agree to the terms.',
                 'agree_terms.accepted' => 'You must agree to the terms.',
             ]);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-
-            Log::error('Validation failed for adoption booking:', [
-                'errors' => $e->errors(),           // full validation message array
-                'input'  => $request->all(),        // what user submitted
+            Log::info("Validation passed for booking confirmation", [
+                'booking_id' => $bookingId,
+                'validated'  => $validated
             ]);
 
-            throw $e; // rethrow so Laravel returns normal errors to the view
-        }
+            // Retrieve booking
+            $booking = Booking::with('animals')->findOrFail($bookingId);
 
-        try {
-            // Verify the booking status
+            // Check booking status (case-insensitive)
             $currentStatus = strtolower($booking->status);
-            if (!in_array($currentStatus, ['pending'])) {
-                return back()->with('error', 'This booking cannot be confirmed at this time.');
-            }
-
-            // Get the selected animals and verify they belong to this booking
-            $selectedAnimalIds = $validated['animal_ids'];
-            $bookingAnimalIds = $booking->animals->pluck('id')->toArray();
-
-            $invalidAnimals = array_diff($selectedAnimalIds, $bookingAnimalIds);
-            if (!empty($invalidAnimals)) {
-                return back()->with('error', 'Some selected animals do not belong to this booking.');
-            }
-
-            // Get the selected animals
-            $selectedAnimals = $booking->animals()->whereIn('id', $selectedAnimalIds)->get();
-
-            // Get animal names
-            $animalNames = $selectedAnimals->pluck('name')->toArray();
-            $totalFee = $validated['total_fee'];
-
-            // Update booking status to Confirmed
-            $booking->update(['status' => 'Confirmed']);
-
-            // Update pivot table to mark these animals as part of confirmed adoption
-            foreach ($selectedAnimalIds as $animalId) {
-                $booking->animals()->updateExistingPivot($animalId, [
-                    'updated_at' => now(),
+            if ($currentStatus !== 'pending' && $currentStatus !== 'confirmed') {
+                Log::error("Booking status invalid for confirmation", [
+                    'booking_id' => $bookingId,
+                    'status' => $booking->status,
+                    'normalized_status' => $currentStatus
                 ]);
+
+                return back()->with('error', 'This booking cannot be confirmed. Current status: ' . $booking->status);
             }
+
+            Log::info("Booking status valid for confirmation", [
+                'booking_id' => $bookingId,
+                'status' => $booking->status
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | FIX: Avoid ambiguous "id" column
+            | We reference tables explicitly to avoid SQL error 42702.
+            |--------------------------------------------------------------------------
+            */
+            $bookingAnimalIDs = AnimalBooking::where('AnimalBooking.bookingID', $bookingId)
+                ->pluck('AnimalBooking.animalID')
+                ->toArray();
+
+            Log::info("Comparing selected animal IDs with booking animals", [
+                'booking_id' => $bookingId,
+                'selected' => $validated['animal_ids'],
+                'booking_animals' => $bookingAnimalIDs
+            ]);
+
+            // Ensure ALL selected animals belong to this booking
+            foreach ($validated['animal_ids'] as $chosen) {
+                if (!in_array($chosen, $bookingAnimalIDs)) {
+
+                    Log::error("Animal ID does not belong to this booking", [
+                        'booking_id' => $bookingId,
+                        'invalid_animal' => $chosen
+                    ]);
+
+                    return back()->with('error', 'Invalid animal selection for this booking.');
+                }
+            }
+
+            // Get selected animals for payment
+            $selectedAnimals = Animal::whereIn('id', $validated['animal_ids'])->get();
+            $animalNames = $selectedAnimals->pluck('name')->toArray();
+
+            // Update booking to Confirmed status
+            $booking->update([
+                'totalFee' => $validated['total_fee'],
+                'status' => 'Confirmed', // Use proper case
+            ]);
+
+            Log::info("Booking confirmed, preparing for payment", [
+                'booking_id' => $bookingId,
+                'total_fee' => $validated['total_fee'],
+                'animal_count' => count($validated['animal_ids'])
+            ]);
 
             // Store session info for payment
             session([
                 'booking_id' => $booking->id,
-                'adoption_fee' => $totalFee,
-                'animal_ids' => $selectedAnimalIds,
+                'adoption_fee' => $validated['total_fee'],
+                'animal_ids' => $validated['animal_ids'],
                 'animal_names' => implode(', ', $animalNames),
             ]);
 
-            Log::info('Booking Confirmed', [
-                'booking_id' => $booking->id,
-                'animal_ids' => $selectedAnimalIds,
-                'total_fee' => $totalFee,
-            ]);
-
             // Redirect to payment
-            return $this->createBill($booking, $totalFee, $selectedAnimals);
+            return $this->createBill($booking, $validated['total_fee'], $selectedAnimals);
 
         } catch (\Exception $e) {
-            Log::error('Booking Confirmation Error: ' . $e->getMessage(), [
-                'booking_id' => $booking->id,
-                'user_id' => Auth::id(),
-                'trace' => $e->getTraceAsString(),
+
+            Log::error("Booking Confirmation Error: {$e->getMessage()}", [
+                'booking_id' => $bookingId,
+                'trace' => $e->getTraceAsString()
             ]);
 
-            return back()->with('error', 'Failed to confirm booking. Please try again.');
+            return back()->with('error', 'An unexpected error occurred while confirming the booking.');
         }
     }
+
+
 
     public function createBill(Booking $booking, $adoptionFee, $selectedAnimals)
     {
@@ -619,7 +647,7 @@ class BookingAdoptionController extends Controller
             return redirect('https://dev.toyyibpay.com/' . $billCode);
         } else {
             // If bill creation fails, revert booking status back to Pending
-            $booking->update(['status' => 'Pending']);
+            $booking->update(['status' => 'Confirmed']);
 
             Log::error('Bill Creation Failed', [
                 'booking_id' => $booking->id,
@@ -642,6 +670,7 @@ class BookingAdoptionController extends Controller
         $animalIds = session('animal_ids', []);
         $animalNames = session('animal_names');
         $referenceNo = session('reference_no');
+        $feeBreakdowns = session('fee_breakdowns', []); // Individual fees per animal
 
         $paymentStatus = $this->getBillTransactions($billCode);
 
@@ -670,12 +699,39 @@ class BookingAdoptionController extends Controller
                         'userID' => Auth::id(),
                     ]);
 
-                    // Create adoption record
-                    Adoption::create([
-                        'fee' => $adoptionFee,
-                        'remarks' => count($animalIds) . ' animal(s) adopted: ' . $animalNames,
-                        'bookingID' => $bookingId,
-                        'transactionID' => $transaction->id,
+                    // Create individual adoption record for EACH animal
+                    foreach ($animalIds as $index => $animalId) {
+                        $animal = Animal::find($animalId);
+                        $animalName = $animal ? $animal->name : 'Unknown';
+
+                        // Get individual fee if available, otherwise divide total equally
+                        $individualFee = isset($feeBreakdowns[$animalId])
+                            ? $feeBreakdowns[$animalId]
+                            : ($adoptionFee / count($animalIds));
+
+                        Adoption::create([
+                            'fee' => $individualFee,
+                            'remarks' => 'Adopted: ' . $animalName,
+                            'bookingID' => $bookingId,
+                            'transactionID' => $transaction->id,
+                            'animalID' => $animalId, // Link to specific animal
+                        ]);
+
+                        Log::info('Adoption record created for animal', [
+                            'booking_id' => $bookingId,
+                            'animal_id' => $animalId,
+                            'animal_name' => $animalName,
+                            'fee' => $individualFee,
+                            'transaction_id' => $transaction->id
+                        ]);
+                    }
+
+                    Log::info('All adoption records created', [
+                        'booking_id' => $bookingId,
+                        'animal_count' => count($animalIds),
+                        'total_fee' => $adoptionFee,
+                        'animals' => $animalNames,
+                        'transaction_id' => $transaction->id
                     ]);
 
                     // Update user role
@@ -696,6 +752,7 @@ class BookingAdoptionController extends Controller
                         'booking_id' => $bookingId,
                         'amount' => $adoptionFee,
                         'animal_ids' => $animalIds,
+                        'animal_count' => count($animalIds),
                         'bill_code' => $billCode,
                         'reference_no' => $referenceNo
                     ]);
