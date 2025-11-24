@@ -33,34 +33,64 @@
         </div>
     @endif
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
-        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div class="text-5xl mb-4">📅</div>
-            <p class="text-4xl font-bold text-purple-700 mb-2">{{ $bookings->total() }}</p>
-            <p class="text-gray-600">Total Bookings</p>
+        <!-- Stats Cards as Filter Buttons -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
+            <!-- Total Bookings Card -->
+            <a href="{{ route('bookings.index-admin') }}"
+               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ !request('status') ? 'ring-4 ring-purple-500' : '' }}">
+                <div class="text-5xl mb-4">📅</div>
+                <p class="text-4xl font-bold text-purple-700 mb-2">{{ $totalBookings }}</p>
+                <p class="text-gray-600">Total Bookings</p>
+                @if(!request('status'))
+                    <div class="mt-2 text-xs text-purple-600 font-semibold">● Active</div>
+                @endif
+            </a>
+
+            <!-- Pending Card -->
+            <a href="{{ route('bookings.index-admin', ['status' => 'Pending']) }}"
+               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Pending' ? 'ring-4 ring-yellow-500' : '' }}">
+                <div class="text-5xl mb-4">⏳</div>
+                <p class="text-4xl font-bold text-yellow-600 mb-2">{{ $statusCounts['Pending'] ?? 0 }}</p>
+                <p class="text-gray-600">Pending</p>
+                @if(request('status') == 'Pending')
+                    <div class="mt-2 text-xs text-yellow-600 font-semibold">● Active</div>
+                @endif
+            </a>
+
+            <!-- Confirmed Card -->
+            <a href="{{ route('bookings.index-admin', ['status' => 'Confirmed']) }}"
+               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Confirmed' ? 'ring-4 ring-blue-500' : '' }}">
+                <div class="text-5xl mb-4">✅</div>
+                <p class="text-4xl font-bold text-blue-600 mb-2">{{ $statusCounts['Confirmed'] ?? 0 }}</p>
+                <p class="text-gray-600">Confirmed</p>
+                @if(request('status') == 'Confirmed')
+                    <div class="mt-2 text-xs text-blue-600 font-semibold">● Active</div>
+                @endif
+            </a>
+
+            <!-- Completed Card -->
+            <a href="{{ route('bookings.index-admin', ['status' => 'Completed']) }}"
+               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Completed' ? 'ring-4 ring-green-500' : '' }}">
+                <div class="text-5xl mb-4">🎉</div>
+                <p class="text-4xl font-bold text-green-600 mb-2">{{ $statusCounts['Completed'] ?? 0 }}</p>
+                <p class="text-gray-600">Completed</p>
+                @if(request('status') == 'Completed')
+                    <div class="mt-2 text-xs text-green-600 font-semibold">● Active</div>
+                @endif
+            </a>
+
+            <!-- Cancelled Card -->
+            <a href="{{ route('bookings.index-admin', ['status' => 'Cancelled']) }}"
+               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Cancelled' ? 'ring-4 ring-red-500' : '' }}">
+                <div class="text-5xl mb-4">❌</div>
+                <p class="text-4xl font-bold text-red-600 mb-2">{{ $statusCounts['Cancelled'] ?? 0 }}</p>
+                <p class="text-gray-600">Cancelled</p>
+                @if(request('status') == 'Cancelled')
+                    <div class="mt-2 text-xs text-red-600 font-semibold">● Active</div>
+                @endif
+            </a>
         </div>
-        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div class="text-5xl mb-4">⏳</div>
-            <p class="text-4xl font-bold text-yellow-600 mb-2">{{ $statusCounts['Pending'] ?? 0 }}</p>
-            <p class="text-gray-600">Pending</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div class="text-5xl mb-4">✅</div>
-            <p class="text-4xl font-bold text-blue-600 mb-2">{{ $statusCounts['Confirmed'] ?? 0 }}</p>
-            <p class="text-gray-600">Confirmed</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div class="text-5xl mb-4">🎉</div>
-            <p class="text-4xl font-bold text-green-600 mb-2">{{ $statusCounts['Completed'] ?? 0 }}</p>
-            <p class="text-gray-600">Completed</p>
-        </div>
-        <div class="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div class="text-5xl mb-4">❌</div>
-            <p class="text-4xl font-bold text-red-600 mb-2">{{ $statusCounts['Cancelled'] ?? 0 }}</p>
-            <p class="text-gray-600">Cancelled</p>
-        </div>
-    </div>
+
 
     @if($bookings->isEmpty())
         <div class="bg-white rounded-lg shadow-lg p-12 text-center">

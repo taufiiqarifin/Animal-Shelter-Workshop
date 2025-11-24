@@ -216,19 +216,26 @@ class BookingAdoptionController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $bookings = Booking::where('userID', Auth::id())
+        $query = Booking::where('userID', Auth::id())
             ->with([
                 'animals.images',       // For displaying animal photos
                 'animals.medicals',     // For calculating medical fees
                 'animals.vaccinations', // For calculating vaccination fees
                 'user',                 // For booker information
                 'adoptions'             // For showing adoption status
-            ])
-            ->orderBy('appointment_date', 'desc')
+            ]);
+
+        // Filter by status if provided
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $bookings = $query->orderBy('appointment_date', 'desc')
             ->orderBy('appointment_time', 'desc')
-            ->paginate(6);
+            ->paginate(6)
+            ->appends($request->query());
 
         // Count statuses for this user only
         $statusCounts = Booking::where('userID', Auth::id())
@@ -236,30 +243,43 @@ class BookingAdoptionController extends Controller
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        return view('booking-adoption.main', compact('bookings', 'statusCounts'));
+        // Calculate total of all bookings (unfiltered)
+        $totalBookings = $statusCounts->sum();
+
+        return view('booking-adoption.main', compact('bookings', 'statusCounts','totalBookings'));
     }
 
     /**
      * Display a listing of all bookings for admin.
      */
-    public function indexAdmin()
+    public function indexAdmin(Request $request)
     {
-        $bookings = Booking::with([
+        $query = Booking::with([
             'animals.images',
             'animals.medicals',
             'animals.vaccinations',
             'user',
             'adoptions'
-        ])
-            ->orderBy('appointment_date', 'desc')
+        ]);
+
+        // Filter by status if provided
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $bookings = $query->orderBy('appointment_date', 'desc')
             ->orderBy('appointment_time', 'desc')
-            ->paginate(6);
+            ->paginate(6)
+            ->appends($request->query());
 
         $statusCounts = Booking::select('status', DB::raw('COUNT(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        return view('booking-adoption.admin', compact('bookings', 'statusCounts'));
+        // Calculate total of all bookings (unfiltered)
+        $totalBookings = $statusCounts->sum();
+
+        return view('booking-adoption.admin', compact('bookings', 'statusCounts', 'totalBookings'));
     }
 
     // Cancel a booking

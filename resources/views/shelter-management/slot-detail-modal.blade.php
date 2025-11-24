@@ -96,19 +96,7 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="bg-gray-50 p-6 border-t flex justify-end gap-3">
-            <button onclick="closeSlotDetailModal()" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
-                Close
-            </button>
-            @role('admin|caretaker')
-            <button onclick="editSlotFromDetail()" id="editSlotBtn" class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-600 hover:to-purple-700 transition duration-300">
-                <i class="fas fa-edit mr-2"></i>Edit Slot
-            </button>
-            @endrole
-        </div>
+        </div>gi
     </div>
 </div>
 
