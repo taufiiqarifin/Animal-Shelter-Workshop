@@ -9,16 +9,16 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <!-- Before closing </body> tag -->
-   
+
 </head>
 <body class="bg-gradient-to-br from-purple-600 to-purple-800 min-h-screen flex flex-col">
-    
+
     <!-- Include Navbar -->
     @include('navbar')
     @include('stray-reporting.create')
     @include('stray-reporting.my-submitted-report')
 
-    
+
 
     <!-- Main Content -->
     <div class="flex-1 flex items-center justify-center p-4">
@@ -34,7 +34,7 @@
             @endif
 
             <div class="grid grid-cols-1 md:grid-cols-2">
-                
+
                 <!-- Left Section -->
                 <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-10 md:p-12 flex flex-col justify-center">
                     <div class="text-6xl mb-6">🐾</div>
@@ -50,7 +50,6 @@
                             'Track animal records',
                             'Manage adoptions',
                             'Medical history tracking',
-                            'Volunteer coordination'
                         ] as $item)
                             <li class="flex items-center">
                                 <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>

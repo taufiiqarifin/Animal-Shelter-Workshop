@@ -1,7 +1,7 @@
 <!-- Modal Overlay -->
 <div id="reportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-8">
-        
+
         <!-- Header Section -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-8 relative">
             <button type="button" onclick="closeReportModal()" class="absolute top-4 right-4 text-white hover:text-gray-200 transition">
@@ -27,9 +27,9 @@
                 <div>
                     <label class="block text-gray-800 font-semibold mb-2">Search Address</label>
                     <div class="flex gap-2">
-                        <input type="text" id="addressSearch" placeholder="Enter address to search..." 
+                        <input type="text" id="addressSearch" placeholder="Enter address to search..."
                                class="flex-1 border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition">
-                        <button type="button" id="searchBtn" 
+                        <button type="button" id="searchBtn"
                                 class="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
                             Search
                         </button>
@@ -105,12 +105,12 @@
                     </div>
                 </div>
 
-                //nanti letak required lps multiple accept="image/*" 
+{{--                //nanti letak required lps multiple accept="image/*" --}}
                 <div>
                     <label class="block text-gray-800 font-semibold mb-2">
                         Upload Images <span class="text-red-600">*</span>
                     </label>
-                    <input type="file" name="images[]" multiple accept="image/*" 
+                    <input type="file" name="images[]" multiple accept="image/*"
                            class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition">
                     <p class="text-sm text-gray-600 mt-2">You can upload multiple images (hold Ctrl/Cmd to select multiple files)</p>
                 </div>
@@ -150,7 +150,7 @@ const malaysianStates = [
 function initializeMap() {
     if (mapInitialized) return;
 
-    const defaultLat = 3.139;  
+    const defaultLat = 3.139;
     const defaultLng = 101.6869;
 
     map = L.map('map').setView([defaultLat, defaultLng], 13);
@@ -166,7 +166,7 @@ function initializeMap() {
     function extractStateFromAddress(addressParts) {
         for (let i = addressParts.length - 1; i >= 0; i--) {
             const part = addressParts[i];
-            const foundState = malaysianStates.find(state => 
+            const foundState = malaysianStates.find(state =>
                 part.toLowerCase().includes(state.toLowerCase())
             );
             if (foundState) {
@@ -189,7 +189,7 @@ function initializeMap() {
 
         if (address) document.querySelector('input[name="address"]').value = address;
         if (city) document.querySelector('input[name="city"]').value = city;
-        
+
         if (state && malaysianStates.includes(state)) {
             document.querySelector('select[name="state"]').value = state;
         }
@@ -214,12 +214,12 @@ function initializeMap() {
                     const address = data.display_name || '';
                     const city = data.address.city || data.address.town || data.address.village || data.address.county || '';
                     let state = data.address.state || '';
-                    
+
                     state = state.replace('State', '').trim();
-                    
+
                     document.querySelector('input[name="address"]').value = address;
                     document.querySelector('input[name="city"]').value = city;
-                    
+
                     if (state && malaysianStates.includes(state)) {
                         document.querySelector('select[name="state"]').value = state;
                     }
@@ -235,7 +235,7 @@ function initializeMap() {
         const latitude = document.querySelector('input[name="latitude"]').value;
         const longitude = document.querySelector('input[name="longitude"]').value;
         const state = document.querySelector('select[name="state"]').value;
-        
+
         if (!latitude || !longitude) {
             e.preventDefault();
             mapError.classList.remove('hidden');
@@ -253,7 +253,7 @@ function initializeMap() {
 
         const requiredFields = form.querySelectorAll('[required]');
         let allValid = true;
-        
+
         requiredFields.forEach(field => {
             if (!field.value.trim()) {
                 allValid = false;
@@ -299,7 +299,7 @@ function initializeMap() {
 
     function searchAddress() {
         const query = addressSearch.value.trim();
-        
+
         if (!query) {
             alert('Please enter an address to search');
             return;
@@ -315,15 +315,15 @@ function initializeMap() {
                     const result = data[0];
                     const lat = parseFloat(result.lat);
                     const lng = parseFloat(result.lon);
-                    
+
                     const addressParts = result.display_name.split(',').map(part => part.trim());
                     const address = result.display_name;
-                    
+
                     let city = '';
                     let state = '';
-                    
+
                     for (let part of addressParts) {
-                        const foundState = malaysianStates.find(s => 
+                        const foundState = malaysianStates.find(s =>
                             part.toLowerCase().includes(s.toLowerCase())
                         );
                         if (foundState) {
@@ -331,8 +331,8 @@ function initializeMap() {
                             break;
                         }
                     }
-                    
-                    const stateIndex = addressParts.findIndex(part => 
+
+                    const stateIndex = addressParts.findIndex(part =>
                         malaysianStates.some(s => part.toLowerCase().includes(s.toLowerCase()))
                     );
                     if (stateIndex > 0) {
@@ -362,7 +362,7 @@ function initializeMap() {
 function openReportModal() {
     document.getElementById('reportModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    
+
     // Initialize map after modal is visible
     setTimeout(function() {
         if (!mapInitialized) {

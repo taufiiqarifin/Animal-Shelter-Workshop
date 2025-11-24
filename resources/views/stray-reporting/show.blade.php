@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body class="bg-gradient-to-br from-purple-600 to-purple-800 min-h-screen">
-    
+<body class="bg-white/5 to-purple-800 min-h-screen">
+
     <!-- Include Navbar -->
     @include('navbar')
     <div class="mb-8 bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg p-8 py-12">
@@ -21,7 +21,7 @@
                <p class="text-purple-100">View and manage all submitted reports</p>
             </div>
          </div>
-    
+
 
     <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->
@@ -61,7 +61,7 @@
                     <div class="p-6 md:p-8">
                         <div class="flex items-center justify-between mb-6">
                             <h2 class="text-2xl font-bold text-gray-800">Report Information</h2>
-                            
+
                             <!-- Status Badge -->
                             <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold
                                 @if($report->report_status === 'Pending') bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900
@@ -70,13 +70,13 @@
                                 @elseif($report->report_status === 'In Progress') bg-gradient-to-r from-blue-500 to-blue-600 text-white
                                 @elseif($report->report_status === 'Resolved') bg-gradient-to-r from-purple-500 to-purple-600 text-white
                                 @else bg-gradient-to-r from-gray-500 to-gray-600 text-white @endif">
-                                <i class="fas 
+                                <i class="fas
                                     @if($report->report_status === 'Pending') fa-clock
                                     @elseif($report->report_status === 'Approved') fa-check-circle
                                     @elseif($report->report_status === 'Rejected') fa-times-circle
                                     @elseif($report->report_status === 'In Progress') fa-spinner fa-spin
                                     @elseif($report->report_status === 'Resolved') fa-flag-checkered
-                                    @else fa-info-circle @endif 
+                                    @else fa-info-circle @endif
                                 mr-2"></i>
                                 {{ $report->report_status }}
                             </span>
@@ -89,24 +89,24 @@
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">Location Address</label>
                                     <p class="text-gray-900">{{ $report->address }}</p>
                                 </div>
-                                
+
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">City</label>
                                     <p class="text-gray-900">{{ $report->city }}</p>
                                 </div>
-                                
+
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">State</label>
                                     <p class="text-gray-900">{{ $report->state }}</p>
                                 </div>
-                                
+
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">Coordinates</label>
                                     <p class="text-gray-900 text-sm">
                                         Lat: {{ $report->latitude }}, Lng: {{ $report->longitude }}
                                     </p>
                                 </div>
-                                
+
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
                                     <p class="text-gray-900">
@@ -143,13 +143,13 @@
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
                     <div class="p-6 md:p-8">
                         <h2 class="text-2xl font-bold text-gray-800 mb-4">Report Images</h2>
-                        
+
                         <div class="relative w-full h-64 bg-gray-100 flex items-center justify-center">
                             <!-- Swiper Main Content -->
                             <div id="imageSwiperContent" class="w-full h-full flex items-center justify-center">
                                 @if($report->images && $report->images->count() > 0)
-                                    <img src="{{ asset('storage/' . $report->images->first()->image_path) }}" 
-                                        alt="Report Image 1" 
+                                    <img src="{{ asset('storage/' . $report->images->first()->image_path) }}"
+                                        alt="Report Image 1"
                                         class="max-w-full max-h-full object-contain">
                                 @else
                                     <div class="flex items-center justify-center w-full h-full bg-purple-50 text-5xl text-purple-400">
@@ -181,8 +181,8 @@
                                         <div onclick="goToImage({{ $index }})"
                                             class="flex-shrink-0 w-20 h-20 cursor-pointer rounded-lg overflow-hidden border-2 transition duration-300 {{ $index == 0 ? 'border-green-600' : 'border-gray-300 hover:border-green-400' }}"
                                             id="thumbnail-{{ $index }}">
-                                            <img src="{{ asset('storage/' . $image->image_path) }}" 
-                                                alt="Report Image {{ $loop->iteration }}" 
+                                            <img src="{{ asset('storage/' . $image->image_path) }}"
+                                                alt="Report Image {{ $loop->iteration }}"
                                                 class="w-full h-full object-cover">
                                         </div>
                                     @endforeach
@@ -205,20 +205,20 @@
                         <form action="{{ route('reports.assign-caretaker', $report->id) }}" method="POST" class="mb-6 border-t-2 border-gray-200 pt-6">
                             @csrf
                             @method('PATCH') <!-- This tells Laravel to treat the request as PATCH -->
-                            
+
                             <label class="block text-sm font-semibold text-gray-700 mb-3">Assign to Caretaker</label>
                             <div class="flex gap-2">
-                                <select name="caretaker_id" required 
+                                <select name="caretaker_id" required
                                         class="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
                                     <option value="">Select a caretaker...</option>
                                     @foreach($caretakers as $caretaker)
-                                        <option value="{{ $caretaker->id }}" 
+                                        <option value="{{ $caretaker->id }}"
                                                 {{ $report->rescue && $report->rescue->caretakerID == $caretaker->id ? 'selected' : '' }}>
                                             {{ $caretaker->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <button type="submit" 
+                                <button type="submit"
                                         class="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold transition duration-200 flex items-center justify-center shadow-lg whitespace-nowrap">
                                     <i class="fas fa-user-plus mr-2"></i> Assign
                                 </button>
@@ -272,7 +272,7 @@
 
         // Add a marker for the report location
         const marker = L.marker([{{ $report->latitude }}, {{ $report->longitude }}]).addTo(map);
-        
+
         // Add popup with location info
         marker.bindPopup(`
             <div class="p-2">

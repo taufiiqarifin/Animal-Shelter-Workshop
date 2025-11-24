@@ -476,7 +476,7 @@
                             <!-- Left: Title -->
                             <h2 class="text-xl font-bold text-gray-800">Animal Information</h2>
 
-                            @role('admin|caretaker')
+                            @role('caretaker')
                             <!-- Right: Action Icons -->
                             <div class="flex space-x-4">
                                 <a onclick="openEditModal({{ $animal->id }})"
@@ -605,18 +605,19 @@
                         <i class="fas fa-map-marker-alt text-purple-600 mr-2"></i>
                         Assigned Slot
                     </h2>
+
                     @if($animal->slot)
                         <div class="bg-purple-50 rounded-lg p-4">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-gray-700 font-semibold">Name</span>
                                 <span class="text-purple-700 font-bold text-lg">
-                                    {{ $animal->slot->name ?? $animal->slot->id }}
-                                </span>
+                    {{ $animal->slot->name ?? 'Slot ' . $animal->slot->id }}
+                </span>
                             </div>
 
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-gray-700 font-semibold">Section</span>
-                                <span class="text-gray-800">{{ $animal->slot->section ?? 'Main Shelter' }}</span>
+                                <span class="text-gray-800">{{ $animal->slot->section->name ?? 'Unknown Section' }}</span>
                             </div>
 
                             <div class="flex items-center justify-between mb-4">
@@ -632,54 +633,65 @@
                                 @endphp
 
                                 <span class="px-2 py-1 rounded text-xs font-medium {{ $colorClass }}">
-                                     {{ ucfirst($status) }}
-                                </span>
+                     {{ ucfirst($status) }}
+                </span>
                             </div>
+
                             {{-- Reassign Slot Form --}}
-                            @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('caretaker'))
+                            @role('admin|caretaker')
+                            <div class="border-t border-purple-200 pt-4 mt-4">
                                 <form action="{{ route('animals.assignSlot', $animal->id) }}" method="POST">
                                     @csrf
 
-                                    <label class="text-gray-700 font-semibold">Reassign Slot</label>
-                                    <select name="slot_id" class="w-full border rounded-lg p-2 mb-3" required>
+                                    <label class="block text-gray-700 font-semibold mb-2">Reassign Slot</label>
+                                    <select name="slot_id"
+                                            class="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            required>
+                                        <option value="">Select Slot</option>
                                         @foreach($slots as $slot)
                                             <option value="{{ $slot->id }}"
                                                 {{ $animal->slotID == $slot->id ? 'selected' : '' }}>
-                                                Slot {{ $slot->name ?? $slot->id }} ({{ $slot->section }})
+                                                Slot {{ $slot->name ?? $slot->id }} - {{ $slot->section->name ?? 'Unknown Section' }} ({{ ucfirst($slot->status) }})
                                             </option>
                                         @endforeach
                                     </select>
 
-                                    <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-                                        Update Slot
+                                    <button type="submit"
+                                            class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">
+                                        <i class="fas fa-sync-alt mr-2"></i>Update Slot
                                     </button>
                                 </form>
-                            @endif
+                            </div>
+                            @endrole
                         </div>
                     @else
-                        <div class="bg-gray-50 rounded-lg p-4 text-center text-gray-600">
-                            <i class="fas fa-exclamation-circle text-3xl mb-2 text-gray-400"></i>
-                            <p class="mb-3">No slot assigned</p>
+                        <div class="bg-gray-50 rounded-lg p-6 text-center">
+                            <i class="fas fa-map-marker-slash text-gray-400 text-4xl mb-3"></i>
+                            <p class="text-gray-600 font-medium mb-4">No slot assigned</p>
 
                             {{-- Assign Slot Form --}}
-                            @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('caretaker'))
-                                <form action="{{ route('animals.assignSlot', $animal->id) }}" method="POST">
-                                    @csrf
+                            @role('admin|caretaker')
+                            <form action="{{ route('animals.assignSlot', $animal->id) }}" method="POST" class="mt-4">
+                                @csrf
 
-                                    <select name="slot_id" class="w-full border rounded-lg p-2 mb-3" required>
-                                        <option value="">Select Slot</option>
-                                        @foreach($slots as $slot)
-                                            <option value="{{ $slot->id }}">
-                                                Slot {{ $slot->name ?? $slot->id }} ({{ $slot->section }})
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                <label class="block text-gray-700 font-semibold mb-2">Assign Slot</label>
+                                <select name="slot_id"
+                                        class="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        required>
+                                    <option value="">Select Slot</option>
+                                    @foreach($slots as $slot)
+                                        <option value="{{ $slot->id }}">
+                                            Slot {{ $slot->name ?? $slot->id }} - {{ $slot->section->name ?? 'Unknown Section' }} ({{ ucfirst($slot->status) }})
+                                        </option>
+                                    @endforeach
+                                </select>
 
-                                    <button class="bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-purple-700">
-                                        Assign Slot
-                                    </button>
-                                </form>
-                            @endif
+                                <button type="submit"
+                                        class="w-full bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300">
+                                    <i class="fas fa-plus mr-2"></i>Assign Slot
+                                </button>
+                            </form>
+                            @endrole
                         </div>
                     @endif
                 </div>

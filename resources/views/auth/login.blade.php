@@ -17,13 +17,13 @@
                 <!-- Left Section -->
                 <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-8 md:p-12 flex flex-col justify-center">
                     <div class="text-6xl mb-6">🐾</div>
-                    
+
                     <h1 class="text-4xl font-bold mb-4">Stray Animal Shelter</h1>
-                    
+
                     <p class="text-lg text-purple-100 mb-8 leading-relaxed">
                         Dedicated to caring for and managing stray animals in our community with compassion and professionalism.
                     </p>
-                    
+
                     <ul class="space-y-3">
                         <li class="flex items-center">
                             <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
@@ -37,10 +37,10 @@
                             <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
                             <span>Medical history tracking</span>
                         </li>
-                        <li class="flex items-center">
-                            <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>
-                            <span>Volunteer coordination</span>
-                        </li>
+{{--                        <li class="flex items-center">--}}
+{{--                            <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-500 rounded-full mr-3 text-sm font-bold">✓</span>--}}
+{{--                            <span>Volunteer coordination</span>--}}
+{{--                        </li>--}}
                     </ul>
                 </div>
 

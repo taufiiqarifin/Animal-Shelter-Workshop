@@ -472,23 +472,28 @@ public function update(Request $request, $id)
             $query->where('gender', $request->gender);
         }
 
+        // ⭐ PRIORITIZE Not Adopted animals
+        $query->orderByRaw("CASE WHEN adoption_status = 'Not Adopted' THEN 0 ELSE 1 END");
+
+        // Secondary sorting
         $query->orderBy('created_at', 'desc');
 
         $animals = $query->paginate(12)->appends($request->query());
 
         // ===== Only for logged-in user =====
-        $animalList = collect(); // default empty
+        $animalList = collect();
         if (Auth::check()) {
             $user = Auth::user();
 
             $visitList = VisitList::with('animals')
                 ->firstOrCreate(['userID' => $user->id]);
 
-            $animalList = $visitList->animals; // only this user's visit list
+            $animalList = $visitList->animals;
         }
 
         return view('animal-management.main', compact('animals', 'animalList'));
     }
+
 
     public function show($id)
     {
@@ -507,7 +512,15 @@ public function update(Request $request, $id)
             ->get();
 
         $vets = Vet::all();
-        $slots = Slot::where('status', 'available')->get();
+        // Get available slots + the current slot (if any)
+        $slots = Slot::with('section')
+            ->where(function($query) use ($animal) {
+                $query->where('status', 'available')
+                    ->orWhere('id', $animal->slotID);
+            })
+            ->orderBy('sectionID')
+            ->orderBy('name')
+            ->get();
 
         $bookedSlots = $animal->bookings->map(function($booking) {
             $dateTime = \Carbon\Carbon::parse($booking->appointment_date . ' ' . $booking->appointment_time);

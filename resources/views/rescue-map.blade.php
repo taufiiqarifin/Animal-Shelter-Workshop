@@ -10,18 +10,15 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        
         body {
             font-family: 'Inter', sans-serif;
         }
-        
-        #map { 
-            height: 100%; 
+        #map {
+            height: 100%;
             width: 100%;
             filter: brightness(0.95) contrast(1.05);
             z-index: 0;
         }
-        
         .cluster-marker {
             border-radius: 50%;
             text-align: center;
@@ -35,57 +32,57 @@
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
+
         .cluster-marker:hover {
             transform: scale(1.15);
             box-shadow: 0 15px 35px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.3) inset;
         }
-        
+
         .cluster-small { width: 44px; height: 44px; font-size: 13px; }
         .cluster-medium { width: 54px; height: 54px; font-size: 15px; }
         .cluster-large { width: 64px; height: 64px; font-size: 17px; }
         .cluster-xlarge { width: 76px; height: 76px; font-size: 20px; }
-        
-        .cluster-green { 
+
+        .cluster-green {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
-        .cluster-yellow { 
+        .cluster-yellow {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
-        .cluster-red { 
+        .cluster-red {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         }
-        
+
         .stat-card {
             transition: all 0.3s ease;
         }
-        
+
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        
+
         .glassmorphism {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.8);
             z-index: 10;
         }
-        
+
         .details-panel {
             animation: slideIn 0.3s ease-out;
             z-index: 1000;
         }
-        
+
         @keyframes slideIn {
             from { opacity: 0; transform: translateX(20px); }
             to { opacity: 1; transform: translateX(0); }
         }
-        
+
         .progress-ring {
             transition: stroke-dashoffset 0.5s ease;
         }
-        
+
         .leaflet-popup-content-wrapper {
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
@@ -124,7 +121,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card bg-gradient-to-br from-green-50 to-emerald-100 p-4 rounded-2xl border border-green-200">
                     <div class="flex items-center justify-between">
                         <div>
@@ -138,7 +135,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-2xl border border-red-200">
                     <div class="flex items-center justify-between">
                         <div>
@@ -152,7 +149,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card bg-gradient-to-br from-yellow-50 to-amber-100 p-4 rounded-2xl border border-yellow-200">
                     <div class="flex items-center justify-between">
                         <div>
@@ -166,7 +163,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-2xl border border-purple-200">
                     <div class="flex items-center justify-between">
                         <div>
@@ -180,7 +177,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="stat-card bg-gradient-to-br from-gray-50 to-slate-100 p-4 rounded-2xl border border-gray-200">
                     <div class="flex items-center justify-between">
                         <div>
@@ -199,7 +196,7 @@
 
         <div class="flex-1 relative">
             <div id="map"></div>
-            
+
             <div id="detailsPanel" class="hidden absolute top-6 right-6 glassmorphism rounded-3xl shadow-2xl p-6 w-96 max-h-[calc(100%-3rem)] overflow-y-auto z-[1000] details-panel">
                 <div class="flex justify-between items-start mb-5">
                     <div>
@@ -258,10 +255,10 @@
 
     <script>
         // --- START OF CORRECTED JAVASCRIPT ---
-        
+
         // 1. Initialize map (KEEP this one)
         const map = L.map('map', { zoomControl: false }).setView([37.0902, -95.7129], 5);
-        
+
         // 2. Add controls and tiles
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
@@ -273,32 +270,32 @@
             const clusters = [];
             // Adjusted clusterRadius for better clustering across larger areas
             const clusterRadius = 0.003; // Use a slightly larger radius for initial clustering
-            
+
             reports.forEach(report => {
                 let foundCluster = null;
-                
+
                 for (let cluster of clusters) {
                     // Check if the report is within a 0.5 degree latitude/longitude box
                     // This is a simplified check for clustering in a map context
                     const distance = Math.sqrt(
-                        Math.pow(cluster.lat - report.lat, 2) + 
+                        Math.pow(cluster.lat - report.lat, 2) +
                         Math.pow(cluster.lng - report.lng, 2)
                     );
-                    
+
                     if (distance <= clusterRadius) {
                         foundCluster = cluster;
                         break;
                     }
                 }
-                
+
                 if (foundCluster) {
                     foundCluster.reports.push(report);
                     const count = foundCluster.reports.length;
-                    
+
                     // Recalculate centroid (simple average)
                     foundCluster.lat = ((foundCluster.lat * (count - 1)) + report.lat) / count;
                     foundCluster.lng = ((foundCluster.lng * (count - 1)) + report.lng) / count;
-                    
+
                     switch(report.status) {
                         case 'Success': foundCluster.success++; break;
                         case 'Failed': foundCluster.failed++; break;
@@ -321,7 +318,7 @@
                     });
                 }
             });
-            
+
             return clusters;
         }
 
@@ -330,34 +327,34 @@
         function getClusterStyle(cluster) {
             const total = cluster.reports.length;
             const successRate = total > 0 ? cluster.success / total : 0;
-            
+
             let sizeClass = 'cluster-small';
             if (total > 10) sizeClass = 'cluster-xlarge';
             else if (total > 5) sizeClass = 'cluster-large';
             else if (total > 2) sizeClass = 'cluster-medium';
-            
+
             let colorClass = 'cluster-red';
             if (successRate >= 0.7) colorClass = 'cluster-green';
             else if (successRate >= 0.4) colorClass = 'cluster-yellow';
-            
+
             return { sizeClass, colorClass };
         }
 
         clusters.forEach(cluster => {
             const { sizeClass, colorClass } = getClusterStyle(cluster);
             const total = cluster.reports.length;
-            
+
             const icon = L.divIcon({
                 className: 'custom-div-icon',
                 html: `<div class="cluster-marker ${sizeClass} ${colorClass}">${total}</div>`,
                 iconSize: [50, 50],
                 iconAnchor: [25, 25]
             });
-            
+
             const marker = L.marker([cluster.lat, cluster.lng], { icon: icon })
                 .addTo(map)
                 .on('click', () => showClusterDetails(cluster));
-            
+
             marker.bindTooltip(`<strong>${cluster.city || 'Unknown'}, ${cluster.state || ''}</strong><br>${total} reports`, {
                 direction: 'top',
                 offset: [0, -20],
@@ -374,10 +371,10 @@
             const panel = document.getElementById('detailsPanel');
             const total = cluster.reports.length;
             const successRate = total > 0 ? ((cluster.success / total) * 100).toFixed(1) : 0;
-            
-            document.getElementById('clusterCity').textContent = 
+
+            document.getElementById('clusterCity').textContent =
                 `${cluster.city || 'Unknown'}, ${cluster.state || ''}`;
-            
+
             document.getElementById('clusterStats').innerHTML = `
                 <div class="bg-white rounded-xl p-3 flex justify-between items-center border border-gray-100">
                     <span class="text-sm text-gray-600 font-medium">Total Reports</span>
@@ -412,10 +409,10 @@
                     </div>
                 </div>
             `;
-            
+
             document.getElementById('successRate').textContent = `${successRate}%`;
             document.getElementById('successBar').style.width = `${successRate}%`;
-            
+
             const reportsHTML = cluster.reports.slice(0, 5).map(report => `
                 <div class="bg-white rounded-xl p-3 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all">
                     <div class="flex items-start justify-between mb-2">
@@ -433,7 +430,7 @@
                     ${report.report_status ? `<div class="text-xs text-blue-600 mt-1 font-medium">Report Status: ${report.report_status}</div>` : ''}
                 </div>
             `).join('');
-            
+
             document.getElementById('reportsList').innerHTML = reportsHTML;
             panel.classList.remove('hidden');
         }

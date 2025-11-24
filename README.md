@@ -5,7 +5,7 @@
 <h1 align="center">🐾 Animal Rescue & Adoption Management System</h1>
 
 <p align="center">
-  <b>Developed for University Coursework</b><br>
+  <b>Developed for BITU3923 Workshop II</b><br>
   Built with Laravel, PostgreSQL, and Tailwind CSS
 </p>
 
@@ -50,7 +50,7 @@ The system provides different roles and dashboards for administrators, caretaker
 
 ### 📊 Admin Dashboard
 
--   Overview of reports, rescues, adoptions, and active users
+-   Overview of reports, adoptions, and revenue
 -   Visualization of animal statistics and system metrics
 
 ### ERD
@@ -68,7 +68,6 @@ The system provides different roles and dashboards for administrators, caretaker
 | **Database**            | PostgreSQL + MySQL + Microsoft SQL Server |
 | **Authentication**      | Laravel Breeze                            |
 | **Authorization**       | Spatie Laravel Permission                 |
-| **Email Notifications** | Laravel Mail                              |
 | **Version Control**     | Git / GitHub                              |
 
 ---

@@ -11,7 +11,7 @@
     {{-- Leaflet CSS --}}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body class="bg-gradient-to-br from-purple-600 to-purple-800 min-h-screen">
+<body class="bg-white/5 to-purple-800 min-h-screen">
 
     <!-- Include Navbar -->
     @include('navbar')
@@ -53,7 +53,7 @@
             <div class="bg-white rounded-2xl shadow-2xl p-12 text-center">
                 <div class="text-6xl mb-4">🐾</div>
                 <h3 class="text-2xl font-bold text-gray-800 mb-2">No reports yet</h3>
-                <p class="text-gray-600 mb-6 text-lg"></p> 
+                <p class="text-gray-600 mb-6 text-lg"></p>
             </div>
         @else
             <div class="grid grid-cols-1 gap-6">
@@ -134,8 +134,8 @@
                                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                         @foreach($report->images as $image)
                                             <div class="relative group">
-                                                <img src="{{ asset('storage/' . $image->image_path) }}" 
-                                                     alt="Report Image" 
+                                                <img src="{{ asset('storage/' . $image->image_path) }}"
+                                                     alt="Report Image"
                                                      class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition shadow-md"
                                                      onclick="openImageModal('{{ asset('storage/' . $image->image_path) }}')">
                                                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition rounded-lg flex items-center justify-center">
@@ -151,12 +151,12 @@
 
                             {{-- Actions --}}
                             <div class="mt-6 pt-6 border-t border-gray-200 flex justify-end gap-3 flex-wrap">
-                                <a href="{{ route('reports.show', $report->id) }}" 
+                                <a href="{{ route('reports.show', $report->id) }}"
                                    class="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
                                     View Details
                                 </a>
                                 <!-- @if($report->report_status == 'Pending')
-                                    <a href="{{ route('reports.edit', $report->id) }}" 
+                                    <a href="{{ route('reports.edit', $report->id) }}"
                                        class="px-5 py-3 bg-white border-2 border-purple-600 text-purple-600 font-semibold rounded-lg hover:bg-purple-50 transition duration-300">
                                         Edit Report
                                     </a>
@@ -194,7 +194,7 @@
             // Initialize maps for each report
             @foreach($reports as $report)
                 const map{{ $report->id }} = L.map('map-{{ $report->id }}').setView([{{ $report->latitude }}, {{ $report->longitude }}], 15);
-                
+
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; OpenStreetMap contributors'
                 }).addTo(map{{ $report->id }});

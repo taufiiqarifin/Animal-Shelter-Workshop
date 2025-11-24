@@ -134,7 +134,7 @@
                                         </div>
                                     @endif
                                     <div class="text-gray-800 font-semibold">{{ $animal->name }}</div>
-                                    <div class="text-gray-600 text-sm">{{ $animal->species }} • {{ $animal->age }} years • {{ $animal->gender }}</div>
+                                    <div class="text-gray-600 text-sm">{{ $animal->species }} • {{ $animal->age }} • {{ $animal->gender }}</div>
 
                                     @if(in_array(strtolower($booking->status), ['pending', 'confirmed']))
                                         <div class="mt-2 text-sm font-semibold text-purple-700">

@@ -17,16 +17,17 @@
             <!-- Left: Title -->
             <div>
                 <h1 class="text-4xl font-bold mb-2">Our Animals</h1>
-                <p class="text-purple-100">Browse all animals currently in our care</p>
+                <p class="text-purple-100">Browse all animals currently in our care. Add to visit list for the ones you are interested in adopting.</p>
             </div>
 
+            @role('public user|caretaker|adopter')
             <!-- Right: Visit List Button -->
             <button onclick="openVisitModal()"
                     class="bg-white/20 hover:bg-white/30 text-white px-4 py-3 rounded-xl
            transition flex items-center gap-2 shadow-lg backdrop-blur">
                 <i class="fas fa-list text-xl"></i>
                 <span class="hidden sm:inline font-semibold">Visit List</span>
-            </button>
+            </button>@endrole
         </div>
     </div>
 
@@ -91,80 +92,83 @@
             </form>
         </div>
 
-        <!-- Animals Grid -->
-        @if($animals->count() > 0)
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach($animals as $animal)
-                    <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition duration-300">
-                        <!-- Animal Image -->
-                        <div class="h-48 bg-gradient-to-br from-purple-300 to-purple-400 flex items-center justify-center overflow-hidden">
-                            @if($animal->images && $animal->images->count() > 0)
-                                <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
-                                     alt="{{ $animal->name }}"
-                                     class="w-full h-full object-cover">
-                            @else
-                                @if(strtolower($animal->species) == 'dog')
-                                    <span class="text-8xl">🐕</span>
-                                @elseif(strtolower($animal->species) == 'cat')
-                                    <span class="text-8xl">🐈</span>
+            <!-- Animals Grid -->
+            @if($animals->count() > 0)
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    @foreach($animals as $animal)
+                        <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition duration-300">
+                            <!-- Animal Image -->
+                            <div class="h-48 bg-gradient-to-br from-purple-300 to-purple-400 flex items-center justify-center overflow-hidden">
+                                @if($animal->images && $animal->images->count() > 0)
+                                    <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
+                                         alt="{{ $animal->name }}"
+                                         class="w-full h-full object-cover">
                                 @else
-                                    <span class="text-8xl">🐾</span>
-                                @endif
-                            @endif
-                        </div>
-
-                        <div class="p-6">
-                            <div class="flex justify-between items-start mb-2">
-                                <h3 class="text-xl font-bold text-gray-800">{{ $animal->name }}</h3>
-                                @if($animal->adoption_status == 'Not Adopted')
-                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Available for Adoption</span>
-                                @elseif($animal->adoption_status == 'Adopted')
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Adopted</span>
-                                @else
-                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">{{ $animal->adoption_status }}</span>
-                                @endif
-                            </div>
-
-                            <div class="space-y-2 text-sm text-gray-600 mb-4">
-                                <p><span class="font-semibold">Species:</span> {{ $animal->species }}</p>
-                                <p><span class="font-semibold">Age:</span> {{ $animal->age }} </p>
-                                <p><span class="font-semibold">Gender:</span> {{ $animal->gender }}</p>
-                                <p><span class="font-semibold">Location:</span>
-                                    @if($animal->slot)
-                                        Slot {{ $animal->slot->name ?? $animal->slot->id }} - {{ $animal->slot->section }}
+                                    @if(strtolower($animal->species) == 'dog')
+                                        <span class="text-8xl">🐕</span>
+                                    @elseif(strtolower($animal->species) == 'cat')
+                                        <span class="text-8xl">🐈</span>
                                     @else
-                                        Not Assigned
+                                        <span class="text-8xl">🐾</span>
                                     @endif
-                                </p>
+                                @endif
                             </div>
 
-                            <p class="text-gray-700 text-sm mb-4 line-clamp-2">{{ Str::limit($animal->health_details, 100) }}</p>
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-xl font-bold text-gray-800">{{ $animal->name }}</h3>
+                                    @if($animal->adoption_status == 'Not Adopted')
+                                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Available for adoption</span>
+                                    @elseif($animal->adoption_status == 'Adopted')
+                                        <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Adopted</span>
+                                    @else
+                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">{{ $animal->adoption_status }}</span>
+                                    @endif
+                                </div>
 
-                            <div class="flex space-x-2">
-                                <a href="{{ route('animal-management.show', $animal->id) }}"
-                                   class="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-2 rounded-lg font-medium transition duration-300 text-center">
-                                    View Details
-                                </a>
+                                <div class="space-y-2 text-sm text-gray-600 mb-4">
+                                    <p><span class="font-semibold">Species:</span> {{ $animal->species }}</p>
+                                    <p><span class="font-semibold">Age:</span> {{ $animal->age }}</p>
+                                    <p><span class="font-semibold">Gender:</span> {{ $animal->gender }}</p>
+                                    <p class="flex items-start">
+                                        <span class="font-semibold mr-1">Location:</span>
+                                        <span class="flex-1">
+                                @if($animal->slot)
+                                                Slot {{ $animal->slot->name ?? $animal->slot->id }} - {{ $animal->slot->section->name ?? 'Unknown Section' }}
+                                            @else
+                                                <span class="text-gray-400 italic">Not Assigned</span>
+                                            @endif
+                            </span>
+                                    </p>
+                                </div>
+
+                                <p class="text-gray-700 text-sm mb-4 line-clamp-2">{{ Str::limit($animal->health_details, 100) }}</p>
+
+                                <div class="flex space-x-2">
+                                    <a href="{{ route('animal-management.show', $animal->id) }}"
+                                       class="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-2 rounded-lg font-medium transition duration-300 text-center">
+                                        View Details
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                @endforeach
-            </div>
+                    @endforeach
+                </div>
 
-            <!-- Pagination -->
-            <div class="mt-8 flex justify-center">
-                {{ $animals->links() }}
-            </div>
-        @else
-            <div class="bg-white rounded-lg shadow p-12 text-center">
-                <div class="text-6xl mb-4">🐾</div>
-                <h3 class="text-2xl font-bold text-gray-800 mb-2">No Animals Found</h3>
-                <p class="text-gray-600 mb-6">No animals match your current filters. Try adjusting your search criteria.</p>
-                <a href="{{ route('animal-management.index') }}" class="inline-block bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-lg font-medium transition duration-300">
-                    Clear Filters
-                </a>
-            </div>
-        @endif
+                <!-- Pagination -->
+                <div class="mt-8 flex justify-center">
+                    {{ $animals->links() }}
+                </div>
+            @else
+                <div class="bg-white rounded-lg shadow p-12 text-center">
+                    <div class="text-6xl mb-4">🐾</div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No Animals Found</h3>
+                    <p class="text-gray-600 mb-6">No animals match your current filters. Try adjusting your search criteria.</p>
+                    <a href="{{ route('animal-management.index') }}" class="inline-block bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-lg font-medium transition duration-300">
+                        Clear Filters
+                    </a>
+                </div>
+            @endif
     </div>
 </body>
 </html>

@@ -11,12 +11,34 @@ use App\Models\Category;
 
 class ShelterManagementController extends Controller
 {
+    // In your controller
     public function indexSlot()
     {
         $sections = Section::all();
-        $slots = Slot::with(['animals', 'inventories'])->get();
+
+        // Get counts BEFORE pagination
+        $totalSlots = Slot::count();
+        $availableSlots = Slot::where('status', 'available')->count();
+        $occupiedSlots = Slot::where('status', 'occupied')->count();
+        $maintenanceSlots = Slot::where('status', 'maintenance')->count();
+
+        // Then paginate
+        $slots = Slot::with(['animals', 'inventories'])
+            ->orderBy('sectionID')
+            ->orderBy('name')
+            ->paginate(9);
+
         $categories = Category::all();
-        return view('shelter-management.index', compact('sections', 'slots', 'categories'));
+
+        return view('shelter-management.index', compact(
+            'sections',
+            'slots',
+            'categories',
+            'totalSlots',
+            'availableSlots',
+            'occupiedSlots',
+            'maintenanceSlots'
+        ));
     }
 
     // SECTION METHODS
@@ -116,12 +138,31 @@ class ShelterManagementController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'sectionID' => 'required|exists:section,id', // Changed to sectionID
+                'sectionID' => 'required|exists:section,id',
                 'capacity' => 'required|integer|min:1',
-                'status' => 'required|in:available,occupied,maintenance',
+                'status' => 'nullable|in:available,occupied,maintenance', // Made nullable since we'll auto-calculate
             ]);
 
             $slot = Slot::findOrFail($id);
+
+            // Get current animal count
+            $animalCount = $slot->animals()->count();
+
+            // Auto-calculate status based on capacity and animal count
+            // Only respect manual 'maintenance' status, otherwise auto-calculate
+            if ($request->status === 'maintenance') {
+                $validated['status'] = 'maintenance';
+            } else {
+                // Auto-calculate status
+                if ($animalCount === 0) {
+                    $validated['status'] = 'available';
+                } elseif ($animalCount >= $validated['capacity']) {
+                    $validated['status'] = 'occupied';
+                } else {
+                    $validated['status'] = 'available';
+                }
+            }
+
             $slot->update($validated);
 
             return redirect()->back()->with('success', 'Slot updated successfully!');
@@ -263,12 +304,22 @@ class ShelterManagementController extends Controller
     public function getSlotDetails($id)
     {
         try {
-            $slot = Slot::with(['animals.vaccinations', 'animals.medicals', 'inventories.category'])->findOrFail($id);
+            // Add 'section' relationship to eager load
+            $slot = Slot::with([
+                'section', // ADD THIS - to load section relationship
+                'animals.vaccinations',
+                'animals.medicals',
+                'inventories.category'
+            ])->findOrFail($id);
 
             return response()->json([
                 'id' => $slot->id,
                 'name' => $slot->name,
-                'section' => $slot->section,
+                'section' => $slot->section ? [ // CHANGED - return section object
+                    'id' => $slot->section->id,
+                    'name' => $slot->section->name,
+                    'description' => $slot->section->description,
+                ] : null,
                 'capacity' => $slot->capacity,
                 'status' => $slot->status,
                 'animals' => $slot->animals->map(function($animal) {
@@ -280,6 +331,9 @@ class ShelterManagementController extends Controller
                         'gender' => $animal->gender,
                         'adoption_status' => $animal->adoption_status,
                         'health_details' => $animal->health_details,
+                        // Optional: Add vaccination and medical counts
+                        'vaccinations_count' => $animal->vaccinations->count(),
+                        'medicals_count' => $animal->medicals->count(),
                     ];
                 }),
                 'inventories' => $slot->inventories->map(function($inventory) {
@@ -300,8 +354,11 @@ class ShelterManagementController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Slot details fetch error: ' . $e->getMessage());
+
             return response()->json([
-                'error' => 'Slot not found'
+                'error' => 'Slot not found',
+                'message' => $e->getMessage() // Add this for debugging
             ], 404);
         }
     }

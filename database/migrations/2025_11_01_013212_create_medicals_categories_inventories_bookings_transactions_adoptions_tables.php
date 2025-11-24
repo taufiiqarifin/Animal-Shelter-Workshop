@@ -76,52 +76,52 @@ return new class extends Migration {
          */
         Schema::table('medical', function (Blueprint $table) {
             $table->foreign('vetID')
-                  ->references('id')
-                  ->on('vet')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('vet')
+                ->onDelete('set null');
 
             $table->foreign('animalID')
-                  ->references('id')
-                  ->on('animal')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('animal')
+                ->onDelete('cascade');
         });
 
         Schema::table('inventory', function (Blueprint $table) {
             $table->foreign('slotID')
-                  ->references('id')
-                  ->on('slot')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('slot')
+                ->onDelete('set null');
 
             $table->foreign('categoryID')
-                  ->references('id')
-                  ->on('category')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('category')
+                ->onDelete('set null');
         });
 
         Schema::table('booking', function (Blueprint $table) {
             $table->foreign('userID')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
         });
 
         Schema::table('transaction', function (Blueprint $table) {
             $table->foreign('userID')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
         });
 
         Schema::table('adoption', function (Blueprint $table) {
             $table->foreign('bookingID')
-                  ->references('id')
-                  ->on('booking')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('booking')
+                ->onDelete('cascade');
 
             $table->foreign('transactionID')
-                  ->references('id')
-                  ->on('transaction')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('transaction')
+                ->onDelete('set null');
         });
     }
 
@@ -137,8 +137,7 @@ return new class extends Migration {
         });
 
         Schema::table('booking', function (Blueprint $table) {
-            $table->dropForeign(['animalID']);
-            $table->dropForeign(['userID']);
+            $table->dropForeign(['userID']); // FIXED: removed non-existent animalID FK
         });
 
         Schema::table('inventory', function (Blueprint $table) {

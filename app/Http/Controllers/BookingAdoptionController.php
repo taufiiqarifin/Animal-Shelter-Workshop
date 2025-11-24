@@ -60,13 +60,14 @@ class BookingAdoptionController extends Controller
         ]);
 
         // Validate animal exists
-        if (!Animal::find($animalId)) {
+        $animal = Animal::find($animalId);
+        if (!$animal) {
             return back()->with('error', 'Animal does not exist.');
         }
 
-        // Check duplicate
+        // Check if already in list - PREVENT DUPLICATE
         if ($visitList->animals()->where('animalID', $animalId)->exists()) {
-            return back()->with('info', 'This animal is already in your visit list.');
+            return back()->with('error', 'This animal is already in your visit list.');
         }
 
         // Attach to pivot table
@@ -323,47 +324,6 @@ class BookingAdoptionController extends Controller
             // Or fallback for normal requests
             abort(500, 'Failed to load adoption fee details.');
         }
-    }
-
-    protected function calculateAdoptionFee($animal, $medicalRecords, $vaccinationRecords): array
-    {
-        // Base adoption fee (can be customized per species)
-        $speciesBaseFees = [
-            'dog' => 150,
-            'cat' => 120,
-            // Add other species if needed
-        ];
-
-        $species = strtolower($animal->species);
-        $baseFee = $speciesBaseFees[$species] ?? 100; // default RM 100 if species not listed
-
-        // Medical fee
-        $medicalRate = 20; // RM 20 per medical record
-        $medicalCount = $medicalRecords->count();
-        $medicalFee = $medicalCount * $medicalRate;
-
-        // Vaccination fee
-        $vaccinationRate = 15; // RM 15 per vaccination
-        $vaccinationCount = $vaccinationRecords->count();
-        $vaccinationFee = $vaccinationCount * $vaccinationRate;
-
-        // Total fee
-        $totalFee = $baseFee + $medicalFee + $vaccinationFee;
-
-        // Return detailed breakdown
-        return [
-            'animal_id' => $animal->id,
-            'animal_name' => $animal->name,
-            'animal_species' => $animal->species,
-            'base_fee' => $baseFee,
-            'medical_rate' => $medicalRate,
-            'medical_count' => $medicalCount,
-            'medical_fee' => $medicalFee,
-            'vaccination_rate' => $vaccinationRate,
-            'vaccination_count' => $vaccinationCount,
-            'vaccination_fee' => $vaccinationFee,
-            'total_fee' => $totalFee,
-        ];
     }
 
     public function confirm(Request $request, $bookingId)
@@ -762,32 +722,5 @@ class BookingAdoptionController extends Controller
         ]);
 
         return $response->json();
-    }
-
-
-    public function showModalAdmin($id)
-    {
-        try {
-            $booking = Booking::with(['animal.images', 'user'])
-                ->where('id', $id)
-                ->firstOrFail();
-
-            return view('booking-adoption.show-admin', compact('booking'));
-
-        } catch (\Exception $e) {
-            Log::error('Admin Booking modal error for ID ' . $id . ': ' . $e->getMessage());
-
-            if ($e instanceof ModelNotFoundException) {
-                return response()->json([
-                    'error' => 'Booking Not Found',
-                    'message' => 'The requested booking ID (' . $id . ') does not exist.'
-                ], 404);
-            }
-
-            return response()->json([
-                'error' => 'Failed to load booking details',
-                'message' => 'An internal server error occurred.'
-            ], 500);
-        }
     }
 }

@@ -79,7 +79,7 @@
             <div class="bg-white rounded-lg shadow">
                 <div class="p-6 border-b border-gray-200">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-xl font-bold text-gray-800">Revenue by Species</h2>
+                        <h2 class="text-xl font-bold text-gray-800">Revenue by Adopted Species</h2>
                         <div class="text-right">
                             <p class="text-sm text-gray-500">Total Revenue</p>
                             <p class="text-2xl font-bold text-purple-700">

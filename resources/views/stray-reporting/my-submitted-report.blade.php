@@ -1,6 +1,6 @@
 <!-- My Reports Modal -->
 <div id="myReportsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-[1400px] max-w-full w-full max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl w-[1400px] max-w-full max-h-[90vh] overflow-y-auto">
         <!-- Modal Header -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 sticky top-0 z-10">
             <div class="flex items-center justify-between">
@@ -84,7 +84,11 @@
                                         <i class="fas fa-map text-purple-600 mr-2"></i>
                                         Map Preview
                                     </h4>
-                                    <div id="mini-map-{{ $report->id }}" class="rounded-lg border border-gray-200" style="height: 150px;"></div>
+                                    <div id="mini-map-{{ $report->id }}"
+                                         class="rounded-lg border border-gray-200"
+                                         style="height: 150px;"
+                                         data-lat="{{ $report->latitude }}"
+                                         data-lng="{{ $report->longitude }}"></div>
                                 </div>
                             </div>
 
@@ -108,8 +112,8 @@
                                     </h4>
                                     <div class="flex gap-2 overflow-x-auto pb-2">
                                         @foreach($report->images->take(4) as $image)
-                                            <img src="{{ asset('storage/' . $image->image_path) }}" 
-                                                 alt="Report Image" 
+                                            <img src="{{ asset('storage/' . $image->image_path) }}"
+                                                 alt="Report Image"
                                                  class="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-75 transition shadow-sm flex-shrink-0"
                                                  onclick="openImageModal('{{ asset('storage/' . $image->image_path) }}')">
                                         @endforeach
@@ -148,45 +152,85 @@
     </div>
 </div>
 
-<!-- Leaflet CSS (Add to head if not already there) -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-<!-- Leaflet JS (Add before closing body if not already there) -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
     let miniMaps = {};
+    let mapsInitialized = false;
 
-    // Open My Reports Modal
-    function openMyReportsModal() {
-        document.getElementById('myReportsModal').classList.remove('hidden');
-        
-        // Initialize maps after modal is visible
-        setTimeout(() => {
-            @foreach($userReports as $report)
-                if (!miniMaps[{{ $report->id }}]) {
-                    miniMaps[{{ $report->id }}] = L.map('mini-map-{{ $report->id }}', {
+    // Initialize all mini maps
+    function initializeMiniMaps() {
+        if (mapsInitialized) return;
+
+        // Find all map containers
+        const mapContainers = document.querySelectorAll('[id^="mini-map-"]');
+
+        mapContainers.forEach(container => {
+            const reportId = container.id.replace('mini-map-', '');
+            const lat = parseFloat(container.dataset.lat);
+            const lng = parseFloat(container.dataset.lng);
+
+            // Check if container is visible and has dimensions
+            if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+                return;
+            }
+
+            // Only initialize if not already done
+            if (!miniMaps[reportId]) {
+                try {
+                    miniMaps[reportId] = L.map(container.id, {
                         zoomControl: false,
                         dragging: false,
                         scrollWheelZoom: false,
                         doubleClickZoom: false,
                         touchZoom: false
-                    }).setView([{{ $report->latitude }}, {{ $report->longitude }}], 13);
-                    
+                    }).setView([lat, lng], 13);
+
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '© OpenStreetMap contributors'
-                    }).addTo(miniMaps[{{ $report->id }}]);
+                    }).addTo(miniMaps[reportId]);
 
-                    L.marker([{{ $report->latitude }}, {{ $report->longitude }}])
-                        .addTo(miniMaps[{{ $report->id }}]);
+                    L.marker([lat, lng]).addTo(miniMaps[reportId]);
+
+                    // Force map to recalculate size
+                    setTimeout(() => {
+                        miniMaps[reportId].invalidateSize();
+                    }, 100);
+                } catch (error) {
+                    console.error('Error initializing map for report ' + reportId, error);
                 }
-            @endforeach
-        }, 100);
+            }
+        });
+
+        mapsInitialized = true;
+    }
+
+    // Open My Reports Modal
+    function openMyReportsModal() {
+        const modal = document.getElementById('myReportsModal');
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+        // Reset flag to allow re-initialization
+        mapsInitialized = false;
+
+        // Initialize maps after modal is fully visible
+        setTimeout(() => {
+            initializeMiniMaps();
+        }, 300);
     }
 
     // Close My Reports Modal
     function closeMyReportsModal() {
         document.getElementById('myReportsModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+
+        // Clean up maps
+        Object.keys(miniMaps).forEach(key => {
+            if (miniMaps[key]) {
+                miniMaps[key].remove();
+                delete miniMaps[key];
+            }
+        });
+        mapsInitialized = false;
     }
 
     // Image modal functions
@@ -210,12 +254,18 @@
     // Close with Escape key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            closeMyReportsModal();
-            closeImageModal();
+            const imageModal = document.getElementById('imageModal');
+            const reportsModal = document.getElementById('myReportsModal');
+
+            if (!imageModal.classList.contains('hidden')) {
+                closeImageModal();
+            } else if (!reportsModal.classList.contains('hidden')) {
+                closeMyReportsModal();
+            }
         }
     });
 
-     // Re-open modal automatically if pagination triggers a reload with ?open_modal=1
+    // Re-open modal automatically if pagination triggers a reload with ?open_modal=1
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('open_modal') == 1) {
         window.addEventListener('load', () => {
