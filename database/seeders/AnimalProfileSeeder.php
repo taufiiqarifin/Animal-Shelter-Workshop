@@ -141,5 +141,4 @@ class AnimalProfileSeeder extends Seeder
 
         return collect(['young', 'adult'])->random();
     }
-
 }

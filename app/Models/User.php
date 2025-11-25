@@ -11,6 +11,7 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasRoles;
+    protected $connection = 'mysql_device_1';
 
     public function visitList()
     {
