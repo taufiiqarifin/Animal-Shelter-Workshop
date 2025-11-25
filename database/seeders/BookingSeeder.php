@@ -17,10 +17,25 @@ class BookingSeeder extends Seeder
         $animalIds = Animal::pluck('id')->toArray();
         $statuses = ['Pending', 'Completed', 'Confirmed', 'Cancelled'];
 
+        // Define appointment times from 9am to 5pm with 30-minute intervals
+        $appointmentTimes = [
+            '09:00:00', '09:30:00',
+            '10:00:00', '10:30:00',
+            '11:00:00', '11:30:00',
+            '12:00:00', '12:30:00',
+            '13:00:00', '13:30:00',
+            '14:00:00', '14:30:00',
+            '15:00:00', '15:30:00',
+            '16:00:00', '16:30:00',
+            '17:00:00'
+        ];
+
         for ($i = 0; $i < 600; $i++) {
             // Random date in past 6 months
             $date = Carbon::now()->subDays(rand(0, 180));
-            $time = sprintf("%02d:%02d:00", rand(8, 17), rand(0, 59));
+
+            // Pick a random time from the available slots
+            $time = $appointmentTimes[array_rand($appointmentTimes)];
 
             // Create the booking
             $booking = Booking::create([

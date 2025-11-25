@@ -26,15 +26,44 @@
 
         <!-- Modal Body -->
         <div class="overflow-y-auto flex-1 p-6">
-{{--            @if (session('success'))--}}
-{{--                <div class="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 rounded-lg mb-6 flex items-start gap-3 animate-slideIn">--}}
-{{--                    <i class="fas fa-check-circle text-green-500 text-xl mt-0.5"></i>--}}
-{{--                    <div>--}}
-{{--                        <p class="font-semibold">Success!</p>--}}
-{{--                        <p class="text-sm">{{ session('success') }}</p>--}}
-{{--                    </div>--}}
-{{--                </div>--}}
-{{--            @endif--}}
+            <!-- Error Message -->
+            @if (session('error'))
+                <div class="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-lg mb-6 flex items-start gap-3 animate-slideIn">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mt-0.5"></i>
+                    <div>
+                        <p class="font-semibold">Booking Conflict</p>
+                        <p class="text-sm">{{ session('error') }}</p>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Success Message -->
+            @if (session('success'))
+                <div class="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 rounded-lg mb-6 flex items-start gap-3 animate-slideIn">
+                    <i class="fas fa-check-circle text-green-500 text-xl mt-0.5"></i>
+                    <div>
+                        <p class="font-semibold">Success!</p>
+                        <p class="text-sm">{{ session('success') }}</p>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Validation Errors -->
+            @if ($errors->any())
+                <div class="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-lg mb-6 animate-slideIn">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-circle text-red-500 text-xl mt-0.5"></i>
+                        <div class="flex-1">
+                            <p class="font-semibold mb-2">Please fix the following errors:</p>
+                            <ul class="list-disc list-inside text-sm space-y-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if ($animalList->isEmpty())
                 <!-- Empty State -->
@@ -182,17 +211,35 @@
                                            class="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-gray-700 rounded-xl p-3.5 text-base transition-all duration-200">
                                 </div>
 
-                                <!-- Time Input -->
+                                <!-- Time Select Dropdown -->
                                 <div>
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-clock text-purple-600 mr-1"></i>
                                         Preferred Time <span class="text-red-500">*</span>
                                     </label>
-                                    <input type="time"
-                                           id="appointmentTime"
-                                           name="appointment_time"
-                                           required
-                                           class="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-gray-700 rounded-xl p-3.5 text-base transition-all duration-200">
+                                    <select id="appointmentTime"
+                                            name="appointment_time"
+                                            required
+                                            class="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-gray-700 rounded-xl p-3.5 text-base transition-all duration-200">
+                                        <option value="">Select a time</option>
+                                        <option value="09:00">9:00 AM</option>
+                                        <option value="09:30">9:30 AM</option>
+                                        <option value="10:00">10:00 AM</option>
+                                        <option value="10:30">10:30 AM</option>
+                                        <option value="11:00">11:00 AM</option>
+                                        <option value="11:30">11:30 AM</option>
+                                        <option value="12:00">12:00 PM</option>
+                                        <option value="12:30">12:30 PM</option>
+                                        <option value="13:00">1:00 PM</option>
+                                        <option value="13:30">1:30 PM</option>
+                                        <option value="14:00">2:00 PM</option>
+                                        <option value="14:30">2:30 PM</option>
+                                        <option value="15:00">3:00 PM</option>
+                                        <option value="15:30">3:30 PM</option>
+                                        <option value="16:00">4:00 PM</option>
+                                        <option value="16:30">4:30 PM</option>
+                                        <option value="17:00">5:00 PM</option>
+                                    </select>
                                 </div>
                             </div>
                             <p class="text-xs text-gray-600 mt-2">
@@ -206,7 +253,7 @@
                         </div>
 
                         <!-- Terms Checkbox -->
-                        <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-200">
+                        <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-200 mt-4">
                             <label class="flex items-start gap-3 cursor-pointer group">
                                 <input type="checkbox"
                                        name="terms"
@@ -220,28 +267,27 @@
                             </label>
                         </div>
                     </div>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="flex gap-3 pt-4">
-            <button type="button"
-                    onclick="closeVisitModal()"
-                    class="flex-1 px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border-2 border-gray-200">
-                <i class="fas fa-arrow-left"></i>
-                Continue Browsing
-            </button>
-            <button type="submit"
-                    id="confirmBookingBtn"
-                    disabled
-                    class="flex-1 px-6 py-4 bg-gray-300 text-gray-500 font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed">
-                <i class="fas fa-check-circle"></i>
-                Confirm Visit Booking
-            </button>
+                    <!-- Action Buttons -->
+                    <div class="flex gap-3 pt-4">
+                        <button type="button"
+                                onclick="closeVisitModal()"
+                                class="flex-1 px-6 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border-2 border-gray-200">
+                            <i class="fas fa-arrow-left"></i>
+                            Continue Browsing
+                        </button>
+                        <button type="submit"
+                                id="confirmBookingBtn"
+                                disabled
+                                class="flex-1 px-6 py-4 bg-gray-300 text-gray-500 font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed">
+                            <i class="fas fa-check-circle"></i>
+                            Confirm Visit Booking
+                        </button>
+                    </div>
+                </form>
+            @endif
         </div>
-        </form>
-        @endif
     </div>
-</div>
 </div>
 
 <!-- Hidden form for removing animals -->
@@ -321,7 +367,6 @@
             appointmentDate.addEventListener('change', updateConfirmButton);
         }
         if(appointmentTime){
-            appointmentTime.addEventListener('input', updateConfirmButton);
             appointmentTime.addEventListener('change', updateConfirmButton);
         }
         if(termsCheckbox){

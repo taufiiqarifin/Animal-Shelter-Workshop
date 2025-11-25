@@ -54,21 +54,35 @@ class BookingAdoptionController extends Controller
     {
         $user = Auth::user();
 
-        // Ensure visit list exists
-        $visitList = VisitList::firstOrCreate([
-            'userID' => $user->id
-        ]);
-
         // Validate animal exists
         $animal = Animal::find($animalId);
         if (!$animal) {
             return back()->with('error', 'Animal does not exist.');
         }
 
-        // Check if already in list - PREVENT DUPLICATE
+        // ===== CHECK 1: Prevent adding if user has active booking for this animal =====
+        $hasActiveBooking = Booking::where('userID', $user->id)
+            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->whereHas('animals', function ($query) use ($animalId) {
+                $query->where('animal.id', $animalId);
+            })
+            ->exists();
+
+        if ($hasActiveBooking) {
+            return back()->with('error', "You already have an active booking for {$animal->name}. You cannot add this animal to your visit list.");
+        }
+        // ===== END CHECK 1 =====
+
+        // Ensure visit list exists
+        $visitList = VisitList::firstOrCreate([
+            'userID' => $user->id
+        ]);
+
+        // ===== CHECK 2: Prevent duplicate in visit list =====
         if ($visitList->animals()->where('animalID', $animalId)->exists()) {
             return back()->with('error', 'This animal is already in your visit list.');
         }
+        // ===== END CHECK 2 =====
 
         // Attach to pivot table
         $visitList->animals()->attach($animalId, [
@@ -76,7 +90,7 @@ class BookingAdoptionController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'Animal added to your visit list.');
+        return back()->with('success', "{$animal->name} has been added to your visit list.");
     }
 
     /**
@@ -107,7 +121,7 @@ class BookingAdoptionController extends Controller
             // Validation
             $validated = $request->validate([
                 'appointment_date' => 'required|date|after_or_equal:today',
-                'appointment_time' => 'required|date_format:H:i',
+                'appointment_time' => 'required',
                 'animal_ids' => 'required|array|min:1',
                 'animal_ids.*' => 'required|exists:animal,id',
                 'remarks' => 'nullable|array',
@@ -115,16 +129,17 @@ class BookingAdoptionController extends Controller
                 'terms' => 'required|accepted',
             ], [
                 'appointment_date.required' => 'Please select an appointment date.',
-                'appointment_time.required' => 'Please select an appointment time.',  // ← ADD THIS
+                'appointment_time.required' => 'Please select an appointment time.',
                 'appointment_date.after_or_equal' => 'Appointment must be in the future.',
-                // ... rest of validation messages
+                'animal_ids.required' => 'Please select at least one animal.',
+                'terms.accepted' => 'You must accept the terms and conditions.',
             ]);
 
             \Log::info('Validation passed');
 
             $user = Auth::user();
 
-            // Get the user's VISIT LIST (not booking!)
+            // Get the user's VISIT LIST
             $visitList = VisitList::where('userID', $user->id)->first();
 
             if (!$visitList || $visitList->animals->isEmpty()) {
@@ -154,47 +169,137 @@ class BookingAdoptionController extends Controller
                     ->with('open_visit_modal', true);
             }
 
-            // Parse the date and time from the request
-            $appointmentDate = $request->appointment_date;
-            $appointmentTime = $request->appointment_time;
+            $appointmentDate = $validated['appointment_date'];
+            $appointmentTime = $validated['appointment_time'];
 
-            // Create new booking for the appointment
-            $booking = Booking::create([
-                'userID' => $user->id,
-                'status' => 'Pending',
-                'appointment_date' => $appointmentDate,
-                'appointment_time' => $appointmentTime,  // ← ADD THIS LINE
-            ]);
+            // ===== CHECK 1: ANIMAL AVAILABILITY (Pending/Confirmed bookings) =====
+            $conflictingAnimals = Animal::whereIn('id', $requestedAnimalIds)
+                ->whereHas('bookings', function ($query) use ($appointmentDate, $appointmentTime) {
+                    $query->where('appointment_date', $appointmentDate)
+                        ->where('appointment_time', $appointmentTime)
+                        ->whereIn('status', ['Pending', 'Confirmed']);
+                })
+                ->get(['id', 'name']);
 
-            \Log::info('Created booking', ['booking_id' => $booking->id]);
+            if ($conflictingAnimals->isNotEmpty()) {
+                $animalNames = $conflictingAnimals->pluck('name')->join(', ');
+                \Log::warning('Animals not available - already booked', [
+                    'conflicting_animals' => $conflictingAnimals->pluck('name')->toArray(),
+                    'date' => $appointmentDate,
+                    'time' => $appointmentTime
+                ]);
 
-            // Attach animals with remarks to the booking
-            $animalData = [];
-            foreach ($validated['animal_ids'] as $animalId) {
-                $animalData[$animalId] = [
-                    'remarks' => $validated['remarks'][$animalId] ?? null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                return back()
+                    ->with('error', "The following animals are not available at {$appointmentTime} on {$appointmentDate}: {$animalNames}. Please choose a different time.")
+                    ->with('open_visit_modal', true)
+                    ->withInput();
             }
 
-            $booking->animals()->attach($animalData);
-            \Log::info('Attached animals to booking', ['count' => count($animalData)]);
+            // ===== CHECK 2: PREVENT DUPLICATE BOOKINGS (including cancelled ones) =====
+            // Check if user is trying to rebook the same animals at the same time slot
+            $existingUserBookings = Booking::where('userID', $user->id)
+                ->where('appointment_date', $appointmentDate)
+                ->where('appointment_time', $appointmentTime)
+                ->whereHas('animals', function ($query) use ($requestedAnimalIds) {
+                    $query->whereIn('animal.id', $requestedAnimalIds);
+                })
+                ->with('animals')
+                ->get();
 
-            // Remove the confirmed animals from the visit list
-            $visitList->animals()->detach($validated['animal_ids']);
-            \Log::info('Removed animals from visit list');
+            if ($existingUserBookings->isNotEmpty()) {
+                // Get all animals that user has already booked at this time (any status)
+                $alreadyBookedAnimalIds = $existingUserBookings->flatMap(function ($booking) {
+                    return $booking->animals->pluck('id');
+                })->unique()->toArray();
 
-            // If visit list has no more animals, delete it
-            if ($visitList->animals()->count() === 0) {
-                $visitList->delete();
-                \Log::info('Deleted empty visit list');
+                $duplicateAnimalIds = array_intersect($requestedAnimalIds, $alreadyBookedAnimalIds);
+
+                if (!empty($duplicateAnimalIds)) {
+                    $duplicateAnimals = Animal::whereIn('id', $duplicateAnimalIds)->pluck('name')->toArray();
+                    $duplicateNames = implode(', ', $duplicateAnimals);
+
+                    $bookingStatuses = $existingUserBookings->pluck('status')->unique()->toArray();
+                    $statusText = implode(', ', $bookingStatuses);
+
+                    \Log::warning('Duplicate booking attempt detected', [
+                        'user_id' => $user->id,
+                        'duplicate_animals' => $duplicateAnimals,
+                        'existing_statuses' => $bookingStatuses,
+                        'date' => $appointmentDate,
+                        'time' => $appointmentTime
+                    ]);
+
+                    return back()
+                        ->with('error', "You already have a booking ({$statusText}) for {$duplicateNames} at {$appointmentTime} on {$appointmentDate}. Please choose different animals or a different time slot.")
+                        ->with('open_visit_modal', true)
+                        ->withInput();
+                }
             }
+            // ===== END AVAILABILITY CHECKS =====
 
-            \Log::info('=== CONFIRM APPOINTMENT COMPLETED SUCCESSFULLY ===');
+            // Use database transaction to ensure data integrity
+            DB::beginTransaction();
 
-            return redirect()->route('animal-management.index')
-                ->with('success', 'Your visit appointment has been scheduled!');
+            try {
+                // Create new booking
+                $booking = Booking::create([
+                    'userID' => $user->id,
+                    'status' => 'Pending',
+                    'appointment_date' => $appointmentDate,
+                    'appointment_time' => $appointmentTime,
+                ]);
+
+                \Log::info('Created booking', ['booking_id' => $booking->id]);
+
+                // Attach animals with remarks to the booking
+                $animalData = [];
+                foreach ($validated['animal_ids'] as $animalId) {
+                    $animalData[$animalId] = [
+                        'remarks' => $validated['remarks'][$animalId] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                $booking->animals()->attach($animalData);
+                \Log::info('Attached animals to booking', ['count' => count($animalData)]);
+
+                // Remove the confirmed animals from the visit list
+                $visitList->animals()->detach($validated['animal_ids']);
+                \Log::info('Removed animals from visit list');
+
+                // If visit list has no more animals, delete it
+                if ($visitList->animals()->count() === 0) {
+                    $visitList->delete();
+                    \Log::info('Deleted empty visit list');
+                }
+
+                DB::commit();
+                \Log::info('=== CONFIRM APPOINTMENT COMPLETED SUCCESSFULLY ===');
+
+                return redirect()->route('animal-management.index')
+                    ->with('success', 'Your visit appointment has been scheduled!');
+
+            } catch (\Illuminate\Database\QueryException $e) {
+                DB::rollBack();
+
+                // Check if it's a unique constraint violation
+                if ($e->getCode() == 23000 || strpos($e->getMessage(), 'unique') !== false) {
+                    \Log::error('Duplicate booking detected', [
+                        'user_id' => $user->id,
+                        'date' => $appointmentDate,
+                        'time' => $appointmentTime,
+                        'error' => $e->getMessage()
+                    ]);
+
+                    return back()
+                        ->with('error', 'This time slot has just been booked by another user. Please select a different time.')
+                        ->with('open_visit_modal', true)
+                        ->withInput();
+                }
+
+                throw $e; // Re-throw if it's a different database error
+            }
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed', ['errors' => $e->errors()]);
@@ -205,6 +310,10 @@ class BookingAdoptionController extends Controller
                 ->with('open_visit_modal', true);
 
         } catch (\Exception $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
             \Log::error('Booking Confirmation Error: ' . $e->getMessage(), [
                 'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString(),

@@ -13,8 +13,8 @@ class AnimalProfileSeeder extends Seeder
     {
         $adopters = AdopterProfile::all();
 
-        // Only animals not adopted
-        $animals = Animal::where('adoption_status', 'Not Adopted')->get();
+        // Get animals with 'Not Adopted' OR 'Adopted' status
+        $animals = Animal::whereIn('adoption_status', ['Not Adopted', 'Adopted'])->get();
 
         foreach ($animals as $animal) {
 
@@ -34,9 +34,11 @@ class AnimalProfileSeeder extends Seeder
 
             AnimalProfile::create($profileData);
         }
+
+        $this->command->info('Animal profiles created successfully!');
     }
 
-    /** 
+    /**
      * Generate profile that aligns with adopter preferences
      */
     private function generateMatchedProfile($animal, $adopter)

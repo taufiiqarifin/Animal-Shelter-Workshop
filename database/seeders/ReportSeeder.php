@@ -38,12 +38,35 @@ class ReportSeeder extends Seeder
         }
 
         $reportStatuses = ['Pending', 'In Progress', 'Resolved', 'Closed'];
+
+        // Define available images by category
+        $imageCategories = [
+            'cat' => [],
+            'dog' => [],
+            'dogcat' => []
+        ];
+
+        // Cat images: cat1.jpg to cat3.jpg
+        for ($i = 1; $i <= 3; $i++) {
+            $imageCategories['cat'][] = "reports/cat{$i}.jpg";
+        }
+
+        // Dog images: dog1.jpg to dog6.jpg
+        for ($i = 1; $i <= 6; $i++) {
+            $imageCategories['dog'][] = "reports/dog{$i}.jpg";
+        }
+
+        // Dogcat images: dogcat1.jpg to dogcat3.jpg
+        for ($i = 1; $i <= 3; $i++) {
+            $imageCategories['dogcat'][] = "reports/dogcat{$i}.jpg";
+        }
+
         $reports = [];
 
         // Maximum coordinate offset (~1 km)
         $maxOffset = 0.01;
 
-        // Generate 300 reports
+        // Generate 600 reports
         for ($i = 0; $i < 600; $i++) {
 
             $row = $data[array_rand($data)]; // pick random CSV row
@@ -74,6 +97,78 @@ class ReportSeeder extends Seeder
 
         DB::table('report')->insert($reports);
 
-        $this->command->info("300 reports generated successfully with randomized coordinates!");
+        // Get the IDs of the inserted reports
+        $insertedReportIDs = DB::table('report')
+            ->orderBy('id', 'desc')
+            ->limit(600)
+            ->pluck('id')
+            ->toArray();
+
+        // ===== ASSIGN IMAGES TO REPORTS =====
+        $this->assignImagesToReports($insertedReportIDs, $imageCategories);
+
+        $this->command->info('');
+        $this->command->info('=================================');
+        $this->command->info('Report Seeding Completed!');
+        $this->command->info('=================================');
+        $this->command->info("Total reports created: " . count($reports));
+        $this->command->info('=================================');
+    }
+
+    /**
+     * Assign images to reports - each report gets images from same category only
+     */
+    private function assignImagesToReports($reportIDs, $imageCategories)
+    {
+        $images = [];
+        $totalImages = 0;
+        $categoryStats = ['cat' => 0, 'dog' => 0, 'dogcat' => 0];
+
+        foreach ($reportIDs as $reportID) {
+            // Randomly select ONE category for this report
+            $categoryKeys = array_keys($imageCategories);
+            $selectedCategory = $categoryKeys[array_rand($categoryKeys)];
+
+            // Get images from the selected category
+            $availableImages = $imageCategories[$selectedCategory];
+
+            // Randomly assign 1-3 images from this category only
+            $numImages = rand(1, min(3, count($availableImages)));
+
+            // Randomly select images for this report from the same category
+            $selectedImages = array_rand(array_flip($availableImages), $numImages);
+
+            // Handle case where only 1 image is selected (array_rand returns string, not array)
+            if (!is_array($selectedImages)) {
+                $selectedImages = [$selectedImages];
+            }
+
+            foreach ($selectedImages as $imagePath) {
+                $images[] = [
+                    'image_path' => $imagePath,
+                    'animalID'   => null,
+                    'reportID'   => $reportID,
+                    'clinicID'   => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+                $totalImages++;
+            }
+
+            // Track category usage
+            $categoryStats[$selectedCategory]++;
+        }
+
+        // Insert all images
+        DB::table('image')->insert($images);
+
+        $this->command->info("Total images assigned to reports: {$totalImages}");
+        $avgImages = round($totalImages / count($reportIDs), 1);
+        $this->command->info("Average images per report: {$avgImages}");
+        $this->command->info('');
+        $this->command->info('Reports by animal category:');
+        $this->command->info("  - Cat reports: {$categoryStats['cat']}");
+        $this->command->info("  - Dog reports: {$categoryStats['dog']}");
+        $this->command->info("  - Dog & Cat reports: {$categoryStats['dogcat']}");
     }
 }
