@@ -35,6 +35,17 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/animal:main', [AnimalManagementController::class, 'home'])->name('animal:main');
 });
+Route::prefix('animals')->group(function () {
+    Route::get('/', [AnimalManagementController::class, 'index'])->name('animals.index');
+    Route::get('/create', [AnimalManagementController::class, 'create'])->name('animals.create');
+    Route::post('/', [AnimalManagementController::class, 'store'])->name('animals.store');
+    Route::get('/{animal}/edit', [AnimalManagementController::class, 'edit'])->name('animals.edit');
+    Route::put('/{animal}', [AnimalManagementController::class, 'update'])->name('animals.update');
+    Route::delete('/{animal}', [AnimalManagementController::class, 'destroy'])->name('animals.destroy');
+    Route::get('/{animal}', [AnimalManagementController::class, 'show'])->name('animals.show');
+});
+
+
 
 //Shelter-Management
 Route::middleware('auth')->group(function () {
