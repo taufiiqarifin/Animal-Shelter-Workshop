@@ -121,7 +121,7 @@ return new class extends Migration {
             $table->foreign('userID')
                   ->references('id')
                   ->on('users')
-                  ->onDelete('cascade');
+                  ->onDelete('no action'); //default cascade
         });
 
         Schema::table('adoption', function (Blueprint $table) {
@@ -189,7 +189,7 @@ return new class extends Migration {
         Schema::dropIfExists('animal_booking');
         Schema::dropIfExists('adoption');
         Schema::dropIfExists('transaction');
-        Schema::dropIfExists('bookins');
+        Schema::dropIfExists('booking');
         Schema::dropIfExists('inventory');
         Schema::dropIfExists('category');
         Schema::dropIfExists('medical');

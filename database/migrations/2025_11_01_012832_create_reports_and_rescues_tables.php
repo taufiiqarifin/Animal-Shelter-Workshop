@@ -35,7 +35,7 @@ return new class extends Migration {
             $table->foreign('userID')
                   ->references('id')
                   ->on('users')
-                  ->onDelete('cascade');
+                  ->onDelete('set null'); // default cascade
         });
 
         Schema::table('rescue', function (Blueprint $table) {
@@ -47,7 +47,7 @@ return new class extends Migration {
             $table->foreign('caretakerID')
                   ->references('id')
                   ->on('users')
-                  ->onDelete('cascade');
+                  ->onDelete('set null'); // default cascade
         });
     }
 

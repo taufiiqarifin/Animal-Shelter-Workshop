@@ -44,6 +44,14 @@ Route::middleware('auth')->group(function () {
 //Booking-Adoption
 Route::middleware('auth')->group(function () {
     Route::get('/booking:main', [BookingAdoptionController::class, 'home'])->name('booking:main');
+    Route::get('/booking:index', [BookingAdoptionController::class, 'index'])->name('booking:index');
+    Route::get('/booking:create', [BookingAdoptionController::class, 'create'])->name('booking:create');
+    Route::post('/booking:store', [BookingAdoptionController::class, 'store'])->name('booking:store');
+    Route::get('/booking-{booking}/edit', [BookingAdoptionController::class, 'edit'])->name('booking:edit');
+    Route::put('/booking-{booking}', [BookingAdoptionController::class, 'update'])->name('booking:update');
+    Route::delete('/booking-{booking}', [BookingAdoptionController::class, 'destroy'])->name('booking:destroy');
+    Route::get('/booking-{booking}', [BookingAdoptionController::class, 'show'])->name('booking:show');
 });
+
 
 require __DIR__.'/auth.php';
