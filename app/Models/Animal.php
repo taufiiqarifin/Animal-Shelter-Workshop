@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Animal extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'animal';
     protected $fillable = [
         'species', 'name', 'health_details', 'age', 'gender', 'weight',

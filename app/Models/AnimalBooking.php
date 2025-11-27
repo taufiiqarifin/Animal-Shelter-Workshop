@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AnimalBooking extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'animal_booking'; // custom table name
 
     protected $primaryKey = 'id'; // default but OK to declare

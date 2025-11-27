@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Medical extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'medical';
     protected $fillable = [
         'treatment_type', 'diagnosis', 'action', 'remarks',

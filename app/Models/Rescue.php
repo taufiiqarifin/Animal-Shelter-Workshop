@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Rescue extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $fillable = ['status', 'remarks', 'reportID', 'caretakerID'];
     protected $table = 'rescue';
     public function report()
@@ -28,4 +30,3 @@ class Rescue extends Model
     const STATUS_SUCCESS = 'Success';
     const STATUS_FAILED = 'Failed';
 }
-   

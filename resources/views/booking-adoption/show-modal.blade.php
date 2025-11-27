@@ -12,7 +12,7 @@
         'cat' => 100,
     ];
     $medicalRate = 20;      // RM 20 per medical record
-    $vaccinationRate = 15;  // RM 15 per vaccination
+    $vaccinationRate = 30;  // RM 15 per vaccination
 
     if ($animals->isNotEmpty()) {
         foreach ($animals as $animal) {
@@ -116,6 +116,8 @@
                                                data-base-fee="{{ $allFeeBreakdowns[$animal->id]['base_fee'] }}"
                                                data-medical-fee="{{ $allFeeBreakdowns[$animal->id]['medical_fee'] }}"
                                                data-vaccination-fee="{{ $allFeeBreakdowns[$animal->id]['vaccination_fee'] }}"
+                                               data-medical-count="{{ $allFeeBreakdowns[$animal->id]['medical_count'] }}"
+                                               data-vaccination-count="{{ $allFeeBreakdowns[$animal->id]['vaccination_count'] }}"
                                             {{ $index === 0 ? 'checked' : '' }}>
                                     @endif
 

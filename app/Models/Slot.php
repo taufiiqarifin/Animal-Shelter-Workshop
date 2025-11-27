@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Slot extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'slot';
     protected $fillable = ['name', 'section', 'capacity', 'status', 'sectionID'];
 

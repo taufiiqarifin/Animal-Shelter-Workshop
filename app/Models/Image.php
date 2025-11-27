@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Image extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'image';
     protected $fillable = ['image_path', 'animalID', 'reportID', 'clinicID'];
 

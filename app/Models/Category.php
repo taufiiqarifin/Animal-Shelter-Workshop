@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'category';
     protected $fillable = ['main', 'sub'];
 

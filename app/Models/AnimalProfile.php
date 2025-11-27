@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class AnimalProfile extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'animal_profile';
     protected $fillable = [
         'animal_id',

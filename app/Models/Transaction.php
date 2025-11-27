@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'transaction';
    protected $fillable = [
         'amount', 'status', 'remarks', 'reference_no', 'bill_code', 'type', 'userID'

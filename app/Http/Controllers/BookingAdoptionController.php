@@ -87,7 +87,7 @@ class BookingAdoptionController extends Controller
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', "{$animal->name} has been added to your visit list.");
+        return back()->with('success', "{$animal->name} has been added to your visit list. You can view the list at the top right");
     }
 
     /**
@@ -275,7 +275,7 @@ class BookingAdoptionController extends Controller
                 \Log::info('=== CONFIRM APPOINTMENT COMPLETED SUCCESSFULLY ===');
 
                 return redirect()->route('animal-management.index')
-                    ->with('success', 'Your visit appointment has been scheduled!');
+                    ->with('success', 'Your visit appointment has been scheduled! View them at My Booking tab');
 
             } catch (\Illuminate\Database\QueryException $e) {
                 DB::rollBack();
@@ -424,7 +424,7 @@ class BookingAdoptionController extends Controller
             $allFeeBreakdowns = [];
 
             foreach ($animals as $animal) {
-                $medicalRecords = $animal->medicalRecords ?? collect();
+                $medicalRecords = $animal->medicals ?? collect();
                 $vaccinationRecords = $animal->vaccinations ?? collect();
 
                 // Calculate fee per animal

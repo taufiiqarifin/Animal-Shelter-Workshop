@@ -343,10 +343,10 @@
             const animalName = cb.dataset.animalName;
             const animalSpecies = cb.dataset.animalSpecies;
             const baseFee = parseFloat(cb.dataset.baseFee) || 0;
-            const medicalFee = parseFloat(cb.dataset.medicalFee) || 0;
-            const medicalCount = parseInt(cb.dataset.medicalCount) || 0;
-            const vaccinationFee = parseFloat(cb.dataset.vaccinationFee) || 0;
-            const vaccinationCount = parseInt(cb.dataset.vaccinationCount) || 0;
+            const medicalFee = parseFloat(cb.dataset.medicalFee ?? 0);
+            const medicalCount = parseInt(cb.dataset.medicalCount ?? 0);
+            const vaccinationFee = parseFloat(cb.dataset.vaccinationFee ?? 0);
+            const vaccinationCount = parseInt(cb.dataset.vaccinationCount ?? 0);
             const totalFee = parseFloat(cb.dataset.fee) || 0;
 
             grandTotal += totalFee;

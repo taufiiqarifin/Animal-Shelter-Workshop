@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Vaccination extends Model
 {
+    //  protected $connection = 'pgsql_remote';
+
     protected $table = 'vaccination';
     protected $primaryKey = 'id';
     protected $fillable = [
