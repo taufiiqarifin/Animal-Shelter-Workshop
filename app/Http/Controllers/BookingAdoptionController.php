@@ -29,6 +29,7 @@ class BookingAdoptionController extends Controller
     /**
      * Show user's visit list.
      */
+    //BookingAdoptionController.php
     public function indexList()
     {
         $user = Auth::user();
@@ -38,8 +39,17 @@ class BookingAdoptionController extends Controller
             'userID' => $user->id,
         ]);
 
-        // Load animals from pivot
-        $animals = $visitList->animals;
+        // Load animals with their images and pending bookings
+        $animals = $visitList->animals()
+            ->with([
+                'images', // Add this to eager load images
+                'bookings' => function($query) use ($user) {
+                    $query->where('userID', $user->id)
+                        ->where('status', 'Pending')
+                        ->latest();
+                }
+            ])
+            ->get();
 
         return view('booking-adoption.visit-list', compact('animals'));
     }
