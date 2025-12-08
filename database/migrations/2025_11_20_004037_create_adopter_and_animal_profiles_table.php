@@ -21,8 +21,8 @@ return new class extends Migration
             // FK to USERS table
             $table->unsignedBigInteger('adopterID');
             $table->foreign('adopterID')
-                  ->references('id')->on('users')
-                  ->onDelete('cascade');
+                ->references('id')->on('users')
+                ->onDelete('cascade');
             $table->timestamps();
         });
 
@@ -39,8 +39,8 @@ return new class extends Migration
             // FK to ANIMALS table
             $table->unsignedBigInteger('animalID');
             $table->foreign('animalID')
-                  ->references('id')->on('animal')
-                  ->onDelete('cascade');
+                ->references('id')->on('animal')
+                ->onDelete('cascade');
             $table->timestamps();
         });
     }

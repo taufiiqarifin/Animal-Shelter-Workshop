@@ -89,9 +89,9 @@ return new class extends Migration {
          */
         Schema::table('vet', function (Blueprint $table) {
             $table->foreign('clinicID')
-                  ->references('id')
-                  ->on('clinic')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('clinic')
+                ->onDelete('set null');
         });
 
         Schema::table('slot', function (Blueprint $table) {
@@ -103,42 +103,42 @@ return new class extends Migration {
 
         Schema::table('vaccination', function (Blueprint $table) {
             $table->foreign('animalID')
-                  ->references('id')
-                  ->on('animal')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('animal')
+                ->onDelete('set null');
 
             $table->foreign('vetID')
-                  ->references('id')
-                  ->on('vet')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('vet')
+                ->onDelete('set null');
         });
 
         Schema::table('animal', function (Blueprint $table) {
             $table->foreign('rescueID')
-                  ->references('id')
-                  ->on('rescue')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('rescue')
+                ->onDelete('set null');
 
             $table->foreign('slotID')
-                  ->references('id')
-                  ->on('slot')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('slot')
+                ->onDelete('set null');
         });
 
         Schema::table('image', function (Blueprint $table) {
             $table->foreign('animalID')
-                  ->references('id')
-                  ->on('animal')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('animal')
+                ->onDelete('cascade');
 
             $table->foreign('reportID')
-                  ->references('id')
-                  ->on('report')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('report')
+                ->onDelete('cascade');
             $table->foreign('clinicID')
-                  ->references('id')
-                  ->on('clinic')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('clinic')
+                ->onDelete('cascade');
         });
     }
 

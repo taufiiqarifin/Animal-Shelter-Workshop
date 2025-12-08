@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-    protected $connection = 'mysql_device_2';
+//    protected $connection = 'atiqah';
     protected $table = 'category';
     protected $fillable = ['main', 'sub'];
 

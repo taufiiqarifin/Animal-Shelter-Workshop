@@ -95,7 +95,16 @@ class ReportSeeder extends Seeder
             ];
         }
 
-        DB::table('report')->insert($reports);
+        // Insert reports in chunks to avoid SQL Server 2100 parameter limit
+        // Each report has 10 columns, so chunk size of 100 = 1000 parameters (safe for SQL Server)
+        $chunkSize = 100;
+        $totalInserted = 0;
+
+        foreach (array_chunk($reports, $chunkSize) as $chunk) {
+            DB::table('report')->insert($chunk);
+            $totalInserted += count($chunk);
+            $this->command->info("Inserted {$totalInserted} / " . count($reports) . " reports...");
+        }
 
         // Get the IDs of the inserted reports
         $insertedReportIDs = DB::table('report')
@@ -159,8 +168,15 @@ class ReportSeeder extends Seeder
             $categoryStats[$selectedCategory]++;
         }
 
-        // Insert all images
-        DB::table('image')->insert($images);
+        // Insert images in chunks to avoid SQL Server 2100 parameter limit
+        // Each image has 6 columns, so chunk size of 300 = 1800 parameters (safe for SQL Server)
+        $chunkSize = 300;
+        $totalInsertedImages = 0;
+
+        foreach (array_chunk($images, $chunkSize) as $chunk) {
+            DB::table('image')->insert($chunk);
+            $totalInsertedImages += count($chunk);
+        }
 
         $this->command->info("Total images assigned to reports: {$totalImages}");
         $avgImages = round($totalImages / count($reportIDs), 1);

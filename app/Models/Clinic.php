@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Clinic extends Model
 {
-      protected $connection = 'mysql_device_3';
+//      protected $connection = 'shafiqah';
 
     protected $table = 'clinic';
     protected $fillable = ['name', 'address', 'contactNum', 'latitude', 'longitude'];

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Vet extends Model
 {
-      protected $connection = 'mysql_device_3';
+//      protected $connection = 'shafiqah';
 
     protected $table = 'vet';
     protected $fillable = [

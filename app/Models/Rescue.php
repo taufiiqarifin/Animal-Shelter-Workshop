@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Rescue extends Model
 {
-      protected $connection = 'mysql_device_1';
+//      protected $connection = 'eilya';
 
     protected $fillable = ['status', 'remarks', 'reportID', 'caretakerID'];
     protected $table = 'rescue';

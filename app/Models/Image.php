@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Image extends Model
 {
-      protected $connection = 'mysql_device_1';
+//      protected $connection = 'eilya';
 
     protected $table = 'image';
     protected $fillable = ['image_path', 'animalID', 'reportID', 'clinicID'];

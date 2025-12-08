@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Report extends Model
 {
-  protected $connection = 'mysql_device_1';
+//  protected $connection = 'eilya';
 
     protected $table = 'report';
     protected $fillable = [

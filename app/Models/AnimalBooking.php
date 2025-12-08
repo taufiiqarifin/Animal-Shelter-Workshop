@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AnimalBooking extends Model
 {
-      protected $connection = 'sqlsrv_remote';
+//      protected $connection = 'danish';
 
     protected $table = 'animal_booking'; // custom table name
 

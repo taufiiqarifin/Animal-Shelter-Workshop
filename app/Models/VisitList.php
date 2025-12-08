@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class VisitList extends Model
 {
-      protected $connection = 'sqlsrv_remote';
+//      protected $connection = 'danish';
 
     protected $table = 'visit_list';
 

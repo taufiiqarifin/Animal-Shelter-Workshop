@@ -38,14 +38,14 @@ class RescueSeeder extends Seeder
         foreach ($reports as $report) {
 
             // 🎯 Keep 20% of reports PENDING (no rescue record)
-            if (rand(1, 100) <= 20) { 
+            if (rand(1, 100) <= 20) {
                 continue;
             }
 
             // 🎯 SUCCESS = 40% chance
             if (rand(1, 100) <= 40) {
                 $status = 'Success';
-            } 
+            }
             else {
                 // Remaining 60% get random non-success status
                 $status = $otherStatuses[array_rand($otherStatuses)];
@@ -65,9 +65,23 @@ class RescueSeeder extends Seeder
         }
 
         if (!empty($rescues)) {
-            DB::table('rescue')->insert($rescues);
+            // Insert rescues in chunks to avoid SQL Server 2100 parameter limit
+            // Each rescue has 6 columns, so chunk size of 300 = 1800 parameters (safe for SQL Server)
+            $chunkSize = 300;
+            $totalInserted = 0;
+
+            foreach (array_chunk($rescues, $chunkSize) as $chunk) {
+                DB::table('rescue')->insert($chunk);
+                $totalInserted += count($chunk);
+                $this->command->info("Inserted {$totalInserted} / " . count($rescues) . " rescues...");
+            }
         }
 
+        $this->command->info('');
+        $this->command->info('=================================');
+        $this->command->info('Rescue Seeding Completed!');
+        $this->command->info('=================================');
         $this->command->info(count($rescues) . " rescue records created (approx. 40% success, 20% pending).");
+        $this->command->info('=================================');
     }
 }

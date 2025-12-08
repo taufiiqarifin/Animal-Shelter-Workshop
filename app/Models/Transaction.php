@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
-      protected $connection = 'sqlsrv_remote';
+//      protected $connection = 'danish';
 
     protected $table = 'transaction';
    protected $fillable = [
