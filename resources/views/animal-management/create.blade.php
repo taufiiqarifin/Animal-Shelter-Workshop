@@ -141,7 +141,6 @@
                                     <option value="" disabled selected>Select gender</option>
                                     <option value="Male" {{ old('gender') == 'Male' ? 'selected' : '' }}>Male</option>
                                     <option value="Female" {{ old('gender') == 'Female' ? 'selected' : '' }}>Female</option>
-                                    <option value="Unknown" {{ old('gender') == 'Unknown' ? 'selected' : '' }}>Unknown</option>
                                 </select>
                                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                     <i class="fas fa-chevron-down"></i>

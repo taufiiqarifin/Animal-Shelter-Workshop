@@ -45,6 +45,14 @@ class RescueSeeder extends Seeder
             // 🎯 SUCCESS = 40% chance
             if (rand(1, 100) <= 40) {
                 $status = 'Success';
+
+                // 🔥 Update related report status to Resolved
+                DB::table('report')
+                    ->where('id', $report->id)
+                    ->update([
+                        'report_status' => 'Resolved',
+                        'updated_at'    => now(),
+                    ]);
             }
             else {
                 // Remaining 60% get random non-success status
@@ -63,6 +71,7 @@ class RescueSeeder extends Seeder
                 'updated_at'  => $rescueDate,
             ];
         }
+
 
         if (!empty($rescues)) {
             // Insert rescues in chunks to avoid SQL Server 2100 parameter limit

@@ -14,7 +14,18 @@ class BookingSeeder extends Seeder
     public function run()
     {
         $users = User::pluck('id')->toArray();
-        $animalIds = Animal::pluck('id')->toArray();
+
+        // CRITICAL FIX: Only get animals that are NOT adopted
+        // Adopted animals should not be available for bookings
+        $notAdoptedAnimalIds = Animal::where('adoption_status', 'Not Adopted')->pluck('id')->toArray();
+
+        if (empty($notAdoptedAnimalIds)) {
+            $this->command->error('No "Not Adopted" animals found. Please run AnimalSeeder first.');
+            return;
+        }
+
+        $this->command->info('Found ' . count($notAdoptedAnimalIds) . ' not adopted animals for bookings.');
+
         $statuses = ['Pending', 'Completed', 'Confirmed', 'Cancelled'];
 
         // Define appointment times from 9am to 5pm with 30-minute intervals
@@ -30,7 +41,7 @@ class BookingSeeder extends Seeder
             '17:00:00'
         ];
 
-        for ($i = 0; $i < 600; $i++) {
+        for ($i = 0; $i < 100; $i++) {
             // Random date in past 6 months
             $date = Carbon::now()->subDays(rand(0, 180));
 
@@ -48,8 +59,9 @@ class BookingSeeder extends Seeder
                 'updated_at'       => $date,
             ]);
 
-            // Attach 1-3 random animals to this booking via pivot table
-            $randomAnimalIds = array_rand(array_flip($animalIds), rand(1, min(3, count($animalIds))));
+            // Attach 1-3 random NOT ADOPTED animals to this booking via pivot table
+            $numAnimals = rand(1, min(3, count($notAdoptedAnimalIds)));
+            $randomAnimalIds = array_rand(array_flip($notAdoptedAnimalIds), $numAnimals);
             $randomAnimalIds = is_array($randomAnimalIds) ? $randomAnimalIds : [$randomAnimalIds];
 
             foreach ($randomAnimalIds as $animalId) {
@@ -63,6 +75,6 @@ class BookingSeeder extends Seeder
             }
         }
 
-        $this->command->info('600 bookings with animals created successfully!');
+        $this->command->info('600 bookings with NOT ADOPTED animals created successfully!');
     }
 }

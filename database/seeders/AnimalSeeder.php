@@ -38,6 +38,11 @@ class AnimalSeeder extends Seeder
         // Get all successful rescues
         $successfulRescues = Rescue::where('status', 'Success')->get();
 
+        if ($successfulRescues->isEmpty()) {
+            $this->command->error('No successful rescues found. Please run RescueSeeder first.');
+            return;
+        }
+
         // Get all available slots
         $availableSlots = Slot::where('status', 'available')->get();
 
@@ -54,131 +59,119 @@ class AnimalSeeder extends Seeder
 
         $animals = [];
         $totalAnimals = 100;
-        $adoptedCount = (int)($totalAnimals * 0.15); // 15% adopted
-        $notAdoptedCount = $totalAnimals - $adoptedCount; // 85% not adopted
-        $animalsFromRescue = min((int)($totalAnimals * 0.8), $successfulRescues->count());
+        $notAdoptedCount = 50; // Exactly 50% not adopted
+        $adoptedCount = 50; // Exactly 50% adopted
 
         // Shuffle slots for random assignment
         $shuffledSlots = $availableSlots->shuffle();
         $slotIndex = 0;
 
-        // ===== CREATE NOT ADOPTED ANIMALS FIRST (THEY NEED SLOTS) =====
-        for ($i = 0; $i < $notAdoptedCount; $i++) {
-            $chosenSpecies = $species[array_rand($species)];
-            $name = $chosenSpecies === 'Cat'
-                ? $catNames[array_rand($catNames)]
-                : $dogNames[array_rand($dogNames)];
+        // Create rescue groups - distribute all animals across all rescues
+        // Each rescue brings 1-5 animals
+        $rescueGroups = [];
+        $animalsDistributed = 0;
+        $rescueIndex = 0;
 
-            $ageCategories = $chosenSpecies === 'Cat'
-                ? ['kitten', 'adult', 'senior']
-                : ['puppy', 'adult', 'senior'];
-
-            $age = $ageCategories[array_rand($ageCategories)];
-
-            // Assign slot for NOT ADOPTED animals only
-            $slotID = null;
-            if ($slotIndex < $shuffledSlots->count()) {
-                $slotID = $shuffledSlots[$slotIndex]->id;
-                $slotIndex++;
-            } else {
-                $this->command->warn("Ran out of available slots at animal #{$i}. Stopping not adopted animal creation.");
-                $notAdoptedCount = $i; // Update actual count
-                break;
+        while ($animalsDistributed < $totalAnimals) {
+            // Cycle through rescues if we run out
+            if ($rescueIndex >= $successfulRescues->count()) {
+                $rescueIndex = 0;
             }
 
-            $rescueID = null;
-            $createdAt = Carbon::now();
+            $rescue = $successfulRescues[$rescueIndex];
+            $animalsInThisRescue = rand(1, 5); // Each rescue brings 1-5 animals
 
-            if ($i < $animalsFromRescue && $successfulRescues->isNotEmpty()) {
-                $rescue = $successfulRescues->random();
-                $rescueID = $rescue->id;
-                $createdAt = Carbon::parse($rescue->created_at)->addHours(rand(1, 24));
-            } else {
-                $year = rand(2024, 2025);
-                $month = rand(1, 12);
-                $day = rand(1, 28);
-                $createdAt = Carbon::create($year, $month, $day, rand(0, 23), rand(0, 59));
+            // Don't exceed our target
+            if ($animalsDistributed + $animalsInThisRescue > $totalAnimals) {
+                $animalsInThisRescue = $totalAnimals - $animalsDistributed;
             }
 
-            $weight = $chosenSpecies === 'Cat' ? rand(2, 8) : rand(5, 35);
-
-            $animals[] = [
-                'name'            => $name . ' ' . Str::upper(Str::random(3)),
-                'species'         => $chosenSpecies,
-                'age'             => $age,
-                'health_details'  => fake()->randomElement([
-                    'Healthy and active',
-                    'Needs regular vaccination',
-                    'Recovering from minor injuries',
-                    'Excellent condition, ready for adoption',
-                    'Under medical observation',
-                    'Fully vaccinated and healthy'
-                ]),
-                'weight'          => $weight,
-                'gender'          => $genders[array_rand($genders)],
-                'adoption_status' => 'Not Adopted',
-                'rescueID'        => $rescueID,
-                'slotID'          => $slotID, // HAS SLOT
-                'created_at'      => $createdAt,
-                'updated_at'      => $createdAt,
+            $rescueGroups[] = [
+                'rescue' => $rescue,
+                'count' => $animalsInThisRescue,
+                'timestamp' => Carbon::parse($rescue->created_at),
             ];
+
+            $animalsDistributed += $animalsInThisRescue;
+            $rescueIndex++;
         }
 
-        // ===== CREATE ADOPTED ANIMALS (NO SLOTS AT ALL) =====
-        for ($i = 0; $i < $adoptedCount; $i++) {
-            $chosenSpecies = $species[array_rand($species)];
-            $name = $chosenSpecies === 'Cat'
-                ? $catNames[array_rand($catNames)]
-                : $dogNames[array_rand($dogNames)];
+        $this->command->info("Distributing {$totalAnimals} animals across " . count($rescueGroups) . " rescue operations");
+        $this->command->info("Target: {$notAdoptedCount} Not Adopted, {$adoptedCount} Adopted");
 
-            $ageCategories = $chosenSpecies === 'Cat'
-                ? ['kitten', 'adult', 'senior']
-                : ['puppy', 'adult', 'senior'];
+        // ===== CREATE ALL ANIMALS WITH THEIR RESCUE INFO =====
+        $animalIndex = 0;
 
-            $age = $ageCategories[array_rand($ageCategories)];
+        foreach ($rescueGroups as $group) {
+            $rescue = $group['rescue'];
+            $rescueTimestamp = $group['timestamp'];
+            $totalInGroup = $group['count'];
 
-            $rescueID = null;
-            $createdAt = Carbon::now();
+            // Create all animals from this rescue
+            for ($i = 0; $i < $totalInGroup; $i++) {
+                $chosenSpecies = $species[array_rand($species)];
+                $name = $chosenSpecies === 'Cat'
+                    ? $catNames[array_rand($catNames)]
+                    : $dogNames[array_rand($dogNames)];
 
-            $totalProcessed = $notAdoptedCount + $i;
-            if ($totalProcessed < $animalsFromRescue && $successfulRescues->isNotEmpty()) {
-                $rescue = $successfulRescues->random();
-                $rescueID = $rescue->id;
-                $createdAt = Carbon::parse($rescue->created_at)->addHours(rand(1, 24));
-            } else {
-                $year = rand(2024, 2025);
-                $month = rand(1, 12);
-                $day = rand(1, 28);
-                $createdAt = Carbon::create($year, $month, $day, rand(0, 23), rand(0, 59));
+                $ageCategories = $chosenSpecies === 'Cat'
+                    ? ['kitten', 'adult', 'senior']
+                    : ['puppy', 'adult', 'senior'];
+
+                $age = $ageCategories[array_rand($ageCategories)];
+                $weight = $chosenSpecies === 'Cat' ? rand(2, 8) : rand(5, 35);
+
+                // Determine adoption status: First 50 are 'Not Adopted', rest are 'Adopted'
+                $adoptionStatus = $animalIndex < $notAdoptedCount ? 'Not Adopted' : 'Adopted';
+
+                // Assign slot ONLY for NOT ADOPTED animals
+                $slotID = null;
+                if ($adoptionStatus === 'Not Adopted') {
+                    if ($slotIndex < $shuffledSlots->count()) {
+                        $slotID = $shuffledSlots[$slotIndex]->id;
+                        $slotIndex++;
+                    } else {
+                        $this->command->warn("Ran out of available slots. Some not adopted animals will not have slots.");
+                    }
+                }
+
+                // Determine timestamps
+                $createdAt = $rescueTimestamp;
+                $updatedAt = $rescueTimestamp;
+
+                // If adopted, set updated_at to adoption date (7-90 days after rescue)
+                if ($adoptionStatus === 'Adopted') {
+                    $updatedAt = Carbon::parse($rescueTimestamp)->addDays(rand(7, 90));
+                }
+
+                // All animals from same rescue have EXACT SAME created_at timestamp
+                $animals[] = [
+                    'name'            => $name . ' ' . Str::upper(Str::random(3)),
+                    'species'         => $chosenSpecies,
+                    'age'             => $age,
+                    'health_details'  => fake()->randomElement([
+                        'Healthy and active',
+                        'Needs regular vaccination',
+                        'Recovering from minor injuries',
+                        'Excellent condition, ready for adoption',
+                        'Under medical observation',
+                        'Fully vaccinated and healthy'
+                    ]),
+                    'weight'          => $weight,
+                    'gender'          => $genders[array_rand($genders)],
+                    'adoption_status' => $adoptionStatus,
+                    'rescueID'        => $rescue->id,
+                    'slotID'          => $slotID,
+                    'created_at'      => $createdAt,
+                    'updated_at'      => $updatedAt,
+                ];
+
+                $animalIndex++;
             }
-
-            // Adoption date should be after creation (7-90 days later)
-            $adoptedAt = Carbon::parse($createdAt)->addDays(rand(7, 90));
-
-            $weight = $chosenSpecies === 'Cat' ? rand(2, 8) : rand(5, 35);
-
-            $animals[] = [
-                'name'            => $name . ' ' . Str::upper(Str::random(3)),
-                'species'         => $chosenSpecies,
-                'age'             => $age,
-                'health_details'  => fake()->randomElement([
-                    'Healthy and active',
-                    'Needs regular vaccination',
-                    'Recovering from minor injuries',
-                    'Excellent condition, ready for adoption',
-                    'Under medical observation',
-                    'Fully vaccinated and healthy'
-                ]),
-                'weight'          => $weight,
-                'gender'          => $genders[array_rand($genders)],
-                'adoption_status' => 'Adopted',
-                'rescueID'        => $rescueID,
-                'slotID'          => null, // NO SLOT - CRITICAL FIX
-                'created_at'      => $createdAt,
-                'updated_at'      => $adoptedAt,
-            ];
         }
 
+        // Remove the old adopted animal creation loop since we now create all animals together
+        // ===== OLD ADOPTED ANIMALS SECTION REMOVED =====
         // Insert all animals
         $createdAnimals = [];
         foreach ($animals as $animalData) {
@@ -201,22 +194,32 @@ class AnimalSeeder extends Seeder
         }
 
         // Statistics
-        $fromRescueCount = count(array_filter($animals, fn($a) => $a['rescueID'] !== null));
-        $actualAdoptedCount = count(array_filter($animals, fn($a) => $a['adoption_status'] === 'Adopted'));
         $actualNotAdoptedCount = count(array_filter($animals, fn($a) => $a['adoption_status'] === 'Not Adopted'));
+        $actualAdoptedCount = count(array_filter($animals, fn($a) => $a['adoption_status'] === 'Adopted'));
         $ageCount = array_count_values(array_column($animals, 'age'));
+
+        // Count animals per rescue for verification
+        $animalsPerRescue = [];
+        foreach ($animals as $animal) {
+            $rescueId = $animal['rescueID'];
+            if (!isset($animalsPerRescue[$rescueId])) {
+                $animalsPerRescue[$rescueId] = 0;
+            }
+            $animalsPerRescue[$rescueId]++;
+        }
 
         $this->command->info('');
         $this->command->info('=================================');
         $this->command->info('Animal Seeding Completed!');
         $this->command->info('=================================');
         $this->command->info("Total animals created: " . count($animals));
-        $this->command->info("From rescues: {$fromRescueCount}");
-        $this->command->info("Direct intakes: " . (count($animals) - $fromRescueCount));
+        $this->command->info("All animals from rescues: " . count($animals));
+        $this->command->info("Rescue operations used: " . count($rescueGroups));
+        $this->command->info("Animals per rescue: " . implode(', ', $animalsPerRescue));
         $this->command->info('');
         $this->command->info('Adoption Status:');
-        $this->command->info("  - Not Adopted (available for adoption): {$actualNotAdoptedCount}");
-        $this->command->info("  - Adopted (no longer in shelter): {$actualAdoptedCount}");
+        $this->command->info("  - Not Adopted (currently at shelter): {$actualNotAdoptedCount}");
+        $this->command->info("  - Adopted (no longer at shelter): {$actualAdoptedCount}");
         $this->command->info("  - Slots occupied: " . count($assignedSlotIds));
         $this->command->info('');
         $this->command->info('Age Distribution:');

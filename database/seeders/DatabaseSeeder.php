@@ -20,7 +20,6 @@ class DatabaseSeeder extends Seeder
             SectionSlotSeeder::class,
             ClinicVetSeeder::class,
             AnimalSeeder::class,
-            FixAdoptedAnimalSeeder::class,
             BookingSeeder::class,
             TransactionSeeder::class,
             AdoptionSeeder::class,

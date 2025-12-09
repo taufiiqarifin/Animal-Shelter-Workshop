@@ -176,5 +176,6 @@ return new class extends Migration {
         Schema::dropIfExists('vet');
         Schema::dropIfExists('clinic');
         Schema::dropIfExists('slot');
+        Schema::dropIfExists('section');
     }
 };
