@@ -4,10 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-namespace App\Models;
 class Inventory extends Model
 {
-    //  protected $connection = 'pgsql_remote';
+//    protected $connection = 'atiqah';
 
     protected $table = 'inventory';
     protected $fillable = [

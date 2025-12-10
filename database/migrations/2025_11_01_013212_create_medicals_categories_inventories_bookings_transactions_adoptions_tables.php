@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration {
     public function up(): void
@@ -12,68 +13,90 @@ return new class extends Migration {
          */
         Schema::create('medical', function (Blueprint $table) {
             $table->id();
-            $table->string('treatment_type')->nullable();
+            $table->string('treatment_type', 100)->nullable();
             $table->text('diagnosis')->nullable();
             $table->text('action')->nullable();
             $table->text('remarks')->nullable();
             $table->decimal('costs', 10, 2)->nullable();
+            $table->unsignedBigInteger('vetID')->nullable();
+            $table->unsignedBigInteger('animalID')->nullable();
             $table->timestamps();
-            $table->unsignedBigInteger('vetID')->nullable();    // FK later
-            $table->unsignedBigInteger('animalID')->nullable(); // FK later
+
+            // Add indexes for foreign key columns
+            $table->index('vetID');
+            $table->index('animalID');
         });
 
         Schema::create('category', function (Blueprint $table) {
             $table->id();
-            $table->string('main')->nullable();
-            $table->string('sub')->nullable();
+            $table->string('main', 255)->nullable();
+            $table->string('sub', 255)->nullable();
             $table->timestamps();
         });
 
         Schema::create('inventory', function (Blueprint $table) {
             $table->id();
-            $table->string('item_name');
+            $table->string('item_name', 255);
             $table->integer('quantity')->default(0);
-            $table->string('brand')->nullable();
+            $table->string('brand', 255)->nullable();
             $table->decimal('weight', 10, 2)->nullable();
-            $table->string('status')->nullable();
-            $table->unsignedBigInteger('slotID')->nullable();     // FK later
-            $table->unsignedBigInteger('categoryID')->nullable(); // FK later
+            $table->string('status', 50)->nullable();
+            $table->unsignedBigInteger('slotID')->nullable();
+            $table->unsignedBigInteger('categoryID')->nullable();
             $table->timestamps();
+
+            // Add indexes for foreign key columns
+            $table->index('slotID');
+            $table->index('categoryID');
         });
 
         Schema::create('booking', function (Blueprint $table) {
             $table->id();
             $table->date('appointment_date')->nullable();
             $table->time('appointment_time');
-            $table->string('status')->nullable();
+            $table->string('status', 50)->nullable();
             $table->text('remarks')->nullable();
-            $table->unsignedBigInteger('userID')->nullable();   // FK later
+            $table->unsignedBigInteger('userID')->nullable();
             $table->timestamps();
+
+            // Add index for foreign key column
+            $table->index('userID');
         });
 
         Schema::create('transaction', function (Blueprint $table) {
             $table->id();
             $table->decimal('amount', 10, 2)->nullable();
-            $table->string('status')->nullable();
+            $table->string('status', 50)->nullable();
             $table->text('remarks')->nullable();
-            $table->string('type')->nullable();
-            $table->string('bill_code')->nullable();
-            $table->string('reference_no')->nullable();
-            $table->unsignedBigInteger('userID')->nullable(); // FK later
+            $table->string('type', 50)->nullable();
+            $table->string('bill_code', 100)->nullable();
+            $table->string('reference_no', 100)->nullable();
+            $table->unsignedBigInteger('userID')->nullable();
             $table->timestamps();
+
+            // Add index for foreign key column
+            $table->index('userID');
         });
 
         Schema::create('adoption', function (Blueprint $table) {
             $table->id();
             $table->decimal('fee', 10, 2)->nullable();
             $table->text('remarks')->nullable();
-            $table->unsignedBigInteger('bookingID')->nullable();     // FK later
-            $table->unsignedBigInteger('transactionID')->nullable(); // FK later
+            $table->unsignedBigInteger('bookingID')->nullable();
+            $table->unsignedBigInteger('transactionID')->nullable();
             $table->timestamps();
+
+            // Add indexes for foreign key columns
+            $table->index('bookingID');
+            $table->index('transactionID');
         });
+
         /**
          * Step 2: Add foreign key constraints
          */
+        // Detect database driver
+        $driver = DB::connection()->getDriverName();
+
         Schema::table('medical', function (Blueprint $table) {
             $table->foreign('vetID')
                 ->references('id')
@@ -112,16 +135,25 @@ return new class extends Migration {
                 ->onDelete('cascade');
         });
 
-        Schema::table('adoption', function (Blueprint $table) {
+        Schema::table('adoption', function (Blueprint $table) use ($driver) {
             $table->foreign('bookingID')
                 ->references('id')
                 ->on('booking')
                 ->onDelete('cascade');
 
-            $table->foreign('transactionID')
-                ->references('id')
-                ->on('transaction')
-                ->onDelete('set null');
+            // Use NO ACTION for SQL Server to avoid multiple cascade paths
+            // (booking->userID and transaction->userID both cascade from users)
+            if ($driver === 'sqlsrv') {
+                $table->foreign('transactionID')
+                    ->references('id')
+                    ->on('transaction')
+                    ->onDelete('no action');
+            } else {
+                $table->foreign('transactionID')
+                    ->references('id')
+                    ->on('transaction')
+                    ->onDelete('set null');
+            }
         });
     }
 
@@ -137,7 +169,7 @@ return new class extends Migration {
         });
 
         Schema::table('booking', function (Blueprint $table) {
-            $table->dropForeign(['userID']); // FIXED: removed non-existent animalID FK
+            $table->dropForeign(['userID']);
         });
 
         Schema::table('inventory', function (Blueprint $table) {

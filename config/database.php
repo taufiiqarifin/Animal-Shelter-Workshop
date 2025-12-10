@@ -31,7 +31,7 @@ return [
 
     'connections' => [
         //workshop2
-        'mysql_device_1' => [
+        'eilya' => [
             'driver' => 'mysql',
             'host' => env('DB1_HOST'),
             'port' => env('DB1_PORT', 3306),
@@ -42,7 +42,7 @@ return [
             'collation' => 'utf8mb4_unicode_ci',
         ],
 
-        'mysql_device_2' => [
+        'atiqah' => [
             'driver' => 'mysql',
             'host' => env('DB2_HOST'),
             'port' => env('DB2_PORT', 3306),
@@ -51,7 +51,7 @@ return [
             'password' => env('DB2_PASSWORD'),
         ],
 
-        'mysql_device_3' => [
+        'shafiqah' => [
             'driver' => 'mysql',
             'host' => env('DB3_HOST'),
             'port' => env('DB3_PORT', 3306),
@@ -60,7 +60,7 @@ return [
             'password' => env('DB3_PASSWORD'),
         ],
 
-        'sqlsrv_remote' => [
+        'danish' => [
             'driver' => 'sqlsrv',
             'host' => env('DB4_HOST'),
             'port' => env('DB4_PORT', 1433),
@@ -69,10 +69,10 @@ return [
             'password' => env('DB4_PASSWORD'),
         ],
 
-        'pgsql_remote' => [
-            'driver' => 'pgsql',
-            'host' => env('DB5_HOST'),
-            'port' => env('DB5_PORT', 5432),
+        'taufiq' => [
+            'driver'   => 'pgsql',
+            'host'     => env('DB5_HOST'),
+            'port'     => env('DB5_PORT', 5432),
             'database' => env('DB5_DATABASE'),
             'username' => env('DB5_USERNAME'),
             'password' => env('DB5_PASSWORD'),

@@ -523,7 +523,7 @@
                             </div>
                             <div class="flex justify-between py-2 border-b border-gray-100">
                                 <span class="text-gray-600 font-semibold">Arrival Date</span>
-                                <span class="text-gray-800">{{ \Carbon\Carbon::parse($animal->arrival_date)->format('M d, Y') }}</span>
+                                <span class="text-gray-800">{{ $animal->rescue ? \Carbon\Carbon::parse($animal->rescue->created_at)->format('M d, Y') : 'N/A' }}</span>
                             </div>
                         </div>
                     </div>

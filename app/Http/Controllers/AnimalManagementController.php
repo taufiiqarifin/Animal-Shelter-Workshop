@@ -223,7 +223,7 @@ class AnimalManagementController extends Controller
     public function create($rescue_id = null)
     {
         $rescues = Rescue::all();
-        $slots = Slot::all();
+        $slots = Slot::where('status', 'Available')->get();
 
         return view('animal-management.create', [
             'slots' => $slots,

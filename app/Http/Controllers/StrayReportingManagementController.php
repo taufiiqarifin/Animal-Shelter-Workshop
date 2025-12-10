@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Report;  
-use App\Models\Image;  
-use App\Models\AdopterProfile;  
-use App\Models\AnimalProfile;  
+use App\Models\Report;
+use App\Models\Image;
+use App\Models\AdopterProfile;
+use App\Models\AnimalProfile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -26,7 +26,7 @@ class StrayReportingManagementController extends Controller
         $userReports = Report::where('userID', auth()->id())
             ->with(['images'])
             ->orderBy('created_at', 'desc')
-            ->paginate(5);
+            ->paginate(50);
 
         $adopterProfile = AdopterProfile::where('adopterID', auth()->id())->first();
 
@@ -85,7 +85,7 @@ class StrayReportingManagementController extends Controller
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
                 $path = $image->store('reports', 'public');
-                
+
                 Image::create([
                     'image_path' => $path,
                     'reportID' => $report->id,
@@ -101,7 +101,7 @@ class StrayReportingManagementController extends Controller
     {
         $reports = Report::with('images')
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(50);
 
         return view('stray-reporting.index', compact('reports'));
     }
@@ -118,7 +118,7 @@ class StrayReportingManagementController extends Controller
     {
         $reports = Report::with(['images', 'user'])
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate(50);
 
         return view('stray-reporting.admin-index', compact('reports'));
     }
@@ -178,7 +178,7 @@ class StrayReportingManagementController extends Controller
             $query->where('status', $request->status);
         }
 
-        $rescues = $query->orderBy('created_at', 'desc')->paginate(10);
+        $rescues = $query->orderBy('created_at', 'desc')->paginate(50);
 
         return view('stray-reporting.index-caretaker', compact('rescues'));
     }
@@ -193,11 +193,11 @@ class StrayReportingManagementController extends Controller
                 Rescue::STATUS_FAILED
             ])
         ];
-        
+
         if (in_array($request->status, [Rescue::STATUS_SUCCESS, Rescue::STATUS_FAILED])) {
             $rules['remarks'] = 'required|string|min:10|max:1000';
         }
-        
+
         $request->validate($rules, [
             'remarks.required' => 'Remarks are required for this status.',
             'remarks.min' => 'Remarks must be at least 10 characters.',
@@ -209,7 +209,7 @@ class StrayReportingManagementController extends Controller
             ->firstOrFail();
 
         $updateData = ['status' => $request->status];
-        
+
         if ($request->filled('remarks')) {
             $updateData['remarks'] = $request->remarks;
         }

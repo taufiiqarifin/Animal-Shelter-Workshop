@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Animal extends Model
 {
-    //  protected $connection = 'pgsql_remote';
+//      protected $connection = 'shafiqah';
 
     protected $table = 'animal';
     protected $fillable = [
