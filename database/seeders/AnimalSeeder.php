@@ -20,8 +20,9 @@ class AnimalSeeder extends Seeder
         $species = ['Cat', 'Dog'];
         $genders = ['Male', 'Female'];
 
-        $catNames = ['Milo', 'Coco', 'Luna', 'Oyen', 'Mimi', 'Snowy', 'Kitty', 'Nala', 'Bella'];
-        $dogNames = ['Buddy', 'Rocky', 'Max', 'Shadow', 'Charlie', 'Bella', 'Duke', 'Lucky', 'Hunter'];
+        // Consonants and vowels for name generation
+        $consonants = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'W', 'Z'];
+        $vowels = ['a', 'e', 'i', 'o', 'u'];
 
         // Define available images by species
         $catImages = [];
@@ -110,9 +111,21 @@ class AnimalSeeder extends Seeder
             // Create all animals from this rescue
             for ($i = 0; $i < $totalInGroup; $i++) {
                 $chosenSpecies = $species[array_rand($species)];
-                $name = $chosenSpecies === 'Cat'
-                    ? $catNames[array_rand($catNames)]
-                    : $dogNames[array_rand($dogNames)];
+
+                // Generate random name (3 or 5 letters)
+                $nameLength = rand(0, 1) === 0 ? 3 : 5;
+                $name = '';
+                for ($j = 0; $j < $nameLength; $j++) {
+                    if ($j % 2 === 0) {
+                        // Even positions: consonant
+                        $name .= $consonants[array_rand($consonants)];
+                    } else {
+                        // Odd positions: vowel
+                        $name .= $vowels[array_rand($vowels)];
+                    }
+                }
+                // Capitalize first letter only
+                $name = ucfirst(strtolower($name));
 
                 $ageCategories = $chosenSpecies === 'Cat'
                     ? ['kitten', 'adult', 'senior']
@@ -146,7 +159,7 @@ class AnimalSeeder extends Seeder
 
                 // All animals from same rescue have EXACT SAME created_at timestamp
                 $animals[] = [
-                    'name'            => $name . ' ' . Str::upper(Str::random(3)),
+                    'name'            => $name,
                     'species'         => $chosenSpecies,
                     'age'             => $age,
                     'health_details'  => fake()->randomElement([
@@ -177,6 +190,11 @@ class AnimalSeeder extends Seeder
         foreach ($animals as $animalData) {
             $createdAnimals[] = Animal::create($animalData);
         }
+
+        // Verify what was actually inserted into database
+        $dbNotAdopted = Animal::where('adoption_status', 'Not Adopted')->count();
+        $dbAdopted = Animal::where('adoption_status', 'Adopted')->count();
+        $this->command->info("VERIFICATION - Database counts: Not Adopted = {$dbNotAdopted}, Adopted = {$dbAdopted}");
 
         // Update slot status to 'occupied' for assigned slots ONLY
         $assignedSlotIds = array_filter(array_column($animals, 'slotID'));

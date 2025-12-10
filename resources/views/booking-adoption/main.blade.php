@@ -54,64 +54,63 @@
         </div>
     @endif
 
-        <!-- Stats Cards as Filter Buttons -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
-            <!-- Total Bookings Card -->
-            <!-- Total Bookings Card -->
-            <a href="{{ route('bookings.index') }}"
-               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ !request('status') ? 'ring-4 ring-purple-500' : '' }}">
-                <div class="text-5xl mb-4">📅</div>
-                <p class="text-4xl font-bold text-purple-700 mb-2">{{ $totalBookings }}</p>
-                <p class="text-gray-600">Total Bookings</p>
-                @if(!request('status'))
-                    <div class="mt-2 text-xs text-purple-600 font-semibold">● Active</div>
-                @endif
-            </a>
+    <!-- Stats Cards as Filter Buttons -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+        <!-- Total Bookings Card -->
+        <a href="{{ route('bookings.index') }}"
+           class="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ !request('status') ? 'ring-2 ring-purple-500' : '' }}">
+            <div class="text-3xl mb-2">📅</div>
+            <p class="text-3xl font-bold text-purple-700 mb-1">{{ $totalBookings }}</p>
+            <p class="text-sm text-gray-600">Total</p>
+            @if(!request('status'))
+                <div class="mt-1 text-xs text-purple-600 font-semibold">● Active</div>
+            @endif
+        </a>
 
-            <!-- Pending Card -->
-            <a href="{{ route('bookings.index', ['status' => 'Pending']) }}"
-               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Pending' ? 'ring-4 ring-yellow-500' : '' }}">
-                <div class="text-5xl mb-4">⏳</div>
-                <p class="text-4xl font-bold text-yellow-600 mb-2">{{ $statusCounts['Pending'] ?? 0 }}</p>
-                <p class="text-gray-600">Pending</p>
-                @if(request('status') == 'Pending')
-                    <div class="mt-2 text-xs text-yellow-600 font-semibold">● Active</div>
-                @endif
-            </a>
+        <!-- Pending Card -->
+        <a href="{{ route('bookings.index', ['status' => 'Pending']) }}"
+           class="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Pending' ? 'ring-2 ring-yellow-500' : '' }}">
+            <div class="text-3xl mb-2">⏳</div>
+            <p class="text-3xl font-bold text-yellow-600 mb-1">{{ $statusCounts['Pending'] ?? 0 }}</p>
+            <p class="text-sm text-gray-600">Pending</p>
+            @if(request('status') == 'Pending')
+                <div class="mt-1 text-xs text-yellow-600 font-semibold">● Active</div>
+            @endif
+        </a>
 
-            <!-- Confirmed Card -->
-            <a href="{{ route('bookings.index', ['status' => 'Confirmed']) }}"
-               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Confirmed' ? 'ring-4 ring-blue-500' : '' }}">
-                <div class="text-5xl mb-4">✅</div>
-                <p class="text-4xl font-bold text-blue-600 mb-2">{{ $statusCounts['Confirmed'] ?? 0 }}</p>
-                <p class="text-gray-600">Confirmed</p>
-                @if(request('status') == 'Confirmed')
-                    <div class="mt-2 text-xs text-blue-600 font-semibold">● Active</div>
-                @endif
-            </a>
+        <!-- Confirmed Card -->
+        <a href="{{ route('bookings.index', ['status' => 'Confirmed']) }}"
+           class="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Confirmed' ? 'ring-2 ring-blue-500' : '' }}">
+            <div class="text-3xl mb-2">✅</div>
+            <p class="text-3xl font-bold text-blue-600 mb-1">{{ $statusCounts['Confirmed'] ?? 0 }}</p>
+            <p class="text-sm text-gray-600">Confirmed</p>
+            @if(request('status') == 'Confirmed')
+                <div class="mt-1 text-xs text-blue-600 font-semibold">● Active</div>
+            @endif
+        </a>
 
-            <!-- Completed Card -->
-            <a href="{{ route('bookings.index', ['status' => 'Completed']) }}"
-               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Completed' ? 'ring-4 ring-green-500' : '' }}">
-                <div class="text-5xl mb-4">🎉</div>
-                <p class="text-4xl font-bold text-green-600 mb-2">{{ $statusCounts['Completed'] ?? 0 }}</p>
-                <p class="text-gray-600">Completed</p>
-                @if(request('status') == 'Completed')
-                    <div class="mt-2 text-xs text-green-600 font-semibold">● Active</div>
-                @endif
-            </a>
+        <!-- Completed Card -->
+        <a href="{{ route('bookings.index', ['status' => 'Completed']) }}"
+           class="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Completed' ? 'ring-2 ring-green-500' : '' }}">
+            <div class="text-3xl mb-2">🎉</div>
+            <p class="text-3xl font-bold text-green-600 mb-1">{{ $statusCounts['Completed'] ?? 0 }}</p>
+            <p class="text-sm text-gray-600">Completed</p>
+            @if(request('status') == 'Completed')
+                <div class="mt-1 text-xs text-green-600 font-semibold">● Active</div>
+            @endif
+        </a>
 
-            <!-- Cancelled Card -->
-            <a href="{{ route('bookings.index', ['status' => 'Cancelled']) }}"
-               class="bg-white rounded-lg shadow-lg p-8 text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Cancelled' ? 'ring-4 ring-red-500' : '' }}">
-                <div class="text-5xl mb-4">❌</div>
-                <p class="text-4xl font-bold text-red-600 mb-2">{{ $statusCounts['Cancelled'] ?? 0 }}</p>
-                <p class="text-gray-600">Cancelled</p>
-                @if(request('status') == 'Cancelled')
-                    <div class="mt-2 text-xs text-red-600 font-semibold">● Active</div>
-                @endif
-            </a>
-        </div>
+        <!-- Cancelled Card -->
+        <a href="{{ route('bookings.index', ['status' => 'Cancelled']) }}"
+           class="bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 cursor-pointer {{ request('status') == 'Cancelled' ? 'ring-2 ring-red-500' : '' }}">
+            <div class="text-3xl mb-2">❌</div>
+            <p class="text-3xl font-bold text-red-600 mb-1">{{ $statusCounts['Cancelled'] ?? 0 }}</p>
+            <p class="text-sm text-gray-600">Cancelled</p>
+            @if(request('status') == 'Cancelled')
+                <div class="mt-1 text-xs text-red-600 font-semibold">● Active</div>
+            @endif
+        </a>
+    </div>
 
     @if($bookings->isEmpty())
         <div class="bg-white rounded-lg shadow-lg p-12 text-center">
@@ -130,124 +129,138 @@
             </a>
         </div>
     @else
-        <h2 class="text-3xl font-bold text-gray-800 mb-6">Your Appointments</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            @foreach($bookings as $booking)
-                @php
-                    $statusKey = strtolower($booking->status);
-                    $statusColors = [
-                        'pending' => 'from-yellow-300 to-yellow-400',
-                        'confirmed' => 'from-blue-300 to-blue-400',
-                        'completed' => 'from-green-300 to-green-400',
-                        'cancelled' => 'from-red-300 to-red-400',
-                    ];
-                    $statusEmojis = [
-                        'pending' => '⏳',
-                        'confirmed' => '✅',
-                        'completed' => '🎉',
-                        'cancelled' => '❌',
-                    ];
-                    $badgeColors = [
-                        'pending' => 'bg-yellow-500',
-                        'confirmed' => 'bg-blue-500',
-                        'completed' => 'bg-green-500',
-                        'cancelled' => 'bg-red-500',
-                    ];
-                @endphp
-                <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition duration-300">
-                    <div class="relative">
-                        <div class="h-32 bg-gradient-to-br {{ $statusColors[$statusKey] ?? 'from-gray-300 to-gray-400' }} flex items-center justify-center">
-                            <span class="text-7xl">{{ $statusEmojis[$statusKey] ?? '📅' }}</span>
-                        </div>
-                        <div class="absolute top-4 right-4 {{ $badgeColors[$statusKey] ?? 'bg-gray-500' }} text-white px-3 py-1 rounded-full text-sm font-semibold">
-                            {{ ucfirst($booking->status) }}
-                        </div>
-                    </div>
-
-                    <div class="p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-2xl font-bold text-gray-800">Booking #{{ $booking->id }}</h3>
-                        </div>
-
-                        <div class="space-y-3 mb-4">
-                            <div class="flex items-start">
-                                <div class="bg-purple-100 rounded-full p-2 mr-3 flex-shrink-0">
-                                    <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
+        <!-- Table View -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gradient-to-r from-purple-600 to-purple-700">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                            Booking ID
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                            Date & Time
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                            Animals
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                            Adoption Status
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($bookings as $booking)
+                        @php
+                            $statusKey = strtolower($booking->status);
+                            $badgeColors = [
+                                'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                                'confirmed' => 'bg-blue-100 text-blue-800 border-blue-300',
+                                'completed' => 'bg-green-100 text-green-800 border-green-300',
+                                'cancelled' => 'bg-red-100 text-red-800 border-red-300',
+                            ];
+                            $statusEmojis = [
+                                'pending' => '⏳',
+                                'confirmed' => '✅',
+                                'completed' => '🎉',
+                                'cancelled' => '❌',
+                            ];
+                        @endphp
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <!-- Booking ID -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="text-sm font-bold text-purple-700">#{{ $booking->id }}</div>
                                 </div>
-                                <div>
-                                    <p class="text-sm text-gray-500 font-medium">Appointment Date</p>
-                                    <p class="font-semibold text-gray-800">{{ \Carbon\Carbon::parse($booking->appointment_date)->format('F d, Y') }}</p>
-                                </div>
-                            </div>
+                            </td>
 
-                            <div class="flex items-start">
-                                <div class="bg-purple-100 rounded-full p-2 mr-3 flex-shrink-0">
-                                    <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500 font-medium">Time</p>
-                                    <p class="font-semibold text-gray-800">{{ \Carbon\Carbon::parse($booking->appointment_time)->format('h:i A') }}</p>
-                                </div>
-                            </div>
+                            <!-- Status -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold border {{ $badgeColors[$statusKey] ?? 'bg-gray-100 text-gray-800 border-gray-300' }}">
+                                        <span>{{ $statusEmojis[$statusKey] ?? '📅' }}</span>
+                                        <span>{{ ucfirst($booking->status) }}</span>
+                                    </span>
+                            </td>
 
-                            @if($booking->animals->isNotEmpty())
-                                <div class="flex items-start">
-                                    <div class="bg-purple-100 rounded-full p-2 mr-3 flex-shrink-0">
-                                        <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
+                            <!-- Date & Time -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 font-medium">
+                                    {{ \Carbon\Carbon::parse($booking->appointment_date)->format('M d, Y') }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ \Carbon\Carbon::parse($booking->appointment_time)->format('h:i A') }}
+                                </div>
+                            </td>
+
+                            <!-- Animals -->
+                            <td class="px-6 py-4">
+                                @if($booking->animals->isNotEmpty())
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach($booking->animals->take(3) as $animal)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
+                                                    {{ $animal->name }}
+                                                </span>
+                                        @endforeach
+                                        @if($booking->animals->count() > 3)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                                                    +{{ $booking->animals->count() - 3 }} more
+                                                </span>
+                                        @endif
                                     </div>
-                                    <div>
-                                        <p class="text-sm text-gray-500 font-medium">Animals</p>
-                                        <div class="flex flex-wrap gap-1 mt-1">
-                                            @foreach($booking->animals as $animal)
-                                                <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                        {{ $animal->name }}
-                                                    </span>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
+                                @else
+                                    <span class="text-sm text-gray-400">No animals</span>
+                                @endif
+                            </td>
 
-                            @if($booking->adoptions->isNotEmpty())
-                                <div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                            <!-- Adoption Status -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($booking->adoptions->isNotEmpty())
                                     <div class="flex items-center gap-2">
                                         <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                         </svg>
                                         <span class="text-sm font-semibold text-green-800">
-                                                Adoption Confirmed ({{ $booking->adoptions->count() }})
+                                                {{ $booking->adoptions->count() }} Adopted
                                             </span>
                                     </div>
-                                </div>
-                            @endif
-                        </div>
+                                @else
+                                    <span class="text-sm text-gray-400">Not yet</span>
+                                @endif
+                            </td>
 
-                        <div class="flex gap-2 mt-6">
-                            <button type="button"
-                                    onclick="openModal('bookingModal-{{ $booking->id }}')"
-                                    class="flex-1 text-center bg-purple-700 hover:bg-purple-800 text-white py-3 rounded-lg font-semibold transition duration-300">
-                                View Details
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                            <!-- Actions -->
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <button type="button"
+                                        onclick="openModal('bookingModal-{{ $booking->id }}')"
+                                        class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition duration-200 shadow-sm hover:shadow-md">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    View Details
+                                </button>
+                            </td>
+                        </tr>
 
-                <!-- Include the modal for each booking (hidden by default) -->
-                @include('booking-adoption.show-modal', ['booking' => $booking])
-            @endforeach
+                        <!-- Include the modal for each booking (hidden by default) -->
+                        @include('booking-adoption.show-modal', ['booking' => $booking])
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
-    @endif
 
-    @if($bookings->hasPages())
-        <div class="mt-8 flex justify-center">
-            {{ $bookings->links() }}
-        </div>
+        @if($bookings->hasPages())
+            <div class="mt-8 flex justify-center">
+                {{ $bookings->links() }}
+            </div>
+        @endif
     @endif
 
     <div class="mt-16 bg-gradient-to-r from-purple-700 to-purple-900 rounded-lg p-12 text-center text-white">
@@ -291,7 +304,6 @@
     });
 
     // Back to booking details - just close adoption fee modal
-    // Booking details modal is still open underneath
     function backToBookingDetails(bookingId) {
         closeModal('adoptionFeeModal-' + bookingId);
     }
@@ -315,24 +327,20 @@
     }
 
     // Open adoption fee modal and populate with selected animals
-    // Does NOT close the booking details modal
     function openAdoptionFeeModal(bookingId) {
         const checkboxes = document.querySelectorAll('.animal-select-' + bookingId + ':checked');
 
-        // Check if at least one animal is selected
         if (checkboxes.length === 0) {
             alert('Please select at least one animal to adopt.');
             return;
         }
 
-        // Get containers
         const listContainer = document.getElementById('selectedAnimalsList-' + bookingId);
         const hiddenInputsContainer = document.getElementById('hiddenAnimalInputs-' + bookingId);
         const grandTotalEl = document.getElementById('grandTotal-' + bookingId);
         const noAnimalsMsg = document.getElementById('noAnimalsSelected-' + bookingId);
         const submitBtn = document.getElementById('submitBtn-' + bookingId);
 
-        // Clear previous content
         listContainer.innerHTML = '';
         hiddenInputsContainer.innerHTML = '';
 
@@ -351,30 +359,28 @@
 
             grandTotal += totalFee;
 
-            // Create animal card (read-only) with detailed breakdown
             const animalCard = document.createElement('div');
             animalCard.className = 'flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200';
             animalCard.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-gray-800">${animalName} (${animalSpecies})</p>
-                            <p class="text-sm text-gray-600">
-                                Base: RM ${baseFee.toFixed(2)} |
-                                Medical: RM ${medicalFee.toFixed(2)} (${medicalCount} record${medicalCount !== 1 ? 's' : ''}) |
-                                Vaccination: RM ${vaccinationFee.toFixed(2)} (${vaccinationCount} shot${vaccinationCount !== 1 ? 's' : ''})
-                            </p>
-                        </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
                     </div>
-                    <span class="font-bold text-gray-800">RM ${totalFee.toFixed(2)}</span>
-                `;
+                    <div>
+                        <p class="font-semibold text-gray-800">${animalName} (${animalSpecies})</p>
+                        <p class="text-sm text-gray-600">
+                            Base: RM ${baseFee.toFixed(2)} |
+                            Medical: RM ${medicalFee.toFixed(2)} (${medicalCount} record${medicalCount !== 1 ? 's' : ''}) |
+                            Vaccination: RM ${vaccinationFee.toFixed(2)} (${vaccinationCount} shot${vaccinationCount !== 1 ? 's' : ''})
+                        </p>
+                    </div>
+                </div>
+                <span class="font-bold text-gray-800">RM ${totalFee.toFixed(2)}</span>
+            `;
             listContainer.appendChild(animalCard);
 
-            // Create hidden input for form submission
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'animal_ids[]';
@@ -382,18 +388,14 @@
             hiddenInputsContainer.appendChild(hiddenInput);
         });
 
-        // *** ADD THIS: Create hidden input for total fee ***
         const totalFeeInput = document.createElement('input');
         totalFeeInput.type = 'hidden';
         totalFeeInput.name = 'total_fee';
         totalFeeInput.value = grandTotal.toFixed(2);
         hiddenInputsContainer.appendChild(totalFeeInput);
-        // *** END OF ADDITION ***
 
-        // Update grand total
         grandTotalEl.innerText = 'RM ' + grandTotal.toFixed(2);
 
-        // Show/hide no animals message and enable/disable submit
         if (checkboxes.length === 0) {
             noAnimalsMsg.classList.remove('hidden');
             submitBtn.disabled = true;
@@ -402,16 +404,13 @@
             submitBtn.disabled = false;
         }
 
-        // Open adoption fee modal WITHOUT closing booking modal
         openModal('adoptionFeeModal-' + bookingId);
     }
 
     // Add event listeners for animal selection checkboxes
     document.addEventListener('DOMContentLoaded', function() {
-        // Find all animal selection checkboxes and add change listeners
         document.querySelectorAll('[class*="animal-select-"]').forEach(function(cb) {
             cb.addEventListener('change', function() {
-                // Extract booking ID from class name
                 const classes = this.className.split(' ');
                 const selectClass = classes.find(c => c.startsWith('animal-select-'));
                 if (selectClass) {

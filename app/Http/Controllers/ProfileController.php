@@ -37,8 +37,8 @@ class ProfileController extends Controller
         );
 
         // 3. Determine message based on action
-        $message = AdopterProfile::where('adopterID', Auth::id())->exists() ? 
-                   'Adopter Profile updated successfully!' : 
+        $message = AdopterProfile::where('adopterID', Auth::id())->exists() ?
+                   'Adopter Profile updated successfully!' :
                    'Adopter Profile created successfully!';
 
         // 4. Redirect back with success message
@@ -57,10 +57,6 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $request->user()->fill($request->validated());
-
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
 
         $request->user()->save();
 

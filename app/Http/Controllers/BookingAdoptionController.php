@@ -350,7 +350,7 @@ class BookingAdoptionController extends Controller
 
         $bookings = $query->orderBy('appointment_date', 'desc')
             ->orderBy('appointment_time', 'desc')
-            ->paginate(6)
+            ->paginate(40)
             ->appends($request->query());
 
         // Count statuses for this user only
@@ -385,7 +385,7 @@ class BookingAdoptionController extends Controller
 
         $bookings = $query->orderBy('appointment_date', 'desc')
             ->orderBy('appointment_time', 'desc')
-            ->paginate(6)
+            ->paginate(40)
             ->appends($request->query());
 
         $statusCounts = Booking::select('status', DB::raw('COUNT(*) as total'))

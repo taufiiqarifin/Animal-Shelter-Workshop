@@ -11,207 +11,243 @@
     {{-- Leaflet CSS --}}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body class="bg-white/5 to-purple-800 min-h-screen">
+<body class="bg-gray-50 min-h-screen">
 
-    <!-- Include Navbar -->
-    @include('navbar')
-    <div class="mb-8 bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg p-8 py-12">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <h1 class="text-4xl font-bold text-white mb-2">
-                  <span class="text-4xl md:text-5xl">📋</span>
-                  Stray Animal Reports
-               </h1>
-               <p class="text-purple-100">View and manage all submitted reports</p>
+<!-- Include Navbar -->
+@include('navbar')
+
+<div class="mb-8 bg-gradient-to-r from-purple-600 to-purple-800 shadow-lg p-8 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-bold text-white mb-2">
+            <span class="text-4xl md:text-5xl">📋</span>
+            Stray Animal Reports
+        </h1>
+        <p class="text-purple-100">View and manage all submitted reports</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto mt-10 p-4 md:p-6 pb-10">
+    @if (session('success'))
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+            <div class="bg-green-50 border-l-4 border-green-600 text-green-700 p-4">
+                <p class="font-semibold">{{ session('success') }}</p>
             </div>
-         </div>
+        </div>
+    @endif
 
-    <div class="max-w-7xl mx-auto mt-10 p-4 md:p-2 pb-10">
-        <!-- Header Section -->
-        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden mb-6">
-            <!-- <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 md:p-8"> -->
-                <!-- <div class="flex items-center justify-between flex-wrap gap-4"> -->
-                    <!-- <div class="flex items-center"> -->
-                        <!-- <span class="text-4xl md:text-5xl mr-4">📋</span>
-                        <div>
-                            <h2 class="text-3xl md:text-4xl font-bold">Stray Animal Reports</h2>
-                            <p class="text-purple-100 text-sm md:text-base mt-1">View and manage all submitted reports</p>
-                        </div> -->
-                    <!-- </div> -->
-                <!-- </div> -->
-            <!-- </div> -->
+    @if($reports->isEmpty())
+        <div class="bg-white rounded-2xl shadow-2xl p-12 text-center">
+            <div class="text-6xl mb-4">🐾</div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">No reports yet</h3>
+            <p class="text-gray-600 mb-6 text-lg">No stray animal reports have been submitted.</p>
+        </div>
+    @else
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Table Container with Horizontal Scroll -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gradient-to-r from-purple-600 to-purple-700">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Report #
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Location
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            City/State
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Submitted
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Images
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($reports as $report)
+                        <tr class="hover:bg-purple-50 transition duration-150 cursor-pointer" onclick="window.location='{{ route('reports.show', $report->id) }}'">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <span class="text-lg mr-2">📍</span>
+                                    <span class="text-sm font-bold text-gray-900">#{{ $report->id }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                                            @if($report->report_status == 'Pending') bg-yellow-100 text-yellow-800
+                                            @elseif($report->report_status == 'In Progress') bg-blue-100 text-blue-800
+                                            @elseif($report->report_status == 'Resolved') bg-green-100 text-green-800
+                                            @endif">
+                                            {{ $report->report_status }}
+                                        </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900 max-w-xs truncate" title="{{ $report->address }}">
+                                    {{ $report->address }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ $report->latitude }}, {{ $report->longitude }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ $report->city }}</div>
+                                <div class="text-xs text-gray-500">{{ $report->state }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ $report->created_at->format('M d, Y') }}</div>
+                                <div class="text-xs text-gray-500">{{ $report->created_at->format('h:i A') }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($report->images->count() > 0)
+                                    <div class="flex items-center">
+                                        <span class="text-purple-600 font-semibold text-sm mr-2">{{ $report->images->count() }}</span>
+                                        <button onclick="event.stopPropagation(); showImagesModal({{ $report->id }}, {{ json_encode($report->images->map(fn($img) => asset('storage/' . $img->image_path))) }})"
+                                                class="text-purple-600 hover:text-purple-800 transition">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 text-sm">No images</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <div class="flex gap-2" onclick="event.stopPropagation()">
+                                    <a href="{{ route('reports.show', $report->id) }}"
+                                       class="inline-flex items-center px-3 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition duration-300 shadow">
+                                        View
+                                    </a>
+                                    <button onclick="showMapModal({{ $report->latitude }}, {{ $report->longitude }}, '{{ $report->address }}')"
+                                            class="inline-flex items-center px-3 py-2 bg-white border border-purple-600 text-purple-600 text-xs font-semibold rounded-lg hover:bg-purple-50 transition duration-300">
+                                        Map
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        @if (session('success'))
-            <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-                <div class="bg-green-50 border-l-4 border-green-600 text-green-700 p-4">
-                    <p class="font-semibold">{{ session('success') }}</p>
-                </div>
+        {{-- Pagination --}}
+        <div class="mt-6 bg-white rounded-xl shadow-lg p-4">
+            {{ $reports->links() }}
+        </div>
+    @endif
+</div>
+
+{{-- Map Modal --}}
+<div id="mapModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="closeMapModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">Location Map</h3>
+                <p id="mapModalAddress" class="text-sm text-gray-600 mt-1"></p>
             </div>
-        @endif
-
-        @if($reports->isEmpty())
-            <div class="bg-white rounded-2xl shadow-2xl p-12 text-center">
-                <div class="text-6xl mb-4">🐾</div>
-                <h3 class="text-2xl font-bold text-gray-800 mb-2">No reports yet</h3>
-                <p class="text-gray-600 mb-6 text-lg"></p>
-            </div>
-        @else
-            <div class="grid grid-cols-1 gap-6">
-                @foreach($reports as $report)
-                    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                        <div class="p-6 md:p-8">
-                            <div class="flex justify-between items-start mb-6 flex-wrap gap-3">
-                                <div>
-                                    <div class="flex items-center gap-3 mb-2">
-                                        <span class="text-2xl">📍</span>
-                                        <h3 class="text-2xl font-bold text-gray-800">Report #{{ $report->id }}</h3>
-                                    </div>
-                                    <p class="text-sm text-gray-600">
-                                        Submitted on {{ $report->created_at->format('M d, Y - h:i A') }}
-                                    </p>
-                                </div>
-                                <span class="px-4 py-2 rounded-full text-sm font-semibold
-                                    @if($report->report_status == 'Pending') bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900
-                                    @elseif($report->report_status == 'In Progress') bg-gradient-to-r from-blue-500 to-blue-600 text-white
-                                    @elseif($report->report_status == 'Resolved') bg-gradient-to-r from-green-500 to-green-600 text-white
-                                    @endif">
-                                    {{ $report->report_status }}
-                                </span>
-                            </div>
-
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {{-- Location Details --}}
-                                <div class="bg-purple-50 border-l-4 border-purple-600 p-6 rounded-lg">
-                                    <h4 class="font-bold text-gray-800 mb-4 text-lg">Location Details</h4>
-                                    <div class="space-y-3 text-sm">
-                                        <div>
-                                            <span class="font-semibold text-gray-700">Address:</span>
-                                            <p class="text-gray-800 mt-1">{{ $report->address }}</p>
-                                        </div>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <span class="font-semibold text-gray-700">City:</span>
-                                                <p class="text-gray-800 mt-1">{{ $report->city }}</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-semibold text-gray-700">State:</span>
-                                                <p class="text-gray-800 mt-1">{{ $report->state }}</p>
-                                            </div>
-                                        </div>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <span class="font-semibold text-gray-700">Latitude:</span>
-                                                <p class="text-gray-800 mt-1">{{ $report->latitude }}</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-semibold text-gray-700">Longitude:</span>
-                                                <p class="text-gray-800 mt-1">{{ $report->longitude }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    @if($report->description)
-                                        <div class="mt-4 pt-4 border-t border-purple-200">
-                                            <span class="font-semibold text-gray-700 text-sm">Description:</span>
-                                            <p class="text-gray-800 mt-2">{{ $report->description }}</p>
-                                        </div>
-                                    @endif
-                                </div>
-
-                                {{-- Map --}}
-                                <div>
-                                    <h4 class="font-bold text-gray-800 mb-3 text-lg">Map Location</h4>
-                                    <div id="map-{{ $report->id }}" class="rounded-xl shadow-lg" style="height: 250px;"></div>
-                                </div>
-                            </div>
-
-                            {{-- Images --}}
-                            @if($report->images->count() > 0)
-                                <div class="mt-6 pt-6 border-t border-gray-200">
-                                    <h4 class="font-bold text-gray-800 mb-4 text-lg">
-                                        Attached Images ({{ $report->images->count() }})
-                                    </h4>
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                        @foreach($report->images as $image)
-                                            <div class="relative group">
-                                                <img src="{{ asset('storage/' . $image->image_path) }}"
-                                                     alt="Report Image"
-                                                     class="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition shadow-md"
-                                                     onclick="openImageModal('{{ asset('storage/' . $image->image_path) }}')">
-                                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition rounded-lg flex items-center justify-center">
-                                                    <svg class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            {{-- Actions --}}
-                            <div class="mt-6 pt-6 border-t border-gray-200 flex justify-end gap-3 flex-wrap">
-                                <a href="{{ route('reports.show', $report->id) }}"
-                                   class="px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
-                                    View Details
-                                </a>
-                                <!-- @if($report->report_status == 'Pending')
-                                    <a href="{{ route('reports.edit', $report->id) }}"
-                                       class="px-5 py-3 bg-white border-2 border-purple-600 text-purple-600 font-semibold rounded-lg hover:bg-purple-50 transition duration-300">
-                                        Edit Report
-                                    </a>
-                                @endif -->
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
-            {{-- Pagination --}}
-            <div class="mt-6 bg-white rounded-xl shadow-lg p-4">
-                {{ $reports->links() }}
-            </div>
-        @endif
-    </div>
-
-    {{-- Image Modal --}}
-    <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onclick="closeImageModal()">
-        <div class="relative max-w-6xl max-h-full">
-            <button onclick="closeImageModal()" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition">
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="closeMapModal()" class="text-gray-400 hover:text-gray-600 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
-            <img id="modalImage" src="" alt="Full size image" class="max-w-full max-h-screen rounded-xl shadow-2xl">
         </div>
+        <div id="modalMap" class="w-full" style="height: 500px;"></div>
     </div>
+</div>
 
-    {{-- Leaflet JS --}}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{{-- Images Modal --}}
+<div id="imagesModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="closeImagesModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+            <h3 class="text-xl font-bold text-gray-900">Attached Images</h3>
+            <button onclick="closeImagesModal()" class="text-gray-400 hover:text-gray-600 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="imagesContainer" class="p-6 grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+    </div>
+</div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Initialize maps for each report
-            @foreach($reports as $report)
-                const map{{ $report->id }} = L.map('map-{{ $report->id }}').setView([{{ $report->latitude }}, {{ $report->longitude }}], 15);
+{{-- Leaflet JS --}}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(map{{ $report->id }});
+<script>
+    let modalMapInstance = null;
 
-                L.marker([{{ $report->latitude }}, {{ $report->longitude }}]).addTo(map{{ $report->id }});
-            @endforeach
+    // Map modal functions
+    function showMapModal(lat, lng, address) {
+        document.getElementById('mapModalAddress').textContent = address;
+        document.getElementById('mapModal').classList.remove('hidden');
+
+        setTimeout(() => {
+            if (modalMapInstance) {
+                modalMapInstance.remove();
+            }
+
+            modalMapInstance = L.map('modalMap').setView([lat, lng], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(modalMapInstance);
+
+            L.marker([lat, lng]).addTo(modalMapInstance);
+        }, 100);
+    }
+
+    function closeMapModal() {
+        document.getElementById('mapModal').classList.add('hidden');
+        if (modalMapInstance) {
+            modalMapInstance.remove();
+            modalMapInstance = null;
+        }
+    }
+
+    // Images modal functions
+    function showImagesModal(reportId, images) {
+        const container = document.getElementById('imagesContainer');
+        container.innerHTML = '';
+
+        images.forEach(imagePath => {
+            const div = document.createElement('div');
+            div.className = 'relative group cursor-pointer';
+            div.innerHTML = `
+                    <img src="${imagePath}"
+                         alt="Report Image"
+                         class="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition"
+                         onclick="openFullImage('${imagePath}')">
+                `;
+            container.appendChild(div);
         });
 
-        // Image modal functions
-        function openImageModal(imageSrc) {
-            document.getElementById('modalImage').src = imageSrc;
-            document.getElementById('imageModal').classList.remove('hidden');
-        }
+        document.getElementById('imagesModal').classList.remove('hidden');
+    }
 
-        function closeImageModal() {
-            document.getElementById('imageModal').classList.add('hidden');
+    function closeImagesModal() {
+        document.getElementById('imagesModal').classList.add('hidden');
+    }
+
+    function openFullImage(imageSrc) {
+        window.open(imageSrc, '_blank');
+    }
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeMapModal();
+            closeImagesModal();
         }
-    </script>
+    });
+</script>
 </body>
 </html>
