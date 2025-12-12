@@ -27,7 +27,7 @@ class RescueSeeder extends Seeder
             return;
         }
 
-        $this->command->info("Found {$reports->count()} reports");
+        $this->command->info("Found " . $reports->count() . " reports");
 
         // Get all caretakers from Taufiq's database (cross-database query)
         $this->command->info('Fetching caretakers from Taufiq\'s database...');

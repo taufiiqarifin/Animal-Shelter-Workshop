@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use App\Models\Transaction;
 use App\Models\Booking;
 use App\Models\Adoption;
@@ -12,75 +13,149 @@ use Carbon\Carbon;
 
 class AdoptionSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * Adoptions and Transactions are stored in Danish's database
+     * Cross-database references to:
+     * - Animals (Shafiqah's database - with medical/vaccination data)
+     * - Bookings (Danish's database)
+     * - Users (Taufiq's database)
+     */
     public function run()
     {
-        // Get animals that are already marked as 'Adopted' from AnimalSeeder
-        $adoptedAnimals = Animal::where('adoption_status', 'Adopted')->get();
+        $this->command->info('Starting Adoption Seeder...');
+        $this->command->info('========================================');
+
+        // Get animals that are already marked as 'Adopted' from Shafiqah's database (cross-database)
+        $this->command->info('Fetching adopted animals from Shafiqah\'s database...');
+        $adoptedAnimals = DB::connection('shafiqah')
+            ->table('animal')
+            ->where('adoption_status', 'Adopted')
+            ->get();
 
         if ($adoptedAnimals->isEmpty()) {
             $this->command->warn('No adopted animals found. Adoptions will not be created.');
             return;
         }
 
-        $this->command->info("Found {$adoptedAnimals->count()} adopted animals. Creating adoption records...");
+        $this->command->info("Found " . $adoptedAnimals->count() . " adopted animals");
+
+        // Fee structure
+        $speciesBaseFees = [
+            'dog' => 20,
+            'cat' => 10,
+        ];
+        $medicalRate = 10;
+        $vaccinationRate = 20;
 
         $adoptionCount = 0;
-        $adoptedAnimalsByUser = [];
 
         // Group adopted animals by creating fake user assignments
         // Each adoption typically has 1-2 animals
         $animalGroups = $adoptedAnimals->chunk(rand(1, 2));
 
-        foreach ($animalGroups as $animalGroup) {
-            // Get a random completed booking to associate with
-            // In real scenario, these animals would have been in the booking
-            $completedBooking = Booking::whereIn('status', ['completed', 'Completed'])
-                ->whereHas('animals')
-                ->inRandomOrder()
-                ->first();
+        // Use transaction for Danish's database
+        DB::connection('danish')->beginTransaction();
 
-            if (!$completedBooking) {
-                $this->command->warn('No completed bookings found. Skipping remaining adoptions.');
-                break;
-            }
+        try {
+            $this->command->info('');
+            $this->command->info('Creating adoption records in Danish\'s database...');
 
-            // Calculate total fee based on number of animals in this group
-            $totalFee = $animalGroup->count() * rand(50, 150);
-            $feePerAnimal = round($totalFee / $animalGroup->count(), 2);
+            foreach ($animalGroups as $animalGroup) {
+                // Get a random completed booking from Danish's database
+                // In real scenario, these animals would have been in the booking
+                $completedBooking = DB::connection('danish')
+                    ->table('booking')
+                    ->whereIn('status', ['completed', 'Completed'])
+                    ->inRandomOrder()
+                    ->first();
 
-            // Create a transaction for this adoption
-            $adoptionDate = Carbon::parse($animalGroup->first()->updated_at); // Use animal's adoption date
+                if (!$completedBooking) {
+                    $this->command->warn('No completed bookings found. Skipping remaining adoptions.');
+                    break;
+                }
 
-            $transaction = Transaction::create([
-                'amount'       => $totalFee,
-                'status'       => 'Success',
-                'remarks'      => 'Adoption fee for ' . $animalGroup->count() . ' animal(s)',
-                'type'         => 'FPX Online Banking',
-                'bill_code'    => 'BILL-' . strtoupper(Str::random(8)),
-                'reference_no' => 'REF-' . $adoptionDate->format('Ymd') . '-' . rand(1000, 9999),
-                'userID'       => $completedBooking->userID,
-                'created_at'   => $adoptionDate,
-                'updated_at'   => $adoptionDate,
-            ]);
+                // Calculate total fee based on actual fee structure
+                $totalFee = 0;
+                $animalFees = [];
 
-            // Create one adoption record per animal in this group
-            foreach ($animalGroup as $animal) {
-                Adoption::create([
-                    'fee'           => $feePerAnimal,
-                    'remarks'       => $animal->name . ' Adopted',
-                    'bookingID'     => $completedBooking->id,
-                    'transactionID' => $transaction->id,
-                    'created_at'    => $adoptionDate,
-                    'updated_at'    => $adoptionDate,
+                foreach ($animalGroup as $animal) {
+                    // Base fee by species
+                    $species = strtolower($animal->species);
+                    $baseFee = $speciesBaseFees[$species] ?? 15; // Default to $15 if species not in list
+
+                    // Medical records fee (count from Shafiqah's database)
+                    $medicalCount = DB::connection('shafiqah')
+                        ->table('medical')
+                        ->where('animalID', $animal->id)
+                        ->count();
+                    $medicalFee = $medicalCount * $medicalRate;
+
+                    // Vaccination fee (count from Shafiqah's database)
+                    $vaccinationCount = DB::connection('shafiqah')
+                        ->table('vaccination')
+                        ->where('animalID', $animal->id)
+                        ->count();
+                    $vaccinationFee = $vaccinationCount * $vaccinationRate;
+
+                    // Total fee for this animal
+                    $animalFee = $baseFee + $medicalFee + $vaccinationFee;
+                    $animalFees[$animal->id] = $animalFee;
+                    $totalFee += $animalFee;
+                }
+
+                // Create a transaction for this adoption in Danish's database
+                $adoptionDate = Carbon::parse($animalGroup->first()->updated_at); // Use animal's adoption date
+
+                $transactionId = DB::connection('danish')->table('transaction')->insertGetId([
+                    'amount'       => $totalFee,
+                    'status'       => 'Success',
+                    'remarks'      => 'Adoption fee for ' . $animalGroup->count() . ' animal(s)',
+                    'type'         => 'FPX Online Banking',
+                    'bill_code'    => 'BILL-' . strtoupper(Str::random(8)),
+                    'reference_no' => 'REF-' . $adoptionDate->format('Ymd') . '-' . rand(1000, 9999),
+                    'userID'       => $completedBooking->userID, // Cross-database reference to Taufiq
+                    'created_at'   => $adoptionDate,
+                    'updated_at'   => $adoptionDate,
                 ]);
 
-                // Animal is ALREADY marked as 'Adopted' from AnimalSeeder
-                // No need to update status again
+                // Create one adoption record per animal in this group in Danish's database
+                foreach ($animalGroup as $animal) {
+                    DB::connection('danish')->table('adoption')->insert([
+                        'fee'           => $animalFees[$animal->id],
+                        'remarks'       => $animal->name . ' Adopted',
+                        'bookingID'     => $completedBooking->id,
+                        'transactionID' => $transactionId,
+                        'created_at'    => $adoptionDate,
+                        'updated_at'    => $adoptionDate,
+                    ]);
 
-                $adoptionCount++;
+                    // Animal is ALREADY marked as 'Adopted' from AnimalSeeder
+                    // No need to update status again
+
+                    $adoptionCount++;
+                }
             }
-        }
 
-        $this->command->info("{$adoptionCount} adoption records created for adopted animals!");
+            DB::connection('danish')->commit();
+
+            $this->command->info('');
+            $this->command->info('=================================');
+            $this->command->info('✓ Adoption Seeding Completed!');
+            $this->command->info('=================================');
+            $this->command->info("{$adoptionCount} adoption records created for adopted animals");
+            $this->command->info('Database: Danish (SQL Server) - Adoptions, Transactions');
+            $this->command->info('Cross-references: Shafiqah (Animals), Taufiq (Users)');
+            $this->command->info('=================================');
+
+        } catch (\Exception $e) {
+            DB::connection('danish')->rollBack();
+
+            $this->command->error('');
+            $this->command->error('Error seeding adoptions: ' . $e->getMessage());
+            $this->command->error('Transaction rolled back');
+
+            throw $e;
+        }
     }
 }

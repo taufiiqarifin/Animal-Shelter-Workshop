@@ -22,9 +22,9 @@ This project uses a **distributed database architecture with 5 separate database
 
 | Connection Name | Database Engine | Port | Module/Domain |
 |----------------|-----------------|------|---------------|
-| `taufiq` | PostgreSQL | 5434 | User Management |
+| `taufiq` | PostgreSQL | 5434 | User Management (Users, Roles, AdopterProfiles) |
 | `eilya` | MySQL | 3307 | Stray Reporting Management (Reports, Rescues, Images) |
-| `shafiqah` | MySQL | 3309 | Animal Management (Animals, Medical, Vaccinations, Clinics, Vets) |
+| `shafiqah` | MySQL | 3309 | Animal Management (Animals, Medical, Vaccinations, Clinics, Vets, AnimalProfiles) |
 | `atiqah` | MySQL | 3308 | Shelter Management (Slots, Sections, Inventory, Categories) |
 | `danish` | SQL Server | 1434 | Booking & Adoption Management (Bookings, Adoptions, Transactions, VisitLists) |
 
@@ -187,8 +187,10 @@ The application is organized into 5 main modules, each corresponding to a databa
 - `Animal` (shafiqah) → `Image` (eilya)
 
 **Animal Matching System:**
-- `AnimalProfile` and `AdopterProfile` tables support matching animals to adopters
-- Matching logic in `AnimalManagementController::getMatches()`
+- `AnimalProfile` (in Shafiqah's database) and `AdopterProfile` (in Taufiq's database) tables support matching animals to adopters
+- `AnimalProfile` has FK to `animal` table (same database - Shafiqah)
+- `AdopterProfile` has FK to `users` table (same database - Taufiq)
+- Matching logic in `AnimalManagementController::getMatches()` works across databases at application layer
 
 ### Livewire Components
 

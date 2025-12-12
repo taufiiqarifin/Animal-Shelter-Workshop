@@ -8,8 +8,15 @@ use Carbon\Carbon;
 
 class ClinicVetSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * Clinics and Vets are stored in Shafiqah's database (Animal Management Module)
+     */
     public function run(): void
     {
+        $this->command->info('Starting Clinic & Vet Seeder...');
+        $this->command->info('========================================');
+
         $now = Carbon::now();
 
         // Create Clinics
@@ -52,10 +59,17 @@ class ClinicVetSeeder extends Seeder
             ],
         ];
 
-        DB::table('clinic')->insert($clinics);
+        // Use transaction for Shafiqah's database
+        DB::connection('shafiqah')->beginTransaction();
 
-        // Get inserted clinic IDs
-        $clinicIds = DB::table('clinic')->pluck('id')->toArray();
+        try {
+            $this->command->info('Inserting clinics into Shafiqah\'s database...');
+
+            // Insert clinics into Shafiqah's database
+            DB::connection('shafiqah')->table('clinic')->insert($clinics);
+
+            // Get inserted clinic IDs from Shafiqah's database
+            $clinicIds = DB::connection('shafiqah')->table('clinic')->pluck('id')->toArray();
 
         // Create Vets assigned to clinics
         $vets = [
@@ -153,8 +167,30 @@ class ClinicVetSeeder extends Seeder
             ],
         ];
 
-        DB::table('vet')->insert($vets);
+            $this->command->info('Inserting vets into Shafiqah\'s database...');
 
-        $this->command->info('Created ' . count($clinics) . ' clinics and ' . count($vets) . ' vets.');
+            // Insert vets into Shafiqah's database
+            DB::connection('shafiqah')->table('vet')->insert($vets);
+
+            DB::connection('shafiqah')->commit();
+
+            $this->command->info('');
+            $this->command->info('=================================');
+            $this->command->info('✓ Clinic & Vet Seeding Completed!');
+            $this->command->info('=================================');
+            $this->command->info('Total clinics created: ' . count($clinics));
+            $this->command->info('Total vets created: ' . count($vets));
+            $this->command->info('Database: Shafiqah (MySQL)');
+            $this->command->info('=================================');
+
+        } catch (\Exception $e) {
+            DB::connection('shafiqah')->rollBack();
+
+            $this->command->error('');
+            $this->command->error('Error seeding clinics and vets: ' . $e->getMessage());
+            $this->command->error('Transaction rolled back');
+
+            throw $e;
+        }
     }
 }

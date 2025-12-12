@@ -15,8 +15,19 @@ use Carbon\Carbon;
 
 class AnimalSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * Animals, Medical Records, and Vaccinations are in Shafiqah's database
+     * Cross-database references to:
+     * - Rescues (Eilya's database)
+     * - Slots (Atiqah's database)
+     * - Images (Eilya's database)
+     */
     public function run()
     {
+        $this->command->info('Starting Animal Seeder...');
+        $this->command->info('========================================');
+
         $species = ['Cat', 'Dog'];
         $genders = ['Male', 'Female'];
 
@@ -36,26 +47,41 @@ class AnimalSeeder extends Seeder
             $dogImages[] = "animal_images/dog{$i}.jpg";
         }
 
-        // Get all successful rescues
-        $successfulRescues = Rescue::where('status', 'Success')->get();
+        // Get all successful rescues from Eilya's database (cross-database)
+        $this->command->info('Fetching successful rescues from Eilya\'s database...');
+        $successfulRescues = DB::connection('eilya')
+            ->table('rescue')
+            ->where('status', 'Success')
+            ->get();
 
         if ($successfulRescues->isEmpty()) {
             $this->command->error('No successful rescues found. Please run RescueSeeder first.');
             return;
         }
 
-        // Get all available slots
-        $availableSlots = Slot::where('status', 'available')->get();
+        $this->command->info("Found " . $successfulRescues->count() . " successful rescues");
+
+        // Get all available slots from Atiqah's database (cross-database)
+        $this->command->info('Fetching available slots from Atiqah\'s database...');
+        $availableSlots = DB::connection('atiqah')
+            ->table('slot')
+            ->where('status', 'available')
+            ->get();
 
         if ($availableSlots->isEmpty()) {
             $this->command->error('No available slots found. Please run SectionSlotSeeder first.');
             return;
         }
 
-        // Get all vets for vaccination records
-        $vets = Vet::all();
+        $this->command->info("Found " . $availableSlots->count() . " available slots");
+
+        // Get all vets from Shafiqah's database for vaccination records
+        $this->command->info('Fetching vets from Shafiqah\'s database...');
+        $vets = DB::connection('shafiqah')->table('vet')->get();
         if ($vets->isEmpty()) {
             $this->command->warn('No vets found. Vaccination records will not be created. Please run ClinicVetSeeder first.');
+        } else {
+            $this->command->info("Found " . $vets->count() . " vets");
         }
 
         $animals = [];
@@ -183,33 +209,55 @@ class AnimalSeeder extends Seeder
             }
         }
 
-        // Remove the old adopted animal creation loop since we now create all animals together
-        // ===== OLD ADOPTED ANIMALS SECTION REMOVED =====
-        // Insert all animals
-        $createdAnimals = [];
-        foreach ($animals as $animalData) {
-            $createdAnimals[] = Animal::create($animalData);
-        }
+        // Use transaction for Shafiqah's database (animals, medical, vaccinations)
+        DB::connection('shafiqah')->beginTransaction();
 
-        // Verify what was actually inserted into database
-        $dbNotAdopted = Animal::where('adoption_status', 'Not Adopted')->count();
-        $dbAdopted = Animal::where('adoption_status', 'Adopted')->count();
-        $this->command->info("VERIFICATION - Database counts: Not Adopted = {$dbNotAdopted}, Adopted = {$dbAdopted}");
+        try {
+            $this->command->info('');
+            $this->command->info('Inserting animals into Shafiqah\'s database...');
 
-        // Update slot status to 'occupied' for assigned slots ONLY
-        $assignedSlotIds = array_filter(array_column($animals, 'slotID'));
-        if (!empty($assignedSlotIds)) {
-            Slot::whereIn('id', $assignedSlotIds)->update(['status' => 'occupied']);
-        }
+            // Insert all animals into Shafiqah's database
+            $createdAnimals = [];
+            foreach ($animals as $animalData) {
+                $animalId = DB::connection('shafiqah')->table('animal')->insertGetId($animalData);
 
-        // ===== ASSIGN IMAGES TO ANIMALS =====
-        $this->assignImagesToAnimals($createdAnimals, $catImages, $dogImages);
+                // Create stdClass object to mimic Animal model for helper methods
+                $animal = (object) $animalData;
+                $animal->id = $animalId;
+                $createdAnimals[] = $animal;
+            }
 
-        // ===== CREATE VACCINATION RECORDS FOR ALL ANIMALS =====
-        if ($vets->isNotEmpty()) {
-            $this->createVaccinationRecords($createdAnimals, $vets);
-            $this->createMedicalRecords($createdAnimals, $vets);
-        }
+            // Verify what was actually inserted into database
+            $dbNotAdopted = DB::connection('shafiqah')
+                ->table('animal')
+                ->where('adoption_status', 'Not Adopted')
+                ->count();
+            $dbAdopted = DB::connection('shafiqah')
+                ->table('animal')
+                ->where('adoption_status', 'Adopted')
+                ->count();
+            $this->command->info("VERIFICATION - Database counts: Not Adopted = {$dbNotAdopted}, Adopted = {$dbAdopted}");
+
+            // Update slot status to 'occupied' for assigned slots ONLY (in Atiqah's database)
+            $assignedSlotIds = array_filter(array_column($animals, 'slotID'));
+            if (!empty($assignedSlotIds)) {
+                DB::connection('atiqah')
+                    ->table('slot')
+                    ->whereIn('id', $assignedSlotIds)
+                    ->update(['status' => 'occupied', 'updated_at' => now()]);
+                $this->command->info("Updated " . count($assignedSlotIds) . " slots to 'occupied' status in Atiqah's database");
+            }
+
+            // ===== ASSIGN IMAGES TO ANIMALS =====
+            $this->assignImagesToAnimals($createdAnimals, $catImages, $dogImages);
+
+            // ===== CREATE VACCINATION RECORDS FOR ALL ANIMALS =====
+            if ($vets->isNotEmpty()) {
+                $this->createVaccinationRecords($createdAnimals, $vets);
+                $this->createMedicalRecords($createdAnimals, $vets);
+            }
+
+            DB::connection('shafiqah')->commit();
 
         // Statistics
         $actualNotAdoptedCount = count(array_filter($animals, fn($a) => $a['adoption_status'] === 'Not Adopted'));
@@ -226,29 +274,43 @@ class AnimalSeeder extends Seeder
             $animalsPerRescue[$rescueId]++;
         }
 
-        $this->command->info('');
-        $this->command->info('=================================');
-        $this->command->info('Animal Seeding Completed!');
-        $this->command->info('=================================');
-        $this->command->info("Total animals created: " . count($animals));
-        $this->command->info("All animals from rescues: " . count($animals));
-        $this->command->info("Rescue operations used: " . count($rescueGroups));
-        $this->command->info("Animals per rescue: " . implode(', ', $animalsPerRescue));
-        $this->command->info('');
-        $this->command->info('Adoption Status:');
-        $this->command->info("  - Not Adopted (currently at shelter): {$actualNotAdoptedCount}");
-        $this->command->info("  - Adopted (no longer at shelter): {$actualAdoptedCount}");
-        $this->command->info("  - Slots occupied: " . count($assignedSlotIds));
-        $this->command->info('');
-        $this->command->info('Age Distribution:');
-        foreach ($ageCount as $category => $count) {
-            $this->command->info("  - " . ucfirst($category) . ": {$count}");
+            $this->command->info('');
+            $this->command->info('=================================');
+            $this->command->info('✓ Animal Seeding Completed!');
+            $this->command->info('=================================');
+            $this->command->info("Total animals created: " . count($animals));
+            $this->command->info("All animals from rescues: " . count($animals));
+            $this->command->info("Rescue operations used: " . count($rescueGroups));
+            $this->command->info("Animals per rescue: " . implode(', ', $animalsPerRescue));
+            $this->command->info('');
+            $this->command->info('Adoption Status:');
+            $this->command->info("  - Not Adopted (currently at shelter): {$actualNotAdoptedCount}");
+            $this->command->info("  - Adopted (no longer at shelter): {$actualAdoptedCount}");
+            $this->command->info("  - Slots occupied: " . count($assignedSlotIds));
+            $this->command->info('');
+            $this->command->info('Age Distribution:');
+            foreach ($ageCount as $category => $count) {
+                $this->command->info("  - " . ucfirst($category) . ": {$count}");
+            }
+            $this->command->info('');
+            $this->command->info('Database: Shafiqah (MySQL) - Animals, Medical, Vaccinations');
+            $this->command->info('Cross-references: Eilya (Rescues, Images), Atiqah (Slots)');
+            $this->command->info('=================================');
+
+        } catch (\Exception $e) {
+            DB::connection('shafiqah')->rollBack();
+
+            $this->command->error('');
+            $this->command->error('Error seeding animals: ' . $e->getMessage());
+            $this->command->error('Transaction rolled back');
+
+            throw $e;
         }
-        $this->command->info('=================================');
     }
 
     /**
      * Assign images to animals based on their species
+     * Images are stored in Eilya's database (cross-database to animal in Shafiqah)
      */
     private function assignImagesToAnimals($animals, $catImages, $dogImages)
     {
@@ -273,7 +335,7 @@ class AnimalSeeder extends Seeder
             foreach ($selectedImages as $imagePath) {
                 $images[] = [
                     'image_path' => $imagePath,
-                    'animalID'   => $animal->id,
+                    'animalID'   => $animal->id, // Cross-database reference to Shafiqah
                     'reportID'   => null,
                     'clinicID'   => null,
                     'created_at' => $animal->created_at,
@@ -283,8 +345,11 @@ class AnimalSeeder extends Seeder
             }
         }
 
-        // Insert all images
-        DB::table('image')->insert($images);
+        // Insert all images into Eilya's database
+        $this->command->info('Inserting animal images into Eilya\'s database...');
+        foreach (array_chunk($images, 300) as $chunk) {
+            DB::connection('eilya')->table('image')->insert($chunk);
+        }
 
         $this->command->info("Total images assigned to animals: {$totalImages}");
         $avgImages = round($totalImages / count($animals), 1);
@@ -447,7 +512,8 @@ class AnimalSeeder extends Seeder
                     'Treatment completed successfully',
                 ];
 
-                Medical::create([
+                // Insert medical record into Shafiqah's database
+                DB::connection('shafiqah')->table('medical')->insert([
                     'treatment_type' => $treatmentType,
                     'diagnosis' => $diagnosis,
                     'action' => $action,
@@ -531,20 +597,21 @@ class AnimalSeeder extends Seeder
                     ? rand(50, 150)
                     : rand(80, 200);
 
-                $remarks = fake()->randomElement([
+                $remarksOptions = [
                     'Vaccination completed successfully',
                     'No adverse reactions observed',
                     'Animal tolerated vaccine well',
                     'Follow-up scheduled',
                     'Booster required in ' . ($vaccine['interval'] / 30) . ' months',
                     'Part of standard vaccination protocol',
-                ]);
+                ];
 
-                Vaccination::create([
+                // Insert vaccination record into Shafiqah's database
+                DB::connection('shafiqah')->table('vaccination')->insert([
                     'name' => $vaccine['name'],
                     'type' => $vaccine['type'],
                     'next_due_date' => $nextDueDate,
-                    'remarks' => $remarks,
+                    'remarks' => $remarksOptions[array_rand($remarksOptions)],
                     'weight' => $animal->weight,
                     'costs' => $cost,
                     'animalID' => $animal->id,

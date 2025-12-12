@@ -11,8 +11,8 @@
         'dog' => 20,
         'cat' => 10,
     ];
-    $medicalRate = 10;      // RM 20 per medical record
-    $vaccinationRate = 20;  // RM 15 per vaccination
+    $medicalRate = 10;
+    $vaccinationRate = 20;
 
     if ($animals->isNotEmpty()) {
         foreach ($animals as $animal) {

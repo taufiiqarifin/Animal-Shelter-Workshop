@@ -53,6 +53,23 @@ class ForeignKeyValidator
     }
 
     /**
+     * Validate if a role exists in Taufiq's database
+     */
+    public static function validateRole($roleId): bool
+    {
+        if (empty($roleId)) {
+            return false;
+        }
+
+        return Cache::remember("role_exists_{$roleId}", self::CACHE_DURATION, function () use ($roleId) {
+            return DB::connection('taufiq')
+                ->table('roles')
+                ->where('id', $roleId)
+                ->exists();
+        });
+    }
+
+    /**
      * ========================================
      * EILYA'S DATABASE (Reporting & Rescue)
      * ========================================
@@ -88,6 +105,23 @@ class ForeignKeyValidator
             return DB::connection('eilya')
                 ->table('rescue')
                 ->where('id', $rescueId)
+                ->exists();
+        });
+    }
+
+    /**
+     * Validate if an image exists in Eilya's database
+     */
+    public static function validateImage($imageId): bool
+    {
+        if (empty($imageId)) {
+            return false;
+        }
+
+        return Cache::remember("image_exists_{$imageId}", self::CACHE_DURATION, function () use ($imageId) {
+            return DB::connection('eilya')
+                ->table('image')
+                ->where('id', $imageId)
                 ->exists();
         });
     }
@@ -145,6 +179,23 @@ class ForeignKeyValidator
             return DB::connection('atiqah')
                 ->table('category')
                 ->where('id', $categoryId)
+                ->exists();
+        });
+    }
+
+    /**
+     * Validate if an inventory item exists in Atiqah's database
+     */
+    public static function validateInventory($inventoryId): bool
+    {
+        if (empty($inventoryId)) {
+            return false;
+        }
+
+        return Cache::remember("inventory_exists_{$inventoryId}", self::CACHE_DURATION, function () use ($inventoryId) {
+            return DB::connection('atiqah')
+                ->table('inventory')
+                ->where('id', $inventoryId)
                 ->exists();
         });
     }
@@ -252,6 +303,40 @@ class ForeignKeyValidator
     }
 
     /**
+     * Validate if a medical record exists in Shafiqah's database
+     */
+    public static function validateMedical($medicalId): bool
+    {
+        if (empty($medicalId)) {
+            return false;
+        }
+
+        return Cache::remember("medical_exists_{$medicalId}", self::CACHE_DURATION, function () use ($medicalId) {
+            return DB::connection('shafiqah')
+                ->table('medical')
+                ->where('id', $medicalId)
+                ->exists();
+        });
+    }
+
+    /**
+     * Validate if a vaccination record exists in Shafiqah's database
+     */
+    public static function validateVaccination($vaccinationId): bool
+    {
+        if (empty($vaccinationId)) {
+            return false;
+        }
+
+        return Cache::remember("vaccination_exists_{$vaccinationId}", self::CACHE_DURATION, function () use ($vaccinationId) {
+            return DB::connection('shafiqah')
+                ->table('vaccination')
+                ->where('id', $vaccinationId)
+                ->exists();
+        });
+    }
+
+    /**
      * Check if animal is available for adoption
      */
     public static function animalAvailableForAdoption($animalId): bool
@@ -265,7 +350,7 @@ class ForeignKeyValidator
             ->where('id', $animalId)
             ->first(['adoption_status']);
 
-        return $animal && $animal->adoption_status === 'available';
+        return $animal && $animal->adoption_status === 'Not Adopted';
     }
 
     /**
@@ -304,6 +389,40 @@ class ForeignKeyValidator
             return DB::connection('danish')
                 ->table('transaction')
                 ->where('id', $transactionId)
+                ->exists();
+        });
+    }
+
+    /**
+     * Validate if an adoption record exists in Danish's database
+     */
+    public static function validateAdoption($adoptionId): bool
+    {
+        if (empty($adoptionId)) {
+            return false;
+        }
+
+        return Cache::remember("adoption_exists_{$adoptionId}", self::CACHE_DURATION, function () use ($adoptionId) {
+            return DB::connection('danish')
+                ->table('adoption')
+                ->where('id', $adoptionId)
+                ->exists();
+        });
+    }
+
+    /**
+     * Validate if a visit list exists in Danish's database
+     */
+    public static function validateVisitList($visitListId): bool
+    {
+        if (empty($visitListId)) {
+            return false;
+        }
+
+        return Cache::remember("visit_list_exists_{$visitListId}", self::CACHE_DURATION, function () use ($visitListId) {
+            return DB::connection('danish')
+                ->table('visit_list')
+                ->where('id', $visitListId)
                 ->exists();
         });
     }
@@ -428,5 +547,61 @@ class ForeignKeyValidator
     public static function clearAnimalCache($animalId): void
     {
         Cache::forget("animal_exists_{$animalId}");
+    }
+
+    /**
+     * Clear cache for specific role
+     */
+    public static function clearRoleCache($roleId): void
+    {
+        Cache::forget("role_exists_{$roleId}");
+    }
+
+    /**
+     * Clear cache for specific image
+     */
+    public static function clearImageCache($imageId): void
+    {
+        Cache::forget("image_exists_{$imageId}");
+    }
+
+    /**
+     * Clear cache for specific medical record
+     */
+    public static function clearMedicalCache($medicalId): void
+    {
+        Cache::forget("medical_exists_{$medicalId}");
+    }
+
+    /**
+     * Clear cache for specific vaccination
+     */
+    public static function clearVaccinationCache($vaccinationId): void
+    {
+        Cache::forget("vaccination_exists_{$vaccinationId}");
+    }
+
+    /**
+     * Clear cache for specific inventory
+     */
+    public static function clearInventoryCache($inventoryId): void
+    {
+        Cache::forget("inventory_exists_{$inventoryId}");
+    }
+
+    /**
+     * Clear cache for specific adoption
+     */
+    public static function clearAdoptionCache($adoptionId): void
+    {
+        Cache::forget("adoption_exists_{$adoptionId}");
+    }
+
+    /**
+     * Clear cache for specific visit list
+     */
+    public static function clearVisitListCache($visitListId): void
+    {
+        Cache::forget("visit_list_exists_{$visitListId}");
     }
 }

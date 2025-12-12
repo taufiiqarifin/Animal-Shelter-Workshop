@@ -47,7 +47,7 @@ class ReportSeeder extends Seeder
             return;
         }
 
-        $this->command->info("Found {count($userIDs)} eligible users");
+        $this->command->info("Found " . count($userIDs) . " eligible users");
 
         $reportStatuses = ['Pending', 'In Progress', 'Resolved', 'Closed'];
 
@@ -78,9 +78,8 @@ class ReportSeeder extends Seeder
         // Maximum coordinate offset (~1 km)
         $maxOffset = 0.01;
 
-        $this->command->info('Preparing 600 reports...');
+        $this->command->info('Preparing reports...');
 
-        // Generate 600 reports
         for ($i = 0; $i < 200; $i++) {
             $row = $data[array_rand($data)]; // pick random CSV row
 
