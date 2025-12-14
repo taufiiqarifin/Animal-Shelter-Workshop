@@ -271,3 +271,100 @@ TOYYIBPAY_CATEGORY=
 3. **Using joins across databases** - not possible, must eager load
 4. **Migration compatibility** - syntax that works on MySQL may fail on SQL Server/PostgreSQL
 5. **Transaction scope** - can't rollback across multiple databases atomically
+
+## Custom Artisan Commands
+
+### `db:fresh-all` - Fresh Migration for Distributed Databases
+
+**Location:** `app/Console/Commands/FreshAllDatabases.php`
+
+#### The Problem
+
+Laravel's default `migrate:fresh` command only drops tables from the **default** database connection (configured as `sqlite` in this project). In a distributed database architecture with 5 separate databases, this causes critical issues:
+
+- Tables remain in the 4 remote databases (eilya, shafiqah, atiqah, danish)
+- Migrations fail with "table already exists" errors
+- Requires manual intervention to drop tables on each group member's database
+
+#### The Solution
+
+The custom `db:fresh-all` command drops all tables from **all 5 database connections** before running migrations:
+
+```bash
+php artisan db:fresh-all [--seed]
+```
+
+#### How It Works
+
+1. **Confirmation Prompt** - Requires explicit user confirmation before proceeding
+2. **Drop All Tables** - Iterates through all 5 connections and drops tables:
+   - **taufiq** (PostgreSQL) - Uses `DROP TABLE ... CASCADE` for dependencies
+   - **eilya** (MySQL) - Disables foreign key checks, drops all tables
+   - **shafiqah** (MySQL) - Disables foreign key checks, drops all tables
+   - **atiqah** (MySQL) - Disables foreign key checks, drops all tables
+   - **danish** (SQL Server) - Drops foreign key constraints first, then tables
+3. **Run Migrations** - Executes `php artisan migrate` across all connections
+4. **Optional Seeding** - Seeds all databases if `--seed` flag is provided
+
+#### Database-Specific Strategies
+
+**MySQL (eilya, atiqah, shafiqah):**
+```php
+DB::connection($connection)->statement('SET FOREIGN_KEY_CHECKS=0');
+// Drop all tables
+DB::connection($connection)->statement('SET FOREIGN_KEY_CHECKS=1');
+```
+
+**PostgreSQL (taufiq):**
+```php
+DB::connection($connection)->statement('DROP TABLE IF EXISTS "table_name" CASCADE');
+```
+
+**SQL Server (danish):**
+```php
+// Drop foreign key constraints first
+ALTER TABLE [table] DROP CONSTRAINT [constraint_name]
+// Then drop tables
+DROP TABLE IF EXISTS [table_name]
+```
+
+#### Usage Examples
+
+**Fresh migration without seeding:**
+```bash
+php artisan db:fresh-all
+```
+
+**Fresh migration with seeding (recommended):**
+```bash
+php artisan db:fresh-all --seed
+# OR use the composer shortcut:
+composer fresh
+```
+
+#### Connection Requirements
+
+- Command works **offline** for the local database (taufiq)
+- Remote databases (eilya, shafiqah, atiqah, danish) require active SSH/VPN connections
+- If a connection fails, the command logs the error and continues with other databases
+- Migrations will only succeed if all database connections are accessible
+
+#### Safety Features
+
+- **Confirmation prompt** before dropping tables
+- **Error handling** for each connection (doesn't crash if one fails)
+- **Progress feedback** showing tables dropped from each database
+- **Transaction safety** - each database operation is isolated
+
+#### When to Use
+
+✅ **Use `db:fresh-all`** when:
+- Refreshing all distributed databases
+- Setting up development environment
+- Switching branches with schema changes
+- Fixing migration state issues
+
+❌ **Don't use regular `migrate:fresh`** because:
+- Only drops tables from default connection (sqlite)
+- Leaves tables in remote databases intact
+- Causes "table already exists" errors on next migration
