@@ -13,9 +13,11 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Rescue;
 use App\Models\User;
 use App\Models\Animal;
+use App\DatabaseErrorHandler;
 
 class StrayReportingManagementController extends Controller
 {
+    use DatabaseErrorHandler;
     public function home()
     {
         return view('stray-reporting.main');
@@ -23,27 +25,39 @@ class StrayReportingManagementController extends Controller
 
     public function indexUser()
     {
-        $userReports = Report::where('userID', auth()->id())
-            ->with(['images'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
+        $userReports = $this->safeQuery(
+            fn() => Report::where('userID', auth()->id())
+                ->with(['images'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(50),
+            new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50),
+            'eilya' // Pre-check eilya database
+        );
 
-        $adopterProfile = AdopterProfile::where('adopterID', auth()->id())->first();
+        $adopterProfile = $this->safeQuery(
+            fn() => AdopterProfile::where('adopterID', auth()->id())->first(),
+            null,
+            'taufiq' // Pre-check taufiq database
+        );
 
         if (!$adopterProfile) {
             // User has not completed adopter profile → show home but no matches
             $matches = collect();
         } else {
-            $matches = AnimalProfile::with('animal')
-                ->when($adopterProfile->preferred_species, function ($q) use ($adopterProfile) {
-                    $q->whereHas('animal', fn($a) =>
-                        $a->where('species', $adopterProfile->preferred_species)
-                    );
-                })
-                ->when($adopterProfile->preferred_size, function ($q) use ($adopterProfile) {
-                    $q->where('size', $adopterProfile->preferred_size);
-                })
-                ->get();
+            $matches = $this->safeQuery(
+                fn() => AnimalProfile::with('animal')
+                    ->when($adopterProfile->preferred_species, function ($q) use ($adopterProfile) {
+                        $q->whereHas('animal', fn($a) =>
+                            $a->where('species', $adopterProfile->preferred_species)
+                        );
+                    })
+                    ->when($adopterProfile->preferred_size, function ($q) use ($adopterProfile) {
+                        $q->where('size', $adopterProfile->preferred_size);
+                    })
+                    ->get(),
+                collect([]),
+                'shafiqah' // Pre-check shafiqah database
+            );
         }
 
         return view('welcome', compact('userReports', 'adopterProfile', 'matches'));
@@ -99,26 +113,48 @@ class StrayReportingManagementController extends Controller
 
     public function index()
     {
-        $reports = Report::with('images')
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
+        $reports = $this->safeQuery(
+            fn() => Report::with('images')
+                ->orderBy('created_at', 'desc')
+                ->paginate(50),
+            new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50),
+            'eilya' // Pre-check eilya database
+        );
 
         return view('stray-reporting.index', compact('reports'));
     }
 
     public function show($id)
     {
-        $report = Report::with(['images', 'rescue.caretaker'])->findOrFail($id);
-        $caretakers = User::role('caretaker')->orderBy('name')->get();
+        $report = $this->safeQuery(
+            fn() => Report::with(['images', 'rescue.caretaker'])->findOrFail($id),
+            null,
+            'eilya' // Pre-check eilya database
+        );
+
+        if (!$report) {
+            return redirect()->route('stray-reporting.index')
+                ->with('error', 'Report not found or database connection unavailable.');
+        }
+
+        $caretakers = $this->safeQuery(
+            fn() => User::role('caretaker')->orderBy('name')->get(),
+            collect([]),
+            'taufiq' // Pre-check taufiq database
+        );
 
         return view('stray-reporting.show', compact('report', 'caretakers'));
     }
 
     public function adminIndex()
     {
-        $reports = Report::with(['images', 'user'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(50);
+        $reports = $this->safeQuery(
+            fn() => Report::with(['images', 'user'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(50),
+            new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50),
+            'eilya' // Pre-check eilya database
+        );
 
         return view('stray-reporting.admin-index', compact('reports'));
     }
@@ -142,7 +178,7 @@ class StrayReportingManagementController extends Controller
     public function assignCaretaker(Request $request, $id)
     {
         $request->validate([
-            'caretaker_id' => 'required|exists:users,id'
+            'caretaker_id' => 'required|exists:taufiq.users,id'  // Cross-database: User on taufiq
         ]);
 
         $report = Report::findOrFail($id);
@@ -171,14 +207,16 @@ class StrayReportingManagementController extends Controller
 
     public function indexcaretaker(Request $request)
     {
-        $query = Rescue::with(['report.images', 'caretaker'])
-            ->where('caretakerID', Auth::id());
+        $rescues = $this->safeQuery(function() use ($request) {
+            $query = Rescue::with(['report.images', 'caretaker'])
+                ->where('caretakerID', Auth::id());
 
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            }
 
-        $rescues = $query->orderBy('created_at', 'desc')->paginate(50);
+            return $query->orderBy('created_at', 'desc')->paginate(50);
+        }, new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50), 'eilya'); // Pre-check eilya database
 
         return view('stray-reporting.index-caretaker', compact('rescues'));
     }

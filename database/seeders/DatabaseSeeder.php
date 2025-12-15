@@ -21,7 +21,6 @@ class DatabaseSeeder extends Seeder
             ClinicVetSeeder::class,
             AnimalSeeder::class,
             BookingSeeder::class,
-            TransactionSeeder::class,
             AdoptionSeeder::class,
             AnimalProfileSeeder::class,
         ]);

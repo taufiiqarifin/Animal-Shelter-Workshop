@@ -13,15 +13,71 @@ use App\Models\Adoption;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use App\DatabaseErrorHandler;
 
 
 class BookingAdoptionController extends Controller
 {
+    use DatabaseErrorHandler;
+    /**
+     * Helper method to check if animals have active bookings at a specific date/time
+     * Active bookings = Pending or Confirmed status
+     */
+    private function getAnimalsWithBookingConflicts(array $animalIds, $appointmentDate, $appointmentTime)
+    {
+        return Animal::whereIn('id', $animalIds)
+            ->whereHas('bookings', function ($query) use ($appointmentDate, $appointmentTime) {
+                $query->where('appointment_date', $appointmentDate)
+                      ->where('appointment_time', $appointmentTime)
+                      ->whereIn('status', ['Pending', 'Confirmed']);
+            })
+            ->with(['bookings' => function($query) use ($appointmentDate, $appointmentTime) {
+                $query->where('appointment_date', $appointmentDate)
+                      ->where('appointment_time', $appointmentTime)
+                      ->whereIn('status', ['Pending', 'Confirmed'])
+                      ->with('user');
+            }])
+            ->get();
+    }
+
+    /**
+     * Helper method to get detailed error message for booked animals
+     */
+    private function getBookedAnimalsErrorMessage($bookedAnimals, $currentUserId = null)
+    {
+        $messages = [];
+
+        foreach ($bookedAnimals as $animal) {
+            $booking = $animal->bookings->first();
+            $isOwnBooking = $currentUserId && $booking->userID == $currentUserId;
+
+            $userInfo = $isOwnBooking
+                ? 'by you'
+                : 'by ' . ($booking->user->name ?? 'another user');
+
+            $messages[] = sprintf(
+                '<strong>%s</strong>: Already booked %s on <strong>%s at %s</strong> (Booking #%d - %s)',
+                $animal->name,
+                $userInfo,
+                \Carbon\Carbon::parse($booking->appointment_date)->format('M d, Y'),
+                \Carbon\Carbon::parse($booking->appointment_time)->format('g:i A'),
+                $booking->id,
+                $booking->status
+            );
+        }
+
+        return $messages;
+    }
+
     public function userBookings()
     {
-        $bookings = Booking::with('animals')
-            ->where('userID', auth()->id())
-            ->orderBy('appointment_date', 'desc')->get();
+        $bookings = $this->safeQuery(
+            fn() => Booking::with('animals')
+                ->where('userID', auth()->id())
+                ->orderBy('appointment_date', 'desc')->get(),
+            collect([])
+        );
+
         return view('booking-adoption.main', compact('bookings'));
     }
 
@@ -34,22 +90,24 @@ class BookingAdoptionController extends Controller
     {
         $user = Auth::user();
 
-        // Find or create the user's visit list
-        $visitList = VisitList::firstOrCreate([
-            'userID' => $user->id,
-        ]);
+        // Find or create the user's visit list with error handling
+        $animals = $this->safeQuery(function() use ($user) {
+            $visitList = VisitList::firstOrCreate([
+                'userID' => $user->id,
+            ]);
 
-        // Load animals with their images and pending bookings
-        $animals = $visitList->animals()
-            ->with([
-                'images', // Add this to eager load images
-                'bookings' => function($query) use ($user) {
-                    $query->where('userID', $user->id)
-                        ->where('status', 'Pending')
-                        ->latest();
-                }
-            ])
-            ->get();
+            // Load animals with their images and pending bookings
+            return $visitList->animals()
+                ->with([
+                    'images', // Add this to eager load images
+                    'bookings' => function($query) use ($user) {
+                        $query->where('userID', $user->id)
+                            ->where('status', 'Pending')
+                            ->latest();
+                    }
+                ])
+                ->get();
+        }, collect([]));
 
         return view('booking-adoption.visit-list', compact('animals'));
     }
@@ -61,43 +119,46 @@ class BookingAdoptionController extends Controller
     {
         $user = Auth::user();
 
-        // Validate animal exists
-        $animal = Animal::find($animalId);
+        // Validate animal exists with error handling
+        $animal = $this->safeQuery(
+            fn() => Animal::find($animalId),
+            null
+        );
+
         if (!$animal) {
-            return back()->with('error', 'Animal does not exist.');
+            return back()->with('error', 'Animal does not exist or database connection unavailable.');
         }
 
-        // ===== CHECK 1: Prevent adding if user has active booking for this animal =====
-        $hasActiveBooking = Booking::where('userID', $user->id)
-            ->whereIn('status', ['Pending', 'Confirmed'])
-            ->whereHas('animals', function ($query) use ($animalId) {
-                $query->where('animal.id', $animalId);
-            })
-            ->exists();
+        // Note: We allow adding animals to visit list even if they have bookings
+        // Users can select different time slots when creating their booking
+        // Conflict checking happens during booking confirmation
 
-        if ($hasActiveBooking) {
-            return back()->with('error', "You already have an active booking for {$animal->name}. You cannot add this animal to your visit list.");
+        // Ensure visit list exists with error handling
+        $result = $this->safeQuery(function() use ($user, $animalId, $animal) {
+            $visitList = VisitList::firstOrCreate([
+                'userID' => $user->id
+            ]);
+
+            // ===== CHECK: Prevent duplicate in visit list =====
+            if ($visitList->animals()->where('animalID', $animalId)->exists()) {
+                return ['error' => 'This animal is already in your visit list.'];
+            }
+            // ===== END CHECK =====
+
+            // Attach to pivot table
+            $visitList->animals()->attach($animalId, [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return ['success' => "{$animal->name} has been added to your visit list. You can view the list at the top right"];
+        }, ['error' => 'Database connection unavailable. Please try again later.']);
+
+        if (isset($result['error'])) {
+            return back()->with('error', $result['error']);
         }
-        // ===== END CHECK 1 =====
 
-        // Ensure visit list exists
-        $visitList = VisitList::firstOrCreate([
-            'userID' => $user->id
-        ]);
-
-        // ===== CHECK 2: Prevent duplicate in visit list =====
-        if ($visitList->animals()->where('animalID', $animalId)->exists()) {
-            return back()->with('error', 'This animal is already in your visit list.');
-        }
-        // ===== END CHECK 2 =====
-
-        // Attach to pivot table
-        $visitList->animals()->attach($animalId, [
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('success', "{$animal->name} has been added to your visit list. You can view the list at the top right");
+        return back()->with('success', $result['success']);
     }
 
     /**
@@ -130,7 +191,7 @@ class BookingAdoptionController extends Controller
                 'appointment_date' => 'required|date|after_or_equal:today',
                 'appointment_time' => 'required',
                 'animal_ids' => 'required|array|min:1',
-                'animal_ids.*' => 'required|exists:animal,id',
+                'animal_ids.*' => 'required|exists:shafiqah.animal,id',  // Cross-database: Animal on shafiqah
                 'remarks' => 'nullable|array',
                 'remarks.*' => 'nullable|string|max:500',
                 'terms' => 'required|accepted',
@@ -179,25 +240,31 @@ class BookingAdoptionController extends Controller
             $appointmentDate = $validated['appointment_date'];
             $appointmentTime = $validated['appointment_time'];
 
-            // ===== CHECK 1: ANIMAL AVAILABILITY (Pending/Confirmed bookings) =====
-            $conflictingAnimals = Animal::whereIn('id', $requestedAnimalIds)
-                ->whereHas('bookings', function ($query) use ($appointmentDate, $appointmentTime) {
-                    $query->where('appointment_date', $appointmentDate)
-                        ->where('appointment_time', $appointmentTime)
-                        ->whereIn('status', ['Pending', 'Confirmed']);
-                })
-                ->get(['id', 'name']);
+            // ===== CHECK: PREVENT TIME SLOT CONFLICTS =====
+            // Animals can have multiple bookings, but not at the same date/time
+            $conflictingAnimals = $this->getAnimalsWithBookingConflicts(
+                $requestedAnimalIds,
+                $appointmentDate,
+                $appointmentTime
+            );
 
             if ($conflictingAnimals->isNotEmpty()) {
-                $animalNames = $conflictingAnimals->pluck('name')->join(', ');
-                \Log::warning('Animals not available - already booked', [
-                    'conflicting_animals' => $conflictingAnimals->pluck('name')->toArray(),
+                $errorMessages = $this->getBookedAnimalsErrorMessage($conflictingAnimals, $user->id);
+                $errorHtml = 'The following animals are not available at <strong>'
+                    . \Carbon\Carbon::parse($appointmentDate)->format('M d, Y')
+                    . ' at ' . \Carbon\Carbon::parse($appointmentTime)->format('g:i A')
+                    . '</strong>:<br><br>'
+                    . implode('<br>', $errorMessages)
+                    . '<br><br>Please choose a different time slot or remove these animals from your selection.';
+
+                \Log::warning('Time slot conflict detected', [
+                    'animals' => $conflictingAnimals->pluck('name')->toArray(),
                     'date' => $appointmentDate,
                     'time' => $appointmentTime
                 ]);
 
                 return back()
-                    ->with('error', "The following animals are not available at {$appointmentTime} on {$appointmentDate}: {$animalNames}. Please choose a different time.")
+                    ->with('error', $errorHtml)
                     ->with('open_visit_modal', true)
                     ->withInput();
             }
@@ -245,7 +312,8 @@ class BookingAdoptionController extends Controller
             // ===== END AVAILABILITY CHECKS =====
 
             // Use database transaction to ensure data integrity
-            DB::beginTransaction();
+            // All operations are on danish database (Booking, VisitList, pivot tables)
+            DB::connection('danish')->beginTransaction();
 
             try {
                 // Create new booking
@@ -281,14 +349,14 @@ class BookingAdoptionController extends Controller
                     \Log::info('Deleted empty visit list');
                 }
 
-                DB::commit();
+                DB::connection('danish')->commit();
                 \Log::info('=== CONFIRM APPOINTMENT COMPLETED SUCCESSFULLY ===');
 
                 return redirect()->route('animal-management.index')
                     ->with('success', 'Your visit appointment has been scheduled! View them at My Booking tab');
 
             } catch (\Illuminate\Database\QueryException $e) {
-                DB::rollBack();
+                DB::connection('danish')->rollBack();
 
                 // Check if it's a unique constraint violation
                 if ($e->getCode() == 23000 || strpos($e->getMessage(), 'unique') !== false) {
@@ -317,8 +385,8 @@ class BookingAdoptionController extends Controller
                 ->with('open_visit_modal', true);
 
         } catch (\Exception $e) {
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
+            if (DB::connection('danish')->transactionLevel() > 0) {
+                DB::connection('danish')->rollBack();
             }
 
             \Log::error('Booking Confirmation Error: ' . $e->getMessage(), [
@@ -334,35 +402,43 @@ class BookingAdoptionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Booking::where('userID', Auth::id())
-            ->with([
-                'animals.images',       // For displaying animal photos
-                'animals.medicals',     // For calculating medical fees
-                'animals.vaccinations', // For calculating vaccination fees
-                'user',                 // For booker information
-                'adoptions'             // For showing adoption status
-            ]);
+        $result = $this->safeQuery(function() use ($request) {
+            $query = Booking::where('userID', Auth::id())
+                ->with([
+                    'animals.images',       // For displaying animal photos
+                    'animals.medicals',     // For calculating medical fees
+                    'animals.vaccinations', // For calculating vaccination fees
+                    'user',                 // For booker information
+                    'adoptions'             // For showing adoption status
+                ]);
 
-        // Filter by status if provided
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+            // Filter by status if provided
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
 
-        $bookings = $query->orderBy('appointment_date', 'desc')
-            ->orderBy('appointment_time', 'desc')
-            ->paginate(40)
-            ->appends($request->query());
+            $bookings = $query->orderBy('appointment_date', 'desc')
+                ->orderBy('appointment_time', 'desc')
+                ->paginate(40)
+                ->appends($request->query());
 
-        // Count statuses for this user only
-        $statusCounts = Booking::where('userID', Auth::id())
-            ->select('status', DB::raw('COUNT(*) as total'))
-            ->groupBy('status')
-            ->pluck('total', 'status');
+            // Count statuses for this user only
+            $statusCounts = Booking::where('userID', Auth::id())
+                ->select('status', DB::raw('COUNT(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        // Calculate total of all bookings (unfiltered)
-        $totalBookings = $statusCounts->sum();
+            // Calculate total of all bookings (unfiltered)
+            $totalBookings = $statusCounts->sum();
 
-        return view('booking-adoption.main', compact('bookings', 'statusCounts','totalBookings'));
+            return compact('bookings', 'statusCounts','totalBookings');
+        }, [
+            'bookings' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 40),
+            'statusCounts' => collect([]),
+            'totalBookings' => 0
+        ], 'danish'); // Pre-check danish database
+
+        return view('booking-adoption.main', $result);
     }
 
     /**
@@ -370,32 +446,40 @@ class BookingAdoptionController extends Controller
      */
     public function indexAdmin(Request $request)
     {
-        $query = Booking::with([
-            'animals.images',
-            'animals.medicals',
-            'animals.vaccinations',
-            'user',
-            'adoptions'
-        ]);
+        $result = $this->safeQuery(function() use ($request) {
+            $query = Booking::with([
+                'animals.images',
+                'animals.medicals',
+                'animals.vaccinations',
+                'user',
+                'adoptions'
+            ]);
 
-        // Filter by status if provided
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+            // Filter by status if provided
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
 
-        $bookings = $query->orderBy('appointment_date', 'desc')
-            ->orderBy('appointment_time', 'desc')
-            ->paginate(40)
-            ->appends($request->query());
+            $bookings = $query->orderBy('appointment_date', 'desc')
+                ->orderBy('appointment_time', 'desc')
+                ->paginate(40)
+                ->appends($request->query());
 
-        $statusCounts = Booking::select('status', DB::raw('COUNT(*) as total'))
-            ->groupBy('status')
-            ->pluck('total', 'status');
+            $statusCounts = Booking::select('status', DB::raw('COUNT(*) as total'))
+                ->groupBy('status')
+                ->pluck('total', 'status');
 
-        // Calculate total of all bookings (unfiltered)
-        $totalBookings = $statusCounts->sum();
+            // Calculate total of all bookings (unfiltered)
+            $totalBookings = $statusCounts->sum();
 
-        return view('booking-adoption.admin', compact('bookings', 'statusCounts', 'totalBookings'));
+            return compact('bookings', 'statusCounts', 'totalBookings');
+        }, [
+            'bookings' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 40),
+            'statusCounts' => collect([]),
+            'totalBookings' => 0
+        ], 'danish'); // Pre-check danish database
+
+        return view('booking-adoption.admin', $result);
     }
 
     // Cancel a booking
@@ -478,7 +562,7 @@ class BookingAdoptionController extends Controller
             // Validate
             $validated = $request->validate([
                 'animal_ids' => 'required|array|min:1',
-                'animal_ids.*' => 'required|exists:animal,id',
+                'animal_ids.*' => 'required|exists:shafiqah.animal,id',  // Cross-database: Animal on shafiqah
                 'total_fee'   => 'required|numeric|min:0',
                 'agree_terms' => 'required|accepted',
             ], [

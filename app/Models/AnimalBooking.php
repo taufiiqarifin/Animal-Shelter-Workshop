@@ -2,15 +2,20 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class AnimalBooking extends Model
+class AnimalBooking extends Pivot
 {
-//      protected $connection = 'danish';
+    use HasFactory;
 
-    protected $table = 'animal_booking'; // custom table name
+    // Specify the database connection for this pivot model (Danish's database)
+    protected $connection = 'danish';
 
-    protected $primaryKey = 'id'; // default but OK to declare
+    protected $table = 'animal_booking';
+
+    // Increment IDs for pivot table
+    public $incrementing = true;
 
     protected $fillable = [
         'bookingID',
@@ -18,14 +23,21 @@ class AnimalBooking extends Model
         'remarks',
     ];
 
+    /**
+     * CROSS-DATABASE: Relationship to Animal model (Shafiqah's database)
+     * This is a logical relationship - no database-level foreign key
+     */
     public function animal()
     {
-        return $this->belongsTo(Animal::class, 'animalID', 'id');
+        return $this->setConnection('shafiqah')
+            ->belongsTo(Animal::class, 'animalID', 'id');
     }
 
+    /**
+     * Relationship to Booking model (same database - danish)
+     */
     public function booking()
     {
         return $this->belongsTo(Booking::class, 'bookingID', 'id');
     }
 }
-

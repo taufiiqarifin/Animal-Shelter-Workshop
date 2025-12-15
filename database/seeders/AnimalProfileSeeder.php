@@ -3,39 +3,96 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Animal;
-use App\Models\AnimalProfile;
-use App\Models\AdopterProfile;
+use Illuminate\Support\Facades\DB;
 
 class AnimalProfileSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * Cross-database references to:
+     * - Animals (Shafiqah's database)
+     */
     public function run()
     {
-        $adopters = AdopterProfile::all();
+        $this->command->info('Starting Animal Profile Seeder...');
+        $this->command->info('========================================');
 
-        // Get animals with 'Not Adopted' OR 'Adopted' status
-        $animals = Animal::whereIn('adoption_status', ['Not Adopted', 'Adopted'])->get();
+        // Get adopter profiles from Taufiq's database
+        $this->command->info('Fetching adopter profiles from Taufiq\'s database...');
+        $adopters = DB::connection('taufiq')->table('adopter_profile')->get();
 
-        foreach ($animals as $animal) {
+        // Get animals with 'Not Adopted' OR 'Adopted' status from Shafiqah's database
+        $this->command->info('Fetching animals from Shafiqah\'s database...');
+        $animals = DB::connection('shafiqah')
+            ->table('animal')
+            ->whereIn('adoption_status', ['Not Adopted', 'Adopted'])
+            ->get();
 
-            // Skip if profile already exists
-            if ($animal->profile) continue;
-
-            // Try to find matching adopter based on species
-            $matchingAdopter = $adopters->firstWhere('preferred_species', strtolower($animal->species));
-
-            if ($matchingAdopter) {
-                // Better matched profile
-                $profileData = $this->generateMatchedProfile($animal, $matchingAdopter);
-            } else {
-                // Fallback: random realistic profile
-                $profileData = $this->generateRandomProfile($animal);
-            }
-
-            AnimalProfile::create($profileData);
+        if ($animals->isEmpty()) {
+            $this->command->error('No animals found. Please run AnimalSeeder first.');
+            return;
         }
 
-        $this->command->info('Animal profiles created successfully!');
+        $this->command->info("Found " . $animals->count() . " animals");
+
+        // Use transaction for Shafiqah's database
+        DB::connection('shafiqah')->beginTransaction();
+
+        try {
+            $this->command->info('');
+            $this->command->info('Creating animal profiles in Shafiqah\'s database...');
+
+            $profileCount = 0;
+
+            foreach ($animals as $animal) {
+                // Check if profile already exists in Shafiqah's database
+                $existingProfile = DB::connection('shafiqah')
+                    ->table('animal_profile')
+                    ->where('animalID', $animal->id)
+                    ->exists();
+
+                if ($existingProfile) continue;
+
+                // Try to find matching adopter based on species
+                $matchingAdopter = $adopters->firstWhere('preferred_species', strtolower($animal->species));
+
+                if ($matchingAdopter) {
+                    // Better matched profile
+                    $profileData = $this->generateMatchedProfile($animal, $matchingAdopter);
+                } else {
+                    // Fallback: random realistic profile
+                    $profileData = $this->generateRandomProfile($animal);
+                }
+
+                // Add timestamps
+                $profileData['created_at'] = now();
+                $profileData['updated_at'] = now();
+
+                // Insert into Shafiqah's database
+                DB::connection('shafiqah')->table('animal_profile')->insert($profileData);
+                $profileCount++;
+            }
+
+            DB::connection('shafiqah')->commit();
+
+            $this->command->info('');
+            $this->command->info('=================================');
+            $this->command->info('✓ Animal Profile Seeding Completed!');
+            $this->command->info('=================================');
+            $this->command->info("Animal profiles created: {$profileCount}");
+            $this->command->info('Database: Shafiqah (MySQL)');
+            $this->command->info('Cross-references: Shafiqah (Animals), Taufiq (Adopter Profiles)');
+            $this->command->info('=================================');
+
+        } catch (\Exception $e) {
+            DB::connection('shafiqah')->rollBack();
+
+            $this->command->error('');
+            $this->command->error('Error seeding animal profiles: ' . $e->getMessage());
+            $this->command->error('Transaction rolled back');
+
+            throw $e;
+        }
     }
 
     /**

@@ -40,6 +40,10 @@ return [
             'password' => env('DB1_PASSWORD'),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
+            'options' => [
+                PDO::ATTR_TIMEOUT => 0.5, // Reduced to 0.5 seconds for faster failure
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
         ],
 
         'atiqah' => [
@@ -49,6 +53,12 @@ return [
             'database' => env('DB2_DATABASE'),
             'username' => env('DB2_USERNAME'),
             'password' => env('DB2_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'options' => [
+                PDO::ATTR_TIMEOUT => 0.5, // Reduced to 0.5 seconds for faster failure
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
         ],
 
         'shafiqah' => [
@@ -58,6 +68,12 @@ return [
             'database' => env('DB3_DATABASE'),
             'username' => env('DB3_USERNAME'),
             'password' => env('DB3_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'options' => [
+                PDO::ATTR_TIMEOUT => 0.5, // Reduced to 0.5 seconds for faster failure
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
         ],
 
         'danish' => [
@@ -67,6 +83,13 @@ return [
             'database' => env('DB4_DATABASE'),
             'username' => env('DB4_USERNAME'),
             'password' => env('DB4_PASSWORD'),
+            'encrypt' => 'no', // <— Important
+            'trust_server_certificate' => true, // Or this key depending on version
+            'options' => [
+                'TrustServerCertificate' => true,
+                'ConnectTimeout' => 0.5, // Reduced to 0.5 seconds for faster failure
+                'LoginTimeout' => 0.5,
+            ],
         ],
 
         'taufiq' => [
@@ -76,6 +99,13 @@ return [
             'database' => env('DB5_DATABASE'),
             'username' => env('DB5_USERNAME'),
             'password' => env('DB5_PASSWORD'),
+            'charset'  => 'utf8',
+            'schema'   => 'public',
+            'options'  => [
+                PDO::ATTR_TIMEOUT => 0.5, // Reduced to 0.5 seconds for faster failure
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ],
+            'connect_timeout' => 0.5, // PostgreSQL specific timeout (reduced to 0.5 seconds)
         ],
         //workshop2
 

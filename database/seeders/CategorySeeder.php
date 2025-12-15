@@ -3,59 +3,85 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Category;
+use Illuminate\Support\Facades\DB;
 
 class CategorySeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     * Categories are stored in Atiqah's database (Shelter Management Module)
+     */
     public function run()
     {
+        $this->command->info('Starting Category Seeder...');
+        $this->command->info('========================================');
+
         $categories = [
             // Food
-            ['main' => 'Food', 'sub' => 'Dry Dog Food'],
-            ['main' => 'Food', 'sub' => 'Wet Dog Food'],
-            ['main' => 'Food', 'sub' => 'Dry Cat Food'],
-            ['main' => 'Food', 'sub' => 'Wet Cat Food'],
-            ['main' => 'Food', 'sub' => 'Puppy Formula'],
-            ['main' => 'Food', 'sub' => 'Kitten Formula'],
-            ['main' => 'Food', 'sub' => 'Treats'],
+            ['main' => 'Food', 'sub' => 'Dog Food'],
+            ['main' => 'Food', 'sub' => 'Cat Food'],
+            ['main' => 'Food', 'sub' => 'Puppy & Kitten Formula'],
+
+            // Supplements
+            ['main' => 'Supplements', 'sub' => 'Vitamins & Minerals'],
+            ['main' => 'Supplements', 'sub' => 'Probiotics & Digestive Aid'],
+            ['main' => 'Supplements', 'sub' => 'Joint & Mobility Support'],
 
             // Medicine + Health
             ['main' => 'Medicine', 'sub' => 'Deworming Medication'],
             ['main' => 'Medicine', 'sub' => 'Flea & Tick Treatment'],
-            ['main' => 'Medicine', 'sub' => 'Vaccines'],
-            ['main' => 'Medicine', 'sub' => 'Antibiotics'],
-            ['main' => 'Medicine', 'sub' => 'Bandages & First Aid'],
+            ['main' => 'Medicine', 'sub' => 'Vaccines & Antibiotics'],
 
             // Cleaning Supplies
             ['main' => 'Cleaning', 'sub' => 'Disinfectant'],
-            ['main' => 'Cleaning', 'sub' => 'Detergent'],
-            ['main' => 'Cleaning', 'sub' => 'Trash Bags'],
-            ['main' => 'Cleaning', 'sub' => 'Gloves'],
+            ['main' => 'Cleaning', 'sub' => 'Detergent & Soap'],
+            ['main' => 'Cleaning', 'sub' => 'Waste Disposal Supplies'],
 
             // Equipment
             ['main' => 'Equipment', 'sub' => 'Leashes & Collars'],
-            ['main' => 'Equipment', 'sub' => 'Transport Carriers'],
-            ['main' => 'Equipment', 'sub' => 'Food Bowls'],
-            ['main' => 'Equipment', 'sub' => 'Water Dispensers'],
-            ['main' => 'Equipment', 'sub' => 'Cages & Kennels'],
-
-            // Bedding
-            ['main' => 'Bedding', 'sub' => 'Pet Beds'],
-            ['main' => 'Bedding', 'sub' => 'Blankets'],
-            ['main' => 'Bedding', 'sub' => 'Towels'],
+            ['main' => 'Equipment', 'sub' => 'Food & Water Bowls'],
+            ['main' => 'Equipment', 'sub' => 'Cages & Carriers'],
 
             // Grooming
-            ['main' => 'Grooming', 'sub' => 'Shampoo'],
-            ['main' => 'Grooming', 'sub' => 'Brushes'],
+            ['main' => 'Grooming', 'sub' => 'Shampoo & Conditioner'],
+            ['main' => 'Grooming', 'sub' => 'Brushes & Combs'],
             ['main' => 'Grooming', 'sub' => 'Nail Clippers'],
-
-            // Office
-            ['main' => 'Office', 'sub' => 'Paper'],
-            ['main' => 'Office', 'sub' => 'Printer Ink'],
         ];
 
-        foreach ($categories as $category) {
-            Category::create($category);
+        // Add timestamps to each category
+        $now = now();
+        foreach ($categories as &$category) {
+            $category['created_at'] = $now;
+            $category['updated_at'] = $now;
+        }
+
+        // Use transaction for Atiqah's database
+        DB::connection('atiqah')->beginTransaction();
+
+        try {
+            $this->command->info('Inserting categories into Atiqah\'s database...');
+
+            // Insert categories into Atiqah's database
+            DB::connection('atiqah')->table('category')->insert($categories);
+
+            DB::connection('atiqah')->commit();
+
+            $this->command->info('');
+            $this->command->info('=================================');
+            $this->command->info('✓ Category Seeding Completed!');
+            $this->command->info('=================================');
+            $this->command->info('Total categories created: ' . count($categories));
+            $this->command->info('Database: Atiqah (MySQL)');
+            $this->command->info('=================================');
+
+        } catch (\Exception $e) {
+            DB::connection('atiqah')->rollBack();
+
+            $this->command->error('');
+            $this->command->error('Error seeding categories: ' . $e->getMessage());
+            $this->command->error('Transaction rolled back');
+
+            throw $e;
         }
     }
 }

@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use App\Models\AdopterProfile;
 use Illuminate\Validation\Rule;
+use App\DatabaseErrorHandler;
 
 class ProfileController extends Controller
 {
+    use DatabaseErrorHandler;
     /**
      * Display the user's profile form.
      */

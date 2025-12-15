@@ -8,37 +8,51 @@ use App\Models\Inventory;
 use App\Models\Animal;
 use App\Models\Section;
 use App\Models\Category;
+use App\DatabaseErrorHandler;
 
 class ShelterManagementController extends Controller
 {
+    use DatabaseErrorHandler;
     // In your controller
     public function indexSlot()
     {
-        $sections = Section::all();
+        $result = $this->safeQuery(function() {
+            $sections = Section::all();
 
-        // Get counts BEFORE pagination
-        $totalSlots = Slot::count();
-        $availableSlots = Slot::where('status', 'available')->count();
-        $occupiedSlots = Slot::where('status', 'occupied')->count();
-        $maintenanceSlots = Slot::where('status', 'maintenance')->count();
+            // Get counts BEFORE pagination
+            $totalSlots = Slot::count();
+            $availableSlots = Slot::where('status', 'available')->count();
+            $occupiedSlots = Slot::where('status', 'occupied')->count();
+            $maintenanceSlots = Slot::where('status', 'maintenance')->count();
 
-        // Then paginate
-        $slots = Slot::with(['animals', 'inventories'])
-            ->orderBy('sectionID')
-            ->orderBy('name')
-            ->paginate(9);
+            // Then paginate
+            $slots = Slot::with(['animals', 'inventories'])
+                ->orderBy('sectionID')
+                ->orderBy('name')
+                ->paginate(30);
 
-        $categories = Category::all();
+            $categories = Category::all();
 
-        return view('shelter-management.index', compact(
-            'sections',
-            'slots',
-            'categories',
-            'totalSlots',
-            'availableSlots',
-            'occupiedSlots',
-            'maintenanceSlots'
-        ));
+            return compact(
+                'sections',
+                'slots',
+                'categories',
+                'totalSlots',
+                'availableSlots',
+                'occupiedSlots',
+                'maintenanceSlots'
+            );
+        }, [
+            'sections' => collect([]),
+            'slots' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 9),
+            'categories' => collect([]),
+            'totalSlots' => 0,
+            'availableSlots' => 0,
+            'occupiedSlots' => 0,
+            'maintenanceSlots' => 0,
+        ], 'atiqah'); // Pre-check atiqah database for faster loading
+
+        return view('shelter-management.index', $result);
     }
 
     // SECTION METHODS
@@ -247,14 +261,14 @@ class ShelterManagementController extends Controller
 
     public function getAnimalDetails($id)
     {
-        try {
+        $data = $this->safeQuery(function() use ($id) {
             $animal = Animal::findOrFail($id);
 
             $medicals = $animal->medicals()->with('vet')->get();
             $vaccinations = $animal->vaccinations()->with('vet')->get();
             $images = $animal->images()->get();
 
-            return response()->json([
+            return [
                 'id' => $animal->id,
                 'name' => $animal->name ?? 'Unknown',
                 'species' => $animal->species ?? 'Unknown',
@@ -290,15 +304,17 @@ class ShelterManagementController extends Controller
                         'cost' => $vaccination->costs ?? 0,
                     ];
                 }),
-            ]);
+            ];
+        }, null, 'shafiqah'); // Properly close safeQuery with connection parameter
 
-        } catch (\Exception $e) {
-            \Log::error('Animal details error for ID ' . $id . ': ' . $e->getMessage());
+        if ($data === null) {
             return response()->json([
                 'error' => 'Failed to load animal details',
-                'message' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+                'message' => 'Database connection unavailable or animal not found'
             ], 500);
         }
+
+        return response()->json($data);
     }
 
     public function getSlotDetails($id)
