@@ -80,9 +80,10 @@ class DatabaseConnectionChecker
     public function checkConnection(string $connection): bool
     {
         try {
-            // Set a very short timeout for connection check (500ms)
+            // Set timeout for connection check
+            // Increased to 3 seconds to accommodate SQL Server connections
             $startTime = microtime(true);
-            $maxTime = 0.5; // 500ms maximum
+            $maxTime = 3.0; // 3 seconds maximum (SQL Server can be slower)
 
             // Attempt to get PDO connection
             $pdo = DB::connection($connection)->getPdo();

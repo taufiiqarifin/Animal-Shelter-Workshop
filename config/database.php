@@ -83,12 +83,12 @@ return [
             'database' => env('DB4_DATABASE'),
             'username' => env('DB4_USERNAME'),
             'password' => env('DB4_PASSWORD'),
-            'encrypt' => 'no', // <— Important
-            'trust_server_certificate' => true, // Or this key depending on version
+            'encrypt' => 'no',
+            'trust_server_certificate' => true,
             'options' => [
                 'TrustServerCertificate' => true,
-                'ConnectTimeout' => 0.5, // Reduced to 0.5 seconds for faster failure
-                'LoginTimeout' => 0.5,
+                'ConnectTimeout' => 5,
+                'LoginTimeout' => 5,
             ],
         ],
 

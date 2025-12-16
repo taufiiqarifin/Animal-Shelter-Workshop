@@ -17,7 +17,9 @@
       "Bash(composer optimize:clear:*)",
       "Bash(php test-db-connection.php:*)",
       "Bash(del:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(rm:*)",
+      "Bash(php artisan tinker:*)"
     ]
   }
 }
