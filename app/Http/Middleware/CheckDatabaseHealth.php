@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,6 +31,13 @@ class CheckDatabaseHealth
     ];
 
     /**
+     * Cache duration in seconds (5 minutes).
+     *
+     * @var int
+     */
+    protected $cacheDuration = 300;
+
+    /**
      * Handle an incoming request.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
@@ -41,8 +49,8 @@ class CheckDatabaseHealth
             return $next($request);
         }
 
-        // Check if any databases don't exist
-        $nonExistentDatabases = $this->checkDatabasesExistence();
+        // Check if any databases don't exist (with caching to prevent repeated checks)
+        $nonExistentDatabases = $this->getCachedDatabaseHealth();
 
         if (!empty($nonExistentDatabases)) {
             // Store unavailable databases in session
@@ -54,6 +62,18 @@ class CheckDatabaseHealth
         }
 
         return $next($request);
+    }
+
+    /**
+     * Get cached database health check results.
+     *
+     * @return array
+     */
+    protected function getCachedDatabaseHealth(): array
+    {
+        return Cache::remember('database_health_check', $this->cacheDuration, function () {
+            return $this->checkDatabasesExistence();
+        });
     }
 
     /**
@@ -89,17 +109,55 @@ class CheckDatabaseHealth
                     $nonExistentDatabases[] = $connection;
                 }
             } catch (\PDOException $e) {
-                // Check if error is specifically about database not existing
-                if (str_contains($e->getMessage(), 'Unknown database') ||
-                    str_contains($e->getMessage(), 'does not exist') ||
-                    str_contains($e->getMessage(), 'Cannot open database')) {
+                $errorCode = $e->getCode();
+                $errorMessage = $e->getMessage();
+
+                // ONLY treat as non-existent if:
+                // 1. MySQL: Error 1049 (Unknown database)
+                // 2. PostgreSQL: SQLSTATE 3D000 (invalid catalog name = database doesn't exist)
+                // 3. SQL Server: Error message contains "Cannot open database"
+
+                // MySQL: SQLSTATE[HY000] [1049] Unknown database
+                $isMySQLDatabaseNotFound = $errorCode === '1049' ||
+                    str_contains($errorMessage, '[1049]') ||
+                    str_contains($errorMessage, 'Unknown database');
+
+                // PostgreSQL: SQLSTATE[3D000] or "database ... does not exist"
+                $isPostgreSQLDatabaseNotFound = $errorCode === '3D000' ||
+                    str_contains($errorMessage, 'database') && str_contains($errorMessage, 'does not exist');
+
+                // SQL Server: "Cannot open database"
+                $isSQLServerDatabaseNotFound = str_contains($errorMessage, 'Cannot open database');
+
+                // IGNORE connection failures:
+                // - SQLSTATE[HY000] [2002] Connection refused
+                // - SQLSTATE[HY000] [2003] Can't connect to MySQL server
+                // - SQLSTATE[08006] Connection failure (PostgreSQL)
+                // - SQLSTATE[08001] Unable to connect
+                $isConnectionFailure = str_contains($errorMessage, 'Connection refused') ||
+                    str_contains($errorMessage, 'Connection timed out') ||
+                    str_contains($errorMessage, 'Can\'t connect to') ||
+                    str_contains($errorMessage, 'Unable to connect') ||
+                    str_contains($errorMessage, '[2002]') ||
+                    str_contains($errorMessage, '[2003]') ||
+                    $errorCode === '08006' ||
+                    $errorCode === '08001' ||
+                    $errorCode === '2002' ||
+                    $errorCode === '2003';
+
+                // Only add to non-existent list if it's a "database doesn't exist" error
+                // NOT a connection failure
+                if (!$isConnectionFailure &&
+                    ($isMySQLDatabaseNotFound || $isPostgreSQLDatabaseNotFound || $isSQLServerDatabaseNotFound)) {
                     $nonExistentDatabases[] = $connection;
+                    \Log::warning("Database '{$connection}' does not exist (connected to server but database is missing)");
+                } elseif ($isConnectionFailure) {
+                    // Connection failure - SSH tunnel likely not running, ignore
+                    \Log::debug("Connection failure for '{$connection}' - SSH tunnel may not be running (this is normal)");
                 }
-                // For connection errors (timeout, etc.), we don't treat it as non-existent
-                // Those are handled by the existing DatabaseErrorHandler trait
             } catch (\Exception $e) {
                 // Generic error handling - log but don't block
-                \Log::warning("Database health check error for {$connection}: " . $e->getMessage());
+                \Log::debug("Database health check skipped for {$connection}: " . $e->getMessage());
             }
         }
 
