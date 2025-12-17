@@ -165,8 +165,9 @@
                                 'maintenance' => ['bg' => 'bg-red-100', 'text' => 'text-red-800', 'border' => 'border-red-500', 'progress' => 'bg-red-500'],
                             ];
                             $colors = $statusColors[$slot->status] ?? $statusColors['available'];
-                            $occupancy = $slot->animals->count();
-                            $occupancyPercent = $slot->capacity > 0 ? ($occupancy / $slot->capacity) * 100 : 0;
+                            // Safely check if animals relationship is loaded (cross-database - may be unavailable)
+                            $occupancy = $slot->relationLoaded('animals') ? $slot->animals->count() : null;
+                            $occupancyPercent = ($occupancy !== null && $slot->capacity > 0) ? ($occupancy / $slot->capacity) * 100 : 0;
                         @endphp
                         <tr class="hover:bg-gray-50 transition duration-150">
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -189,6 +190,7 @@
                                 {{ $slot->capacity }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
+                                @if($occupancy !== null)
                                 <div class="flex items-center">
                                     <div class="w-full max-w-[120px]">
                                         <div class="flex items-center justify-between mb-1">
@@ -206,11 +208,16 @@
                                         </div>
                                     </div>
                                 </div>
+                                @else
+                                <div class="flex items-center">
+                                    <span class="text-xs text-gray-400 italic">Data unavailable</span>
+                                </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <i class="fas fa-paw text-gray-400 mr-2"></i>
-                                    <span class="text-sm font-semibold text-gray-700">{{ $occupancy }}</span>
+                                    <span class="text-sm font-semibold text-gray-700">{{ $occupancy ?? '—' }}</span>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -541,10 +548,10 @@
             document.getElementById('slotStatus').setAttribute('required', 'required');
 
             // Update form action - changed to match new route
-            document.getElementById('slotForm').action = '/slots/' + slotId;
+            document.getElementById('slotForm').action = '/shelter-management/slots/' + slotId;
 
             // Fetch slot data via AJAX - changed to match new route
-            fetch(`/slots/${slotId}/edit`)
+            fetch(`/shelter-management/slots/${slotId}/edit`)
                 .then(response => response.json())
                 .then(data => {
                     // Populate form fields
@@ -565,7 +572,7 @@
                 // Create a form and submit it
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/slots/' + slotId;
+                form.action = '/shelter-management/slots/' + slotId;
 
                 // Add CSRF token - Get fresh token from meta tag
                 const csrfToken = document.querySelector('meta[name="csrf-token"]');

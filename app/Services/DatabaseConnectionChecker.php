@@ -81,9 +81,15 @@ class DatabaseConnectionChecker
     {
         try {
             // Set timeout for connection check
-            // Increased to 3 seconds to accommodate SQL Server connections
+            // Reduced to 1 second for faster failure detection
             $startTime = microtime(true);
-            $maxTime = 3.0; // 3 seconds maximum (SQL Server can be slower)
+            $maxTime = 1.0; // 1 second maximum (fast fail for offline databases)
+
+            // Set PDO timeout attributes before connecting
+            config(["database.connections.{$connection}.options" => [
+                \PDO::ATTR_TIMEOUT => 1,
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]]);
 
             // Attempt to get PDO connection
             $pdo = DB::connection($connection)->getPdo();
@@ -122,14 +128,33 @@ class DatabaseConnectionChecker
 
     /**
      * Check if a specific connection is available
+     * Optimized to only check the requested connection, not all connections
      *
      * @param string $connection
      * @return bool
      */
     public function isConnected(string $connection): bool
     {
-        $status = $this->checkAll();
-        return $status[$connection]['connected'] ?? false;
+        // Check if we have cached status for ALL databases
+        if (Cache::has('db_connection_status')) {
+            $status = Cache::get('db_connection_status');
+            return $status[$connection]['connected'] ?? false;
+        }
+
+        // If no cache, only check this specific connection (don't check all)
+        $cacheKey = "db_connection_status_{$connection}";
+
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        // Check only this connection
+        $isConnected = $this->checkConnection($connection);
+
+        // Cache individual connection status for 60 seconds
+        Cache::put($cacheKey, $isConnected, 60);
+
+        return $isConnected;
     }
 
     /**

@@ -60,7 +60,23 @@
                     <!-- Main Image Display -->
                     <div class="relative w-full aspect-video bg-gray-100 flex items-center justify-center">
                         <div id="imageSwiperContent" class="w-full h-full flex items-center justify-center">
-                            @if($animal->images && $animal->images->count() > 0)
+                            @if(!$imagesAvailable)
+                                <!-- Image Database Offline Message -->
+                                <div class="aspect-video bg-gradient-to-br from-gray-200 to-gray-300 flex flex-col items-center justify-center w-full h-full p-8">
+                                    <div class="text-center">
+                                        <i class="fas fa-cloud-download-alt text-6xl text-gray-400 mb-4"></i>
+                                        <h3 class="text-xl font-semibold text-gray-700 mb-2">Images Unavailable</h3>
+                                        <p class="text-gray-600 text-sm max-w-md">
+                                            Animal images are stored in a separate database that is currently offline.
+                                            Please check your database connection.
+                                        </p>
+                                        <div class="mt-4 inline-flex items-center px-4 py-2 bg-yellow-100 border border-yellow-400 rounded-lg">
+                                            <i class="fas fa-database text-yellow-600 mr-2"></i>
+                                            <span class="text-yellow-800 text-sm font-medium">Eilya Database Offline</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @elseif($animal->images && $animal->images->count() > 0)
                                 <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
                                     alt="{{ $animal->name }}"
                                     class="max-w-full max-h-full object-contain">
@@ -88,16 +104,18 @@
                         </button>
 
                         <!-- Image Counter -->
+                        @if($imagesAvailable && $animal->images && $animal->images->count() > 0)
                         <div id="imageCounter" class="hidden absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-full text-sm font-semibold">
                             <i class="fas fa-images mr-1"></i>
-                            <span id="currentImageIndex">1</span> / <span id="totalImages">{{ $animal->images->count() ?: 1 }}</span>
+                            <span id="currentImageIndex">1</span> / <span id="totalImages">{{ $animal->images->count() }}</span>
                         </div>
+                        @endif
                     </div>
 
                     <!-- Thumbnails -->
                     <div id="thumbnailContainer" class="p-4 overflow-x-auto">
                         <div id="thumbnailStrip" class="flex gap-2">
-                            @if($animal->images && $animal->images->count() > 0)
+                            @if($imagesAvailable && $animal->images && $animal->images->count() > 0)
                                 @foreach($animal->images as $index => $image)
                                     <div onclick="goToImage({{ $index }})"
                                         class="flex-shrink-0 w-20 h-20 cursor-pointer rounded-lg overflow-hidden border-2 transition duration-300 {{ $index == 0 ? 'border-green-600' : 'border-gray-300 hover:border-green-400' }}"
@@ -780,9 +798,11 @@
         });
 
          let currentImages = [
+        @if($imagesAvailable && $animal->images)
         @foreach($animal->images as $image)
             { path: "{{ asset('storage/' . $image->image_path) }}" },
         @endforeach
+        @endif
     ];
     let currentImageIndex = 0;
 

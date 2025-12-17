@@ -509,7 +509,19 @@ public function update(Request $request, $id)
     {
         // Safe query for animals with fallback
         $animals = $this->safeQuery(function() use ($request) {
-            $query = Animal::with(['images', 'slot']);
+            // Build with array based on database availability
+            $with = [];
+
+            // Only load cross-database relationships if those databases are online
+            if ($this->isDatabaseAvailable('eilya')) {
+                $with[] = 'images';
+            }
+
+            if ($this->isDatabaseAvailable('atiqah')) {
+                $with[] = 'slot';
+            }
+
+            $query = Animal::with($with);
 
             // Filters
             if ($request->filled('search')) {
@@ -557,14 +569,34 @@ public function update(Request $request, $id)
 
     public function show($id)
     {
+        // Check which databases are available
+        $eilyaOnline = $this->isDatabaseAvailable('eilya');
+        $atiqahOnline = $this->isDatabaseAvailable('atiqah');
+        $danishOnline = $this->isDatabaseAvailable('danish');
+
+        // Build with array based on database availability
+        $with = [];
+
+        // rescue and report are both on eilya database
+        if ($eilyaOnline) {
+            $with[] = 'rescue.report';
+            $with[] = 'images';
+        }
+
+        if ($atiqahOnline) {
+            $with[] = 'slot';
+        }
+
+        // bookings are on danish database
+        if ($danishOnline) {
+            $with[] = 'bookings.user';
+        }
+
         // Safe query for animal data
         $animal = $this->safeQuery(
-            fn() => Animal::with([
-                'images',
-                'slot',
-                'rescue.report',
-            ])->findOrFail($id),
-            null
+            fn() => Animal::with($with)->findOrFail($id),
+            null,
+            'shafiqah'
         );
 
         // If animal not found or database offline, redirect back
@@ -572,6 +604,9 @@ public function update(Request $request, $id)
             return redirect()->route('animal-management.index')
                 ->with('error', 'Animal not found or database connection unavailable.');
         }
+
+        // Add flag to indicate if images are available
+        $imagesAvailable = $eilyaOnline && $animal->relationLoaded('images');
 
         $medicals = $this->safeQuery(
             fn() => Medical::with('vet')->where('animalID', $id)->get(),
@@ -601,9 +636,10 @@ public function update(Request $request, $id)
             collect([])
         );
 
-        // Get all bookings for this animal (for calendar/time blocking)
-        $bookedSlots = $this->safeQuery(
-            fn() => $animal->bookings->map(function($booking) {
+        // Get all bookings for this animal (for calendar/time blocking) - only if danish database is online
+        $bookedSlots = collect([]);
+        if ($danishOnline && $animal->relationLoaded('bookings')) {
+            $bookedSlots = $animal->bookings->map(function($booking) {
                 $dateTime = \Carbon\Carbon::parse($booking->appointment_date . ' ' . $booking->appointment_time);
 
                 return [
@@ -611,20 +647,19 @@ public function update(Request $request, $id)
                     'time' => $dateTime->format('H:i'),
                     'datetime' => $dateTime->format('Y-m-d\TH:i'),
                 ];
-            }),
-            collect([])
-        );
+            });
+        }
 
-        // Get all active bookings for this animal (Pending or Confirmed)
-        $activeBookings = $this->safeQuery(
-            fn() => $animal->bookings()
+        // Get all active bookings for this animal (Pending or Confirmed) - only if danish database is online
+        $activeBookings = collect([]);
+        if ($danishOnline && $animal->relationLoaded('bookings')) {
+            $activeBookings = $animal->bookings
                 ->whereIn('status', ['Pending', 'Confirmed'])
-                ->with('user')
-                ->orderBy('appointment_date', 'asc')
-                ->orderBy('appointment_time', 'asc')
-                ->get(),
-            collect([])
-        );
+                ->sortBy([
+                    ['appointment_date', 'asc'],
+                    ['appointment_time', 'asc'],
+                ]);
+        }
 
         $animalProfile = $this->safeQuery(
             fn() => AnimalProfile::where('animalID', $id)->first(),
@@ -644,7 +679,7 @@ public function update(Request $request, $id)
             );
         }
 
-        return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots', 'animalProfile', 'animalList', 'activeBookings'));
+        return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots', 'animalProfile', 'animalList', 'activeBookings', 'imagesAvailable'));
     }
 
     public function assignSlot(Request $request, $animalId)
@@ -713,22 +748,48 @@ public function update(Request $request, $id)
 
     public function destroy(Animal $animal)
     {
+        // Check which databases are available
+        $eilyaOnline = $this->isDatabaseAvailable('eilya');
+        $atiqahOnline = $this->isDatabaseAvailable('atiqah');
+
         // Start transactions on databases involved
         DB::connection('shafiqah')->beginTransaction();  // Animal database
-        DB::connection('eilya')->beginTransaction();      // Image database
-        if ($animal->slotID) {
+
+        if ($eilyaOnline) {
+            DB::connection('eilya')->beginTransaction();  // Image database
+        }
+
+        if ($animal->slotID && $atiqahOnline) {
             DB::connection('atiqah')->beginTransaction();  // Slot database
         }
 
         try {
-            foreach ($animal->images as $image) {
-                Storage::disk('public')->delete($image->image_path);
-                $image->delete();
+            // Only delete images if eilya database is online
+            if ($eilyaOnline) {
+                try {
+                    foreach ($animal->images as $image) {
+                        Storage::disk('public')->delete($image->image_path);
+                        $image->delete();
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to delete images from eilya database', [
+                        'animal_id' => $animal->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue with animal deletion even if image deletion fails
+                }
+            } else {
+                \Log::info('Skipping image deletion - eilya database offline', [
+                    'animal_id' => $animal->id
+                ]);
             }
 
-            $slot = Slot::find($animal->slotID);
-            if ($slot) {
-                $slot->update(['status' => 'available']);
+            // Update slot status if atiqah is online
+            if ($animal->slotID && $atiqahOnline) {
+                $slot = Slot::find($animal->slotID);
+                if ($slot) {
+                    $slot->update(['status' => 'available']);
+                }
             }
 
             $animalName = $animal->name;
@@ -736,19 +797,32 @@ public function update(Request $request, $id)
 
             // Commit all transactions
             DB::connection('shafiqah')->commit();
-            DB::connection('eilya')->commit();
-            if ($animal->slotID) {
+
+            if ($eilyaOnline) {
+                DB::connection('eilya')->commit();
+            }
+
+            if ($animal->slotID && $atiqahOnline) {
                 DB::connection('atiqah')->commit();
             }
 
+            $message = 'Animal "' . $animalName . '" deleted successfully!';
+            if (!$eilyaOnline) {
+                $message .= ' (Note: Images could not be deleted - image database offline)';
+            }
+
             return redirect()->route('animal-management.index')
-                ->with('success', 'Animal "' . $animalName . '" deleted successfully!');
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             // Rollback all database transactions
             DB::connection('shafiqah')->rollBack();
-            DB::connection('eilya')->rollBack();
-            if ($animal->slotID) {
+
+            if ($eilyaOnline) {
+                DB::connection('eilya')->rollBack();
+            }
+
+            if ($animal->slotID && $atiqahOnline) {
                 DB::connection('atiqah')->rollBack();
             }
 
