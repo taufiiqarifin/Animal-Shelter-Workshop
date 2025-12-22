@@ -19,6 +19,64 @@ use App\DatabaseErrorHandler;
 class BookingAdoptionController extends Controller
 {
     use DatabaseErrorHandler;
+
+    /**
+     * Helper method to manually load animals for bookings to avoid cross-database SQL joins
+     * This loads animals through the pivot table, then attaches them to booking models
+     */
+    private function loadAnimalsForBookings($bookings, $loadImages = false)
+    {
+        if ($bookings->isEmpty()) {
+            return;
+        }
+
+        // Check if shafiqah database is available
+        if (!$this->isDatabaseAvailable('shafiqah')) {
+            // Set empty animals collection for each booking
+            $bookings->each(function($booking) {
+                $booking->setRelation('animals', collect([]));
+            });
+            return;
+        }
+
+        // Get all unique animal IDs from all bookings' animalBookings
+        $animalIds = $bookings->flatMap(function($booking) {
+            return $booking->animalBookings->pluck('animalID');
+        })->unique()->values()->toArray();
+
+        if (empty($animalIds)) {
+            $bookings->each(function($booking) {
+                $booking->setRelation('animals', collect([]));
+            });
+            return;
+        }
+
+        // Load animals from shafiqah database
+        $animalsQuery = Animal::whereIn('id', $animalIds)
+            ->with(['medicals', 'vaccinations']);
+
+        // Optionally load images if eilya is online
+        if ($loadImages && $this->isDatabaseAvailable('eilya')) {
+            $animalsQuery->with('images');
+        }
+
+        $animals = $animalsQuery->get()->keyBy('id');
+
+        // Attach animals to each booking based on their animalBookings
+        $bookings->each(function($booking) use ($animals) {
+            $bookingAnimals = $booking->animalBookings->map(function($animalBooking) use ($animals) {
+                $animal = $animals->get($animalBooking->animalID);
+                if ($animal) {
+                    // Attach pivot data to the animal
+                    $animal->pivot = $animalBooking;
+                }
+                return $animal;
+            })->filter(); // Remove nulls
+
+            $booking->setRelation('animals', $bookingAnimals);
+        });
+    }
+
     /**
      * Helper method to check if animals have active bookings at a specific date/time
      * Active bookings = Pending or Confirmed status
@@ -166,16 +224,36 @@ class BookingAdoptionController extends Controller
      */
     public function removeList($animalId)
     {
-        $user = Auth::user();
-        $visitList = $user->visitList;
+        try {
+            $user = Auth::user();
 
-        if (!$visitList) {
-            return back()->with('error', 'Visit list not found.');
+            $result = $this->safeQuery(function() use ($user, $animalId) {
+                $visitList = $user->visitList;
+
+                if (!$visitList) {
+                    return ['error' => 'Visit list not found.'];
+                }
+
+                $visitList->animals()->detach($animalId);
+
+                return ['success' => 'Animal removed from your visit list.'];
+            }, ['error' => 'Database connection unavailable. Please try again later.'], 'danish');
+
+            if (isset($result['error'])) {
+                return back()->with('error', $result['error']);
+            }
+
+            return back()->with('success', $result['success']);
+
+        } catch (\Exception $e) {
+            \Log::error('Error removing animal from visit list: ' . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'animal_id' => $animalId,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->with('error', 'Failed to remove animal from visit list: ' . $e->getMessage());
         }
-
-        $visitList->animals()->detach($animalId);
-
-        return back()->with('success', 'Animal removed from your visit list.');
     }
 
      /* Confirm appointment (convert visit list -> booking + booking_animal)
@@ -403,14 +481,28 @@ class BookingAdoptionController extends Controller
     public function index(Request $request)
     {
         $result = $this->safeQuery(function() use ($request) {
+            // Check which databases are available for conditional loading
+            $shafiqahOnline = $this->isDatabaseAvailable('shafiqah');
+            $eilyaOnline = $this->isDatabaseAvailable('eilya');
+            $taufiqOnline = $this->isDatabaseAvailable('taufiq');
+
+            // Build relationships array based on database availability
+            $relationships = [];
+
+            // Always try to load adoptions (same database)
+            $relationships[] = 'adoptions';
+
+            // Load user if taufiq database is online
+            if ($taufiqOnline) {
+                $relationships[] = 'user';
+            }
+
+            // Load animalBookings pivot data (same database - danish)
+            // We load animals separately after to avoid cross-database SQL joins
+            $relationships[] = 'animalBookings';
+
             $query = Booking::where('userID', Auth::id())
-                ->with([
-                    'animals.images',       // For displaying animal photos
-                    'animals.medicals',     // For calculating medical fees
-                    'animals.vaccinations', // For calculating vaccination fees
-                    'user',                 // For booker information
-                    'adoptions'             // For showing adoption status
-                ]);
+                ->with($relationships);
 
             // Filter by status if provided
             if ($request->filled('status')) {
@@ -422,9 +514,19 @@ class BookingAdoptionController extends Controller
                 ->paginate(40)
                 ->appends($request->query());
 
+            // Manually load animals for bookings to avoid cross-database SQL joins
+            $this->loadAnimalsForBookings($bookings, $eilyaOnline);
+
+            // Prevent lazy-loading by setting empty collections for unloaded relationships
+            $bookings->each(function($booking) use ($taufiqOnline) {
+                if (!$taufiqOnline && !$booking->relationLoaded('user')) {
+                    $booking->setRelation('user', null);
+                }
+            });
+
             // Count statuses for this user only
             $statusCounts = Booking::where('userID', Auth::id())
-                ->select('status', DB::raw('COUNT(*) as total'))
+                ->select('status', DB::connection('danish')->raw('COUNT(*) as total'))
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
@@ -447,13 +549,27 @@ class BookingAdoptionController extends Controller
     public function indexAdmin(Request $request)
     {
         $result = $this->safeQuery(function() use ($request) {
-            $query = Booking::with([
-                'animals.images',
-                'animals.medicals',
-                'animals.vaccinations',
-                'user',
-                'adoptions'
-            ]);
+            // Check which databases are available for conditional loading
+            $shafiqahOnline = $this->isDatabaseAvailable('shafiqah');
+            $eilyaOnline = $this->isDatabaseAvailable('eilya');
+            $taufiqOnline = $this->isDatabaseAvailable('taufiq');
+
+            // Build relationships array based on database availability
+            $relationships = [];
+
+            // Always try to load adoptions (same database)
+            $relationships[] = 'adoptions';
+
+            // Load user if taufiq database is online
+            if ($taufiqOnline) {
+                $relationships[] = 'user';
+            }
+
+            // Load animalBookings pivot data (same database - danish)
+            // We load animals separately after to avoid cross-database SQL joins
+            $relationships[] = 'animalBookings';
+
+            $query = Booking::with($relationships);
 
             // Filter by status if provided
             if ($request->filled('status')) {
@@ -465,7 +581,17 @@ class BookingAdoptionController extends Controller
                 ->paginate(40)
                 ->appends($request->query());
 
-            $statusCounts = Booking::select('status', DB::raw('COUNT(*) as total'))
+            // Manually load animals for bookings to avoid cross-database SQL joins
+            $this->loadAnimalsForBookings($bookings, $eilyaOnline);
+
+            // Prevent lazy-loading by setting empty collections for unloaded relationships
+            $bookings->each(function($booking) use ($taufiqOnline) {
+                if (!$taufiqOnline && !$booking->relationLoaded('user')) {
+                    $booking->setRelation('user', null);
+                }
+            });
+
+            $statusCounts = Booking::select('status', DB::connection('danish')->raw('COUNT(*) as total'))
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
@@ -485,16 +611,34 @@ class BookingAdoptionController extends Controller
     // Cancel a booking
     public function cancel(Booking $booking)
     {
-        if ($booking->userID !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
+        try {
+            if ($booking->userID !== Auth::id()) {
+                abort(403, 'Unauthorized action.');
+            }
 
-        if (in_array($booking->status, ['Pending', 'Confirmed'])) {
-            $booking->update(['status' => 'Cancelled']);
-            return redirect()->route('booking:main')->with('success', 'Booking cancelled successfully!');
-        }
+            if (in_array($booking->status, ['Pending', 'Confirmed'])) {
+                $booking->update(['status' => 'Cancelled']);
 
-        return redirect()->route('booking:main')->with('error', 'Cannot cancel this booking.');
+                \Log::info('Booking cancelled', [
+                    'booking_id' => $booking->id,
+                    'user_id' => Auth::id(),
+                    'previous_status' => $booking->getOriginal('status')
+                ]);
+
+                return redirect()->route('booking:main')->with('success', 'Booking cancelled successfully!');
+            }
+
+            return redirect()->route('booking:main')->with('error', 'Cannot cancel this booking. Current status: ' . $booking->status);
+
+        } catch (\Exception $e) {
+            \Log::error('Error cancelling booking: ' . $e->getMessage(), [
+                'booking_id' => $booking->id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('booking:main')->with('error', 'Failed to cancel booking: ' . $e->getMessage());
+        }
     }
 
     public function showAdoptionFee(Booking $booking, Request $request)
@@ -668,76 +812,94 @@ class BookingAdoptionController extends Controller
 
     public function createBill(Booking $booking, $adoptionFee, $selectedAnimals)
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        // Get animal names
-        $animalNames = $selectedAnimals->pluck('name')->toArray();
-        $animalCount = count($animalNames);
+            // Get animal names
+            $animalNames = $selectedAnimals->pluck('name')->toArray();
+            $animalCount = count($animalNames);
 
-        // Create bill name and description
-        if ($animalCount === 1) {
-            $billName = 'Adopt ' . substr($animalNames[0], 0, 20);
-            $billDescription = 'Adoption fee for ' . $animalNames[0] . ' (Booking #' . $booking->id . ')';
-        } else {
-            $billName = 'Adopt ' . $animalCount . ' Animals';
-            $billDescription = 'Adoption fee for ' . implode(', ', array_slice($animalNames, 0, 3)) .
-                ($animalCount > 3 ? ' and ' . ($animalCount - 3) . ' more' : '') .
-                ' (Booking #' . $booking->id . ')';
-        }
+            // Create bill name and description
+            if ($animalCount === 1) {
+                $billName = 'Adopt ' . substr($animalNames[0], 0, 20);
+                $billDescription = 'Adoption fee for ' . $animalNames[0] . ' (Booking #' . $booking->id . ')';
+            } else {
+                $billName = 'Adopt ' . $animalCount . ' Animals';
+                $billDescription = 'Adoption fee for ' . implode(', ', array_slice($animalNames, 0, 3)) .
+                    ($animalCount > 3 ? ' and ' . ($animalCount - 3) . ' more' : '') .
+                    ' (Booking #' . $booking->id . ')';
+            }
 
-        $referenceNo = 'BOOKING-' . $booking->id . '-' . time();
+            $referenceNo = 'BOOKING-' . $booking->id . '-' . time();
 
-        $option = [
-            'userSecretKey' => config('toyyibpay.key'),
-            'categoryCode' => config('toyyibpay.category'),
-            'billName' => $billName,
-            'billDescription' => $billDescription,
-            'billPriceSetting' => 1,
-            'billPayorInfo' => 1,
-            'billAmount' => ($adoptionFee) * 100,
-            'billReturnUrl' => route('toyyibpay-status'),
-            'billCallbackUrl' => route('toyyibpay-callback'),
-            'billExternalReferenceNo' => $referenceNo,
-            'billTo' => $user->name,
-            'billEmail' => $user->email,
-            'billPhone' => $user->phone ?? '0000000000',
-            'billSplitPayment' => 0,
-            'billPaymentChannel' => 0,
-            'billChargeToCustomer' => 1,
-            'billContentEmail' => 'Thank you for adopting from our shelter!',
-        ];
+            $option = [
+                'userSecretKey' => config('toyyibpay.key'),
+                'categoryCode' => config('toyyibpay.category'),
+                'billName' => $billName,
+                'billDescription' => $billDescription,
+                'billPriceSetting' => 1,
+                'billPayorInfo' => 1,
+                'billAmount' => ($adoptionFee) * 100,
+                'billReturnUrl' => route('toyyibpay-status'),
+                'billCallbackUrl' => route('toyyibpay-callback'),
+                'billExternalReferenceNo' => $referenceNo,
+                'billTo' => $user->name,
+                'billEmail' => $user->email,
+                'billPhone' => $user->phone ?? '0000000000',
+                'billSplitPayment' => 0,
+                'billPaymentChannel' => 0,
+                'billChargeToCustomer' => 1,
+                'billContentEmail' => 'Thank you for adopting from our shelter!',
+            ];
 
-        $url = 'https://dev.toyyibpay.com/index.php/api/createBill';
-        $response = Http::withoutVerifying()->asForm()->post($url, $option);
-        $data = $response->json();
+            $url = 'https://dev.toyyibpay.com/index.php/api/createBill';
+            $response = Http::withoutVerifying()->asForm()->post($url, $option);
+            $data = $response->json();
 
-        if (isset($data[0]['BillCode'])) {
-            $billCode = $data[0]['BillCode'];
+            if (isset($data[0]['BillCode'])) {
+                $billCode = $data[0]['BillCode'];
 
-            // Store bill info in session
-            session([
-                'bill_code' => $billCode,
-                'reference_no' => $referenceNo
-            ]);
+                // Store bill info in session
+                session([
+                    'bill_code' => $billCode,
+                    'reference_no' => $referenceNo
+                ]);
 
-            Log::info('Bill Created', [
+                Log::info('Bill Created', [
+                    'booking_id' => $booking->id,
+                    'bill_code' => $billCode,
+                    'reference_no' => $referenceNo,
+                    'amount' => $adoptionFee,
+                ]);
+
+                return redirect('https://dev.toyyibpay.com/' . $billCode);
+            } else {
+                // If bill creation fails, revert booking status back to Confirmed
+                $booking->update(['status' => 'Confirmed']);
+
+                Log::error('Bill Creation Failed', [
+                    'booking_id' => $booking->id,
+                    'response' => $data,
+                ]);
+
+                return redirect()->route('booking:main')->withErrors(['error' => 'Failed to create payment. Please try again.']);
+            }
+
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            Log::error('HTTP Request Error creating bill: ' . $e->getMessage(), [
                 'booking_id' => $booking->id,
-                'bill_code' => $billCode,
-                'reference_no' => $referenceNo,
-                'amount' => $adoptionFee,
+                'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect('https://dev.toyyibpay.com/' . $billCode);
-        } else {
-            // If bill creation fails, revert booking status back to Pending
-            $booking->update(['status' => 'Confirmed']);
-
-            Log::error('Bill Creation Failed', [
+            return redirect()->route('booking:main')->withErrors(['error' => 'Payment gateway connection error. Please try again later.']);
+        } catch (\Exception $e) {
+            Log::error('Error creating bill: ' . $e->getMessage(), [
                 'booking_id' => $booking->id,
-                'response' => $data,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->route('booking:main')->withErrors(['error' => 'Failed to create payment. Please try again.']);
+            return redirect()->route('booking:main')->withErrors(['error' => 'Failed to create payment: ' . $e->getMessage()]);
         }
     }
 
@@ -884,63 +1046,114 @@ class BookingAdoptionController extends Controller
 
     public function callback(Request $request)
     {
-        Log::info('ToyyibPay Callback:', $request->all());
+        try {
+            Log::info('ToyyibPay Callback:', $request->all());
 
-        $billCode = $request->input('billcode');
-        $statusId = $request->input('status_id');
-        $referenceNo = $request->input('refno');
+            $billCode = $request->input('billcode');
+            $statusId = $request->input('status_id');
+            $referenceNo = $request->input('refno');
 
-        if (strpos($referenceNo, 'BOOKING-') !== false) {
-            $parts = explode('-', $referenceNo);
-            if (isset($parts[1])) {
-                $bookingId = $parts[1];
-                $booking = Booking::find($bookingId);
+            if (strpos($referenceNo, 'BOOKING-') !== false) {
+                $parts = explode('-', $referenceNo);
+                if (isset($parts[1])) {
+                    $bookingId = $parts[1];
+                    $booking = Booking::find($bookingId);
 
-                if ($booking && $statusId == 1) {
-                    // Payment successful - update booking to Completed
-                    $booking->update(['status' => 'Completed']);
+                    if ($booking && $statusId == 1) {
+                        // Start transaction for cross-database updates
+                        DB::connection('danish')->beginTransaction();
+                        DB::connection('shafiqah')->beginTransaction();
 
-                    // Update all animals in this booking to Adopted
-                    $animalIds = $booking->animals->pluck('id')->toArray();
-                    foreach ($animalIds as $animalId) {
-                        Animal::where('id', $animalId)->update(['adoption_status' => 'Adopted']);
+                        try {
+                            // Payment successful - update booking to Completed
+                            $booking->update(['status' => 'Completed']);
+
+                            // Update all animals in this booking to Adopted
+                            $animalIds = $booking->animals->pluck('id')->toArray();
+                            foreach ($animalIds as $animalId) {
+                                Animal::where('id', $animalId)->update(['adoption_status' => 'Adopted']);
+                            }
+
+                            // Check if transaction already exists
+                            $existingTransaction = Transaction::where('bill_code', $billCode)->first();
+                            if (!$existingTransaction) {
+                                Transaction::create([
+                                    'amount' => $request->input('amount') / 100,
+                                    'status' => 'Success',
+                                    'remarks' => 'Adoption payment (Callback) - Booking #' . $bookingId . ' (' . count($animalIds) . ' animals)',
+                                    'date' => now(),
+                                    'type' => 'Adoption Fee',
+                                    'bill_code' => $billCode,
+                                    'reference_no' => $referenceNo,
+                                    'userID' => $booking->userID,
+                                ]);
+                            }
+
+                            DB::connection('danish')->commit();
+                            DB::connection('shafiqah')->commit();
+
+                            Log::info('Callback: Booking Completed', [
+                                'booking_id' => $bookingId,
+                                'animal_count' => count($animalIds),
+                            ]);
+
+                        } catch (\Exception $e) {
+                            DB::connection('danish')->rollBack();
+                            DB::connection('shafiqah')->rollBack();
+                            throw $e;
+                        }
                     }
-
-                    // Check if transaction already exists
-                    $existingTransaction = Transaction::where('bill_code', $billCode)->first();
-                    if (!$existingTransaction) {
-                        Transaction::create([
-                            'amount' => $request->input('amount') / 100,
-                            'status' => 'Success',
-                            'remarks' => 'Adoption payment (Callback) - Booking #' . $bookingId . ' (' . count($animalIds) . ' animals)',
-                            'date' => now(),
-                            'type' => 'Adoption Fee',
-                            'bill_code' => $billCode,
-                            'reference_no' => $referenceNo,
-                            'userID' => $booking->userID,
-                        ]);
-                    }
-
-                    Log::info('Callback: Booking Completed', [
-                        'booking_id' => $bookingId,
-                        'animal_count' => count($animalIds),
-                    ]);
                 }
             }
-        }
 
-        return response()->json(['status' => 'success']);
+            return response()->json(['status' => 'success']);
+
+        } catch (\Exception $e) {
+            Log::error('ToyyibPay Callback Error: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Callback processing failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     private function getBillTransactions($billCode)
     {
-        $url = 'https://dev.toyyibpay.com/index.php/api/getBillTransactions';
+        try {
+            $url = 'https://dev.toyyibpay.com/index.php/api/getBillTransactions';
 
-        $response = Http::withoutVerifying()->asForm()->post($url, [
-            'billCode' => $billCode,
-            'userSecretKey' => config('toyyibpay.key'),
-        ]);
+            $response = Http::withoutVerifying()->asForm()->post($url, [
+                'billCode' => $billCode,
+                'userSecretKey' => config('toyyibpay.key'),
+            ]);
 
-        return $response->json();
+            if ($response->failed()) {
+                Log::error('Failed to fetch bill transactions', [
+                    'bill_code' => $billCode,
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                return [];
+            }
+
+            return $response->json();
+
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            Log::error('HTTP Request Error fetching bill transactions: ' . $e->getMessage(), [
+                'bill_code' => $billCode,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return [];
+        } catch (\Exception $e) {
+            Log::error('Error fetching bill transactions: ' . $e->getMessage(), [
+                'bill_code' => $billCode,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return [];
+        }
     }
 }

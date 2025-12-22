@@ -39,32 +39,66 @@ class FreshAllDatabases extends Command
 
         $this->info('Dropping all tables from all distributed databases...');
 
+        $successCount = 0;
+        $failedConnections = [];
+
         foreach ($this->connections as $connection) {
-            $this->dropAllTables($connection);
+            if ($this->dropAllTables($connection)) {
+                $successCount++;
+            } else {
+                $failedConnections[] = $connection;
+            }
         }
 
         $this->newLine();
-        $this->info('Running migrations...');
+
+        if (count($failedConnections) > 0) {
+            $this->warn('⚠ Some databases were skipped (offline or unreachable):');
+            foreach ($failedConnections as $conn) {
+                $this->warn("  • {$conn}");
+            }
+            $this->newLine();
+        }
+
+        $this->info("Running migrations on {$successCount} available database(s)...");
         $this->call('migrate');
 
         if ($this->option('seed')) {
             $this->newLine();
             $this->info('Seeding databases...');
+            $this->warn('Note: Seeding may fail if cross-database dependencies are offline.');
             $this->call('db:seed');
         }
 
         $this->newLine();
-        $this->info('✓ All databases have been refreshed successfully!');
+
+        if (count($failedConnections) === 0) {
+            $this->info('✓ All databases have been refreshed successfully!');
+        } else {
+            $this->warn("✓ {$successCount}/{$this->countConnections()} databases refreshed. " . count($failedConnections) . " database(s) were offline.");
+        }
 
         return 0;
     }
 
     /**
-     * Drop all tables from a specific database connection
+     * Count total connections
      */
-    protected function dropAllTables(string $connection): void
+    protected function countConnections(): int
+    {
+        return count($this->connections);
+    }
+
+    /**
+     * Drop all tables from a specific database connection
+     * Returns true if successful, false if database is offline/unreachable
+     */
+    protected function dropAllTables(string $connection): bool
     {
         try {
+            // Test connection first
+            DB::connection($connection)->getPdo();
+
             $driver = config("database.connections.{$connection}.driver");
             $this->info("  Dropping tables from '{$connection}' ({$driver})...");
 
@@ -80,10 +114,37 @@ class FreshAllDatabases extends Command
                     break;
                 default:
                     $this->warn("  Unknown driver '{$driver}' for connection '{$connection}'");
+                    return false;
             }
+
+            return true;
+
         } catch (\Exception $e) {
-            $this->error("  Error dropping tables from '{$connection}': {$e->getMessage()}");
+            $this->warn("  ⚠ Skipping '{$connection}': " . $this->getConnectionErrorMessage($e));
+            return false;
         }
+    }
+
+    /**
+     * Get user-friendly connection error message
+     */
+    protected function getConnectionErrorMessage(\Exception $e): string
+    {
+        $message = $e->getMessage();
+
+        if (str_contains($message, 'Connection refused') || str_contains($message, 'Unable to connect')) {
+            return 'Database offline or unreachable';
+        }
+
+        if (str_contains($message, 'Access denied')) {
+            return 'Authentication failed';
+        }
+
+        if (str_contains($message, 'Unknown database')) {
+            return 'Database does not exist';
+        }
+
+        return 'Connection failed';
     }
 
     /**

@@ -46,9 +46,57 @@ class DatabaseConnectionChecker
      */
     public function checkAll(bool $useCache = true): array
     {
-        // Use cached results if available and cache is enabled
-        if ($useCache && Cache::has('db_connection_status')) {
-            return Cache::get('db_connection_status');
+        // Cache strategy: Use taufiq database cache as primary (taufiq must be online for auth)
+        // Fallback to file cache if taufiq is unreachable
+        $cacheKey = 'db_connection_status';
+        $lockKey = 'db_connection_check_in_progress';
+
+        if ($useCache) {
+            // Try taufiq database cache FIRST (taufiq must be online for authentication)
+            try {
+                if (Cache::has($cacheKey)) {
+                    return Cache::get($cacheKey);
+                }
+            } catch (\Exception $e) {
+                // Database cache failed (taufiq might be offline), try file cache as fallback
+                try {
+                    $fileCache = Cache::store('file');
+                    if ($fileCache->has($cacheKey)) {
+                        return $fileCache->get($cacheKey);
+                    }
+                } catch (\Exception $e2) {
+                    // Both failed, continue to fresh check
+                }
+            }
+        }
+
+        // Check if another request is already checking connections (mutex/lock)
+        // This prevents multiple simultaneous connection checks that cause timeouts
+        // Use file cache for lock (more reliable than database cache)
+        try {
+            $fileCache = Cache::store('file');
+            if ($fileCache->has($lockKey)) {
+                // Another request is checking, wait briefly and try to get cached result
+                usleep(100000); // Wait 100ms
+
+                // Try database cache first
+                try {
+                    if (Cache::has($cacheKey)) {
+                        return Cache::get($cacheKey);
+                    }
+                } catch (\Exception $e) {
+                    // Try file cache
+                    if ($fileCache->has($cacheKey)) {
+                        return $fileCache->get($cacheKey);
+                    }
+                }
+                // If still no cache, fall through to check ourselves
+            }
+
+            // Set lock to prevent other requests from checking simultaneously
+            $fileCache->put($lockKey, true, 10); // Lock for 10 seconds max
+        } catch (\Exception $e) {
+            // Lock failed, proceed anyway
         }
 
         $results = [];
@@ -60,8 +108,32 @@ class DatabaseConnectionChecker
             ]);
         }
 
-        // Cache results for 30 minutes (1800 seconds) for much faster subsequent loads
-        Cache::put('db_connection_status', $results, 1800);
+        // Smart cache duration:
+        // - All databases online: 5 minutes (stable state, check periodically)
+        // - Any database offline: 15 seconds (check frequently for real-time recovery detection)
+        $allOnline = collect($results)->every(fn($db) => $db['connected']);
+        $cacheDuration = $allOnline ? 300 : 15;
+
+        // Store in taufiq database cache FIRST (primary - fast access, taufiq always online for auth)
+        try {
+            Cache::put($cacheKey, $results, $cacheDuration);
+        } catch (\Exception $e) {
+            // Database cache failed, not critical
+        }
+
+        // Store in file cache as backup (fallback when taufiq temporarily unreachable)
+        try {
+            Cache::store('file')->put($cacheKey, $results, $cacheDuration);
+        } catch (\Exception $e) {
+            // File cache failed, not critical
+        }
+
+        // Release lock
+        try {
+            Cache::store('file')->forget($lockKey);
+        } catch (\Exception $e) {
+            // Not critical
+        }
 
         return $results;
     }
@@ -74,22 +146,48 @@ class DatabaseConnectionChecker
      */
     public function checkConnection(string $connection): bool
     {
-        try {
-            // Set a very short timeout for connection check (500ms)
-            $startTime = microtime(true);
-            $maxTime = 0.5; // 500ms maximum
+        // Check circuit breaker - if connection recently failed, don't try again immediately
+        $circuitKey = "db_circuit_breaker_{$connection}";
+        $circuitBreakerActive = false;
 
-            // Attempt to get PDO connection
+        try {
+            if (Cache::store('file')->has($circuitKey)) {
+                // Circuit breaker is active, don't attempt connection
+                return false;
+            }
+        } catch (\Exception $e) {
+            // File cache failed, proceed with check
+        }
+
+        try {
+            // Timeouts are now configured in database.php:
+            // - MySQL/PostgreSQL: 0.5 seconds (PDO::ATTR_TIMEOUT)
+            // - SQL Server: 2 seconds (ConnectTimeout/LoginTimeout)
+            // - PostgreSQL: 0.5 seconds (connect_timeout)
+            // NO RETRIES - fail fast and use cache
+
+            // Attempt to get PDO connection (will use configured timeouts)
             $pdo = DB::connection($connection)->getPdo();
 
-            // Check if we exceeded timeout
-            if ((microtime(true) - $startTime) > $maxTime) {
-                \Log::warning("Connection check for {$connection} took too long");
-                return false;
+            // Connection successful - clear any existing circuit breaker
+            try {
+                Cache::store('file')->forget($circuitKey);
+            } catch (\Exception $e) {
+                // Not critical
             }
 
             return true;
+
         } catch (\Exception $e) {
+            // Connection failed - activate circuit breaker for 30 seconds
+            // This prevents repeated connection attempts that cause page hangs
+            try {
+                Cache::store('file')->put($circuitKey, true, 30);
+            } catch (\Exception $e2) {
+                // Not critical
+            }
+
+            \Log::debug("Connection check failed for {$connection}: " . $e->getMessage());
             return false;
         }
     }
@@ -116,14 +214,70 @@ class DatabaseConnectionChecker
 
     /**
      * Check if a specific connection is available
+     * Optimized to only check the requested connection, not all connections
      *
      * @param string $connection
      * @return bool
      */
     public function isConnected(string $connection): bool
     {
-        $status = $this->checkAll();
-        return $status[$connection]['connected'] ?? false;
+        // Use taufiq database cache as primary (taufiq must be online for authentication)
+        $allDbKey = 'db_connection_status';
+        $singleDbKey = "db_connection_status_{$connection}";
+
+        // Try to get from ALL databases cache first (in taufiq database)
+        try {
+            if (Cache::has($allDbKey)) {
+                $status = Cache::get($allDbKey);
+                return $status[$connection]['connected'] ?? false;
+            }
+        } catch (\Exception $e) {
+            // Database cache failed, try file cache as fallback
+            try {
+                $fileCache = Cache::store('file');
+                if ($fileCache->has($allDbKey)) {
+                    $status = $fileCache->get($allDbKey);
+                    return $status[$connection]['connected'] ?? false;
+                }
+            } catch (\Exception $e2) {
+                // Continue to individual check
+            }
+        }
+
+        // Try individual connection cache from taufiq database
+        try {
+            if (Cache::has($singleDbKey)) {
+                return Cache::get($singleDbKey);
+            }
+        } catch (\Exception $e) {
+            // Try file cache
+            try {
+                $fileCache = Cache::store('file');
+                if ($fileCache->has($singleDbKey)) {
+                    return $fileCache->get($singleDbKey);
+                }
+            } catch (\Exception $e2) {
+                // Continue to fresh check
+            }
+        }
+
+        // No cache found, check this connection
+        $isConnected = $this->checkConnection($connection);
+
+        // Cache individual connection status for 60 seconds - taufiq database first
+        try {
+            Cache::put($singleDbKey, $isConnected, 60);
+        } catch (\Exception $e) {
+            // Not critical
+        }
+
+        try {
+            Cache::store('file')->put($singleDbKey, $isConnected, 60);
+        } catch (\Exception $e) {
+            // Not critical
+        }
+
+        return $isConnected;
     }
 
     /**
@@ -179,11 +333,61 @@ class DatabaseConnectionChecker
     /**
      * Clear cached connection status
      *
+     * @param string|null $connection Optional specific connection to clear, or null for all
      * @return void
      */
-    public function clearCache(): void
+    public function clearCache(?string $connection = null): void
     {
-        Cache::forget('db_connection_status');
+        if ($connection) {
+            // Clear specific connection cache from both stores
+            $key = "db_connection_status_{$connection}";
+
+            try {
+                Cache::forget($key);
+            } catch (\Exception $e) {
+                // Not critical
+            }
+
+            try {
+                Cache::store('file')->forget($key);
+            } catch (\Exception $e) {
+                // Not critical
+            }
+
+            \Log::info("Cleared cache for database connection: {$connection}");
+        } else {
+            // Clear all connection caches from both stores
+            try {
+                Cache::forget('db_connection_status');
+            } catch (\Exception $e) {
+                // Not critical
+            }
+
+            try {
+                Cache::store('file')->forget('db_connection_status');
+            } catch (\Exception $e) {
+                // Not critical
+            }
+
+            // Also clear individual connection caches
+            foreach (self::CONNECTIONS as $conn => $info) {
+                $key = "db_connection_status_{$conn}";
+
+                try {
+                    Cache::forget($key);
+                } catch (\Exception $e) {
+                    // Not critical
+                }
+
+                try {
+                    Cache::store('file')->forget($key);
+                } catch (\Exception $e) {
+                    // Not critical
+                }
+            }
+
+            \Log::info("Cleared all database connection caches");
+        }
     }
 
     /**

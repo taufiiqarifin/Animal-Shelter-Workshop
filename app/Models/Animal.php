@@ -101,7 +101,8 @@ class Animal extends Model
      */
     public function bookings()
     {
-        return $this->belongsToMany(Booking::class, 'animal_booking', 'animalID', 'bookingID')
+        return $this->setConnection('danish')
+            ->belongsToMany(Booking::class, 'animal_booking', 'animalID', 'bookingID')
             ->using(AnimalBooking::class)
             ->withPivot('remarks')
             ->withTimestamps();
@@ -114,7 +115,8 @@ class Animal extends Model
      */
     public function visitLists()
     {
-        return $this->belongsToMany(VisitList::class, 'visit_list_animal', 'animalID', 'listID')
+        return $this->setConnection('danish')
+            ->belongsToMany(VisitList::class, 'visit_list_animal', 'animalID', 'listID')
             ->using(VisitListAnimal::class)
             ->withPivot('remarks')
             ->withTimestamps();

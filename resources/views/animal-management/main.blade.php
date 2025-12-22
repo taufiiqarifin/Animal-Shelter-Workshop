@@ -127,7 +127,7 @@
                         <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition duration-300">
                             <!-- Animal Image -->
                             <div class="h-48 bg-gradient-to-br from-purple-300 to-purple-400 flex items-center justify-center overflow-hidden">
-                                @if($animal->images && $animal->images->count() > 0)
+                                @if($animal->relationLoaded('images') && $animal->images && $animal->images->count() > 0)
                                     <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
                                          alt="{{ $animal->name }}"
                                          class="w-full h-full object-cover">

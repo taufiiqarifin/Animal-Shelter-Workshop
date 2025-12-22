@@ -108,7 +108,7 @@
         document.getElementById('slotDetailModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
 
-        fetch(`/slots/${slotId}/details`)
+        fetch(`/shelter-management/slots/${slotId}/details`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
