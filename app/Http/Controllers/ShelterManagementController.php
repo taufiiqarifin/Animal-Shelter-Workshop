@@ -31,15 +31,26 @@ class ShelterManagementController extends Controller
             // Always load same-database relationships
             $with = ['section', 'inventories'];
 
-            // Only load cross-database relationships if those databases are online
-            if ($this->isDatabaseAvailable('shafiqah')) {
-                $with[] = 'animals';
-            }
-
             $slots = $query->with($with)
                 ->orderBy('sectionID')
                 ->orderBy('name')
                 ->paginate(30);
+
+            // Manually load animals for each slot to avoid cross-database JOIN
+            if ($this->isDatabaseAvailable('shafiqah')) {
+                $slotIds = $slots->pluck('id')->toArray();
+                $animals = Animal::whereIn('slotID', $slotIds)->get()->groupBy('slotID');
+
+                $slots->each(function($slot) use ($animals) {
+                    $slotAnimals = $animals->get($slot->id, collect([]));
+                    $slot->setRelation('animals', $slotAnimals);
+                });
+            } else {
+                // Set empty animals collection if shafiqah is offline
+                $slots->each(function($slot) {
+                    $slot->setRelation('animals', collect([]));
+                });
+            }
 
             $categories = Category::all();
 
@@ -340,7 +351,8 @@ class ShelterManagementController extends Controller
             $animalCount = 0;
             if ($this->isDatabaseAvailable('shafiqah')) {
                 try {
-                    $animalCount = $slot->animals()->count();
+                    // Count animals in slot directly from shafiqah database (avoid cross-database JOIN)
+                    $animalCount = Animal::where('slotID', $slot->id)->count();
                     \Log::info('Animal count for slot', [
                         'slot_id' => $id,
                         'animal_count' => $animalCount
@@ -581,13 +593,17 @@ class ShelterManagementController extends Controller
             // Build with array based on database availability
             $with = ['section', 'inventories.category'];
 
-            // Only load cross-database relationships if shafiqah is online
-            if ($this->isDatabaseAvailable('shafiqah')) {
-                $with[] = 'animals.vaccinations';
-                $with[] = 'animals.medicals';
-            }
-
             $slot = Slot::with($with)->findOrFail($id);
+
+            // Manually load animals to avoid cross-database JOIN
+            if ($this->isDatabaseAvailable('shafiqah')) {
+                $animals = Animal::where('slotID', $slot->id)
+                    ->with(['vaccinations', 'medicals'])
+                    ->get();
+                $slot->setRelation('animals', $animals);
+            } else {
+                $slot->setRelation('animals', collect([]));
+            }
 
             // Prepare animals data (empty if shafiqah is offline)
             $animalsData = [];

@@ -78,24 +78,93 @@ class BookingAdoptionController extends Controller
     }
 
     /**
+     * Helper method to manually load animals for a visit list to avoid cross-database SQL joins
+     * This loads animal IDs from the pivot table, then fetches animals from shafiqah database
+     */
+    private function loadAnimalsForVisitList($visitList, $withRelations = [])
+    {
+        // Check if shafiqah database is available
+        if (!$this->isDatabaseAvailable('shafiqah')) {
+            return collect([]);
+        }
+
+        // Get animal IDs from the pivot table (on danish database)
+        $animalIds = DB::connection('danish')
+            ->table('visit_list_animal')
+            ->where('listID', $visitList->id)
+            ->pluck('animalID')
+            ->toArray();
+
+        if (empty($animalIds)) {
+            return collect([]);
+        }
+
+        // Load animals from shafiqah database
+        $query = Animal::whereIn('id', $animalIds);
+
+        // Add any requested relationships
+        if (!empty($withRelations)) {
+            $query->with($withRelations);
+        }
+
+        return $query->get();
+    }
+
+    /**
      * Helper method to check if animals have active bookings at a specific date/time
      * Active bookings = Pending or Confirmed status
+     *
+     * CROSS-DATABASE SAFE: Manually queries danish database for bookings, then shafiqah for animals
      */
     private function getAnimalsWithBookingConflicts(array $animalIds, $appointmentDate, $appointmentTime)
     {
-        return Animal::whereIn('id', $animalIds)
-            ->whereHas('bookings', function ($query) use ($appointmentDate, $appointmentTime) {
-                $query->where('appointment_date', $appointmentDate)
-                      ->where('appointment_time', $appointmentTime)
-                      ->whereIn('status', ['Pending', 'Confirmed']);
-            })
-            ->with(['bookings' => function($query) use ($appointmentDate, $appointmentTime) {
-                $query->where('appointment_date', $appointmentDate)
-                      ->where('appointment_time', $appointmentTime)
-                      ->whereIn('status', ['Pending', 'Confirmed'])
-                      ->with('user');
-            }])
+        // Step 1: Find all bookings at this date/time with Pending/Confirmed status (danish database)
+        $conflictingBookings = Booking::where('appointment_date', $appointmentDate)
+            ->where('appointment_time', $appointmentTime)
+            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->with('user') // Load user for error messages
             ->get();
+
+        if ($conflictingBookings->isEmpty()) {
+            return collect([]);
+        }
+
+        // Step 2: Get animal IDs from pivot table for these bookings (danish database)
+        $bookingIds = $conflictingBookings->pluck('id')->toArray();
+        $conflictingAnimalIds = DB::connection('danish')
+            ->table('animal_booking')
+            ->whereIn('bookingID', $bookingIds)
+            ->whereIn('animalID', $animalIds) // Only check animals in our input list
+            ->pluck('animalID')
+            ->unique()
+            ->toArray();
+
+        if (empty($conflictingAnimalIds)) {
+            return collect([]);
+        }
+
+        // Step 3: Load animals from shafiqah database
+        if (!$this->isDatabaseAvailable('shafiqah')) {
+            return collect([]);
+        }
+
+        $animals = Animal::whereIn('id', $conflictingAnimalIds)->get();
+
+        // Step 4: Attach booking information to each animal
+        $animals->each(function($animal) use ($conflictingBookings, $bookingIds) {
+            // Find which bookings this animal is in
+            $animalBookingIds = DB::connection('danish')
+                ->table('animal_booking')
+                ->where('animalID', $animal->id)
+                ->whereIn('bookingID', $bookingIds)
+                ->pluck('bookingID')
+                ->toArray();
+
+            $animalBookings = $conflictingBookings->whereIn('id', $animalBookingIds);
+            $animal->setRelation('bookings', $animalBookings);
+        });
+
+        return $animals;
     }
 
     /**
@@ -133,7 +202,8 @@ class BookingAdoptionController extends Controller
             fn() => Booking::with('animals')
                 ->where('userID', auth()->id())
                 ->orderBy('appointment_date', 'desc')->get(),
-            collect([])
+            collect([]),
+            'danish'
         );
 
         return view('booking-adoption.main', compact('bookings'));
@@ -154,18 +224,25 @@ class BookingAdoptionController extends Controller
                 'userID' => $user->id,
             ]);
 
-            // Load animals with their images and pending bookings
-            return $visitList->animals()
-                ->with([
-                    'images', // Add this to eager load images
-                    'bookings' => function($query) use ($user) {
-                        $query->where('userID', $user->id)
-                            ->where('status', 'Pending')
-                            ->latest();
-                    }
-                ])
-                ->get();
-        }, collect([]));
+            // Manually load animals to avoid cross-database JOIN
+            $withRelations = [];
+
+            // Add images if eilya is online
+            if ($this->isDatabaseAvailable('eilya')) {
+                $withRelations[] = 'images';
+            }
+
+            // Add bookings if danish is online
+            if ($this->isDatabaseAvailable('danish')) {
+                $withRelations['bookings'] = function($query) use ($user) {
+                    $query->where('userID', $user->id)
+                        ->where('status', 'Pending')
+                        ->latest();
+                };
+            }
+
+            return $this->loadAnimalsForVisitList($visitList, $withRelations);
+        }, collect([]), 'danish');
 
         return view('booking-adoption.visit-list', compact('animals'));
     }
@@ -180,7 +257,8 @@ class BookingAdoptionController extends Controller
         // Validate animal exists with error handling
         $animal = $this->safeQuery(
             fn() => Animal::find($animalId),
-            null
+            null,
+            'shafiqah'
         );
 
         if (!$animal) {
@@ -198,19 +276,30 @@ class BookingAdoptionController extends Controller
             ]);
 
             // ===== CHECK: Prevent duplicate in visit list =====
-            if ($visitList->animals()->where('animalID', $animalId)->exists()) {
+            // Query pivot table directly to avoid cross-database JOIN
+            $exists = DB::connection('danish')
+                ->table('visit_list_animal')
+                ->where('listID', $visitList->id)
+                ->where('animalID', $animalId)
+                ->exists();
+
+            if ($exists) {
                 return ['error' => 'This animal is already in your visit list.'];
             }
             // ===== END CHECK =====
 
-            // Attach to pivot table
-            $visitList->animals()->attach($animalId, [
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // Attach to pivot table directly (no JOIN needed for attach)
+            DB::connection('danish')
+                ->table('visit_list_animal')
+                ->insert([
+                    'listID' => $visitList->id,
+                    'animalID' => $animalId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
             return ['success' => "{$animal->name} has been added to your visit list. You can view the list at the top right"];
-        }, ['error' => 'Database connection unavailable. Please try again later.']);
+        }, ['error' => 'Database connection unavailable. Please try again later.'], 'danish');
 
         if (isset($result['error'])) {
             return back()->with('error', $result['error']);
@@ -288,8 +377,22 @@ class BookingAdoptionController extends Controller
             // Get the user's VISIT LIST
             $visitList = VisitList::where('userID', $user->id)->first();
 
-            if (!$visitList || $visitList->animals->isEmpty()) {
+            if (!$visitList) {
                 \Log::warning('No visit list found for user', ['user_id' => $user->id]);
+                return back()
+                    ->with('error', 'Your visit list is empty.')
+                    ->with('open_visit_modal', true);
+            }
+
+            // Get animal IDs from pivot table directly (avoid cross-database JOIN)
+            $visitListAnimalIds = DB::connection('danish')
+                ->table('visit_list_animal')
+                ->where('listID', $visitList->id)
+                ->pluck('animalID')
+                ->toArray();
+
+            if (empty($visitListAnimalIds)) {
+                \Log::warning('Visit list is empty for user', ['user_id' => $user->id]);
                 return back()
                     ->with('error', 'Your visit list is empty.')
                     ->with('open_visit_modal', true);
@@ -298,7 +401,6 @@ class BookingAdoptionController extends Controller
             \Log::info('Found visit list', ['visit_list_id' => $visitList->id]);
 
             // Verify all selected animals are in the visit list
-            $visitListAnimalIds = $visitList->animals->pluck('id')->toArray();
             $requestedAnimalIds = $validated['animal_ids'];
 
             \Log::info('Animal verification', [
@@ -349,20 +451,24 @@ class BookingAdoptionController extends Controller
 
             // ===== CHECK 2: PREVENT DUPLICATE BOOKINGS (including cancelled ones) =====
             // Check if user is trying to rebook the same animals at the same time slot
+            // Step 1: Get all user's bookings at this date/time (danish database)
             $existingUserBookings = Booking::where('userID', $user->id)
                 ->where('appointment_date', $appointmentDate)
                 ->where('appointment_time', $appointmentTime)
-                ->whereHas('animals', function ($query) use ($requestedAnimalIds) {
-                    $query->whereIn('animal.id', $requestedAnimalIds);
-                })
-                ->with('animals')
+                ->with('animalBookings') // Load pivot records
                 ->get();
 
             if ($existingUserBookings->isNotEmpty()) {
-                // Get all animals that user has already booked at this time (any status)
+                // Step 2: Get all animal IDs from these bookings' pivot tables
                 $alreadyBookedAnimalIds = $existingUserBookings->flatMap(function ($booking) {
-                    return $booking->animals->pluck('id');
+                    return $booking->animalBookings->pluck('animalID');
                 })->unique()->toArray();
+
+                // Step 3: Filter to only keep bookings that have animals in the requested list
+                $existingUserBookings = $existingUserBookings->filter(function($booking) use ($requestedAnimalIds) {
+                    $bookingAnimalIds = $booking->animalBookings->pluck('animalID')->toArray();
+                    return !empty(array_intersect($bookingAnimalIds, $requestedAnimalIds));
+                });
 
                 $duplicateAnimalIds = array_intersect($requestedAnimalIds, $alreadyBookedAnimalIds);
 
@@ -418,11 +524,20 @@ class BookingAdoptionController extends Controller
                 \Log::info('Attached animals to booking', ['count' => count($animalData)]);
 
                 // Remove the confirmed animals from the visit list
-                $visitList->animals()->detach($validated['animal_ids']);
+                DB::connection('danish')
+                    ->table('visit_list_animal')
+                    ->where('listID', $visitList->id)
+                    ->whereIn('animalID', $validated['animal_ids'])
+                    ->delete();
                 \Log::info('Removed animals from visit list');
 
                 // If visit list has no more animals, delete it
-                if ($visitList->animals()->count() === 0) {
+                $remainingCount = DB::connection('danish')
+                    ->table('visit_list_animal')
+                    ->where('listID', $visitList->id)
+                    ->count();
+
+                if ($remainingCount === 0) {
                     $visitList->delete();
                     \Log::info('Deleted empty visit list');
                 }
@@ -649,14 +764,23 @@ class BookingAdoptionController extends Controller
                 abort(403, 'Unauthorized action.');
             }
 
-            // Get selected animals from request (support multiple IDs)
-            $animalIds = $request->query('animal_ids', $booking->animals->pluck('id')->toArray());
+            // Get animal IDs from pivot table directly (avoid cross-database JOIN)
+            $bookingAnimalIds = DB::connection('danish')
+                ->table('animal_booking')
+                ->where('bookingID', $booking->id)
+                ->pluck('animalID')
+                ->toArray();
 
-            // Avoid ambiguous 'id' by prefixing table name
-            $animals = $booking->animals()
-                ->whereIn('animal.id', $animalIds)
-                ->with(['medicals', 'vaccinations']) // eager load
-                ->get();
+            // Get selected animals from request (default to all booking animals)
+            $animalIds = $request->query('animal_ids', $bookingAnimalIds);
+
+            // Load animals from shafiqah database
+            $animals = collect([]);
+            if ($this->isDatabaseAvailable('shafiqah')) {
+                $animals = Animal::whereIn('id', $animalIds)
+                    ->with(['medicals', 'vaccinations']) // eager load
+                    ->get();
+            }
 
             $totalFee = 0;
             $allFeeBreakdowns = [];
@@ -721,8 +845,11 @@ class BookingAdoptionController extends Controller
                 'validated'  => $validated
             ]);
 
-            // Retrieve booking
-            $booking = Booking::with('animals')->findOrFail($bookingId);
+            // Retrieve booking (don't use 'with' to avoid cross-database JOIN)
+            $booking = Booking::with('animalBookings')->findOrFail($bookingId);
+
+            // Manually load animals to avoid cross-database JOIN
+            $this->loadAnimalsForBookings(collect([$booking]), false);
 
             // Check booking status (case-insensitive)
             $currentStatus = strtolower($booking->status);
@@ -1031,7 +1158,8 @@ class BookingAdoptionController extends Controller
             }
         }
 
-        return view('booking-adoption.payment-status', [
+        // Store payment status data in session to show in modal
+        session()->flash('payment_status', [
             'status_id' => $statusId,
             'billcode' => $billCode,
             'order_id' => $orderId,
@@ -1042,6 +1170,9 @@ class BookingAdoptionController extends Controller
             'reference_no' => $referenceNo,
             'payment_details' => $paymentStatus,
         ]);
+
+        // Redirect to booking main page with modal flag
+        return redirect()->route('booking:main')->with('show_payment_modal', true);
     }
 
     public function callback(Request $request)
