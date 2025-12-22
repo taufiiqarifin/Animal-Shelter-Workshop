@@ -103,38 +103,70 @@ class DatabaseConnectionChecker
     }
 
     /**
-     * Check a single database connection with timeout
+     * Check a single database connection with timeout and retry logic
      *
      * @param string $connection
+     * @param int $maxRetries Maximum number of retry attempts (default: 2)
      * @return bool
      */
-    public function checkConnection(string $connection): bool
+    public function checkConnection(string $connection, int $maxRetries = 2): bool
     {
-        try {
-            // Set timeout for connection check
-            // Reduced to 1 second for faster failure detection
-            $startTime = microtime(true);
-            $maxTime = 1.0; // 1 second maximum (fast fail for offline databases)
+        $attempt = 0;
 
-            // Set PDO timeout attributes before connecting
-            config(["database.connections.{$connection}.options" => [
-                \PDO::ATTR_TIMEOUT => 1,
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            ]]);
+        while ($attempt <= $maxRetries) {
+            try {
+                // Set timeout for connection check
+                // SQL Server requires longer timeout (~8-10s for initial connection)
+                // MySQL/PostgreSQL can use faster timeout (1s)
+                $startTime = microtime(true);
+                $maxTime = ($connection === 'danish') ? 10.0 : 1.0;
 
-            // Attempt to get PDO connection
-            $pdo = DB::connection($connection)->getPdo();
+                // Set PDO timeout attributes before connecting
+                // Note: SQL Server PDO driver (sqlsrv) does NOT support PDO::ATTR_TIMEOUT
+                $options = [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION];
 
-            // Check if we exceeded timeout
-            if ((microtime(true) - $startTime) > $maxTime) {
-                \Log::warning("Connection check for {$connection} took too long");
-                return false;
+                // Only set timeout for non-SQL Server connections
+                if ($connection !== 'danish') {
+                    $options[\PDO::ATTR_TIMEOUT] = 1;
+                }
+
+                config(["database.connections.{$connection}.options" => $options]);
+
+                // Attempt to get PDO connection
+                $pdo = DB::connection($connection)->getPdo();
+
+                // Check if we exceeded timeout
+                if ((microtime(true) - $startTime) > $maxTime) {
+                    \Log::warning("Connection check for {$connection} took too long (attempt " . ($attempt + 1) . ")");
+
+                    // If this was the last attempt, return false
+                    if ($attempt >= $maxRetries) {
+                        return false;
+                    }
+
+                    // Otherwise, retry
+                    $attempt++;
+                    sleep(1); // Wait 1 second before retry
+                    continue;
+                }
+
+                // Connection successful
+                return true;
+
+            } catch (\Exception $e) {
+                // Log the error on final attempt
+                if ($attempt >= $maxRetries) {
+                    \Log::debug("Connection failed for {$connection} after " . ($maxRetries + 1) . " attempts: " . $e->getMessage());
+                    return false;
+                }
+
+                // Retry after brief delay
+                $attempt++;
+                usleep(500000); // Wait 0.5 seconds before retry
             }
-
-            return true;
-        } catch (\Exception $e) {
-            return false;
         }
+
+        return false;
     }
 
     /**

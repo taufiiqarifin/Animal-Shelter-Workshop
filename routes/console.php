@@ -10,6 +10,15 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Refresh Database Connection Status - Every Minute
+// This prevents stale cache by continuously monitoring database health
+Schedule::command('db:refresh-status --silent')
+    ->everyMinute()
+    ->name('refresh-database-status')
+    ->description('Monitor database connections and refresh cache when status changes')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Weekly Database Backup - Every Sunday at 12:00 AM (Midnight)
 Schedule::call(function () {
     $connections = [

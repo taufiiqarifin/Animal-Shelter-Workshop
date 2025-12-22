@@ -19,6 +19,64 @@ use App\DatabaseErrorHandler;
 class BookingAdoptionController extends Controller
 {
     use DatabaseErrorHandler;
+
+    /**
+     * Helper method to manually load animals for bookings to avoid cross-database SQL joins
+     * This loads animals through the pivot table, then attaches them to booking models
+     */
+    private function loadAnimalsForBookings($bookings, $loadImages = false)
+    {
+        if ($bookings->isEmpty()) {
+            return;
+        }
+
+        // Check if shafiqah database is available
+        if (!$this->isDatabaseAvailable('shafiqah')) {
+            // Set empty animals collection for each booking
+            $bookings->each(function($booking) {
+                $booking->setRelation('animals', collect([]));
+            });
+            return;
+        }
+
+        // Get all unique animal IDs from all bookings' animalBookings
+        $animalIds = $bookings->flatMap(function($booking) {
+            return $booking->animalBookings->pluck('animalID');
+        })->unique()->values()->toArray();
+
+        if (empty($animalIds)) {
+            $bookings->each(function($booking) {
+                $booking->setRelation('animals', collect([]));
+            });
+            return;
+        }
+
+        // Load animals from shafiqah database
+        $animalsQuery = Animal::whereIn('id', $animalIds)
+            ->with(['medicals', 'vaccinations']);
+
+        // Optionally load images if eilya is online
+        if ($loadImages && $this->isDatabaseAvailable('eilya')) {
+            $animalsQuery->with('images');
+        }
+
+        $animals = $animalsQuery->get()->keyBy('id');
+
+        // Attach animals to each booking based on their animalBookings
+        $bookings->each(function($booking) use ($animals) {
+            $bookingAnimals = $booking->animalBookings->map(function($animalBooking) use ($animals) {
+                $animal = $animals->get($animalBooking->animalID);
+                if ($animal) {
+                    // Attach pivot data to the animal
+                    $animal->pivot = $animalBooking;
+                }
+                return $animal;
+            })->filter(); // Remove nulls
+
+            $booking->setRelation('animals', $bookingAnimals);
+        });
+    }
+
     /**
      * Helper method to check if animals have active bookings at a specific date/time
      * Active bookings = Pending or Confirmed status
@@ -423,14 +481,28 @@ class BookingAdoptionController extends Controller
     public function index(Request $request)
     {
         $result = $this->safeQuery(function() use ($request) {
+            // Check which databases are available for conditional loading
+            $shafiqahOnline = $this->isDatabaseAvailable('shafiqah');
+            $eilyaOnline = $this->isDatabaseAvailable('eilya');
+            $taufiqOnline = $this->isDatabaseAvailable('taufiq');
+
+            // Build relationships array based on database availability
+            $relationships = [];
+
+            // Always try to load adoptions (same database)
+            $relationships[] = 'adoptions';
+
+            // Load user if taufiq database is online
+            if ($taufiqOnline) {
+                $relationships[] = 'user';
+            }
+
+            // Load animalBookings pivot data (same database - danish)
+            // We load animals separately after to avoid cross-database SQL joins
+            $relationships[] = 'animalBookings';
+
             $query = Booking::where('userID', Auth::id())
-                ->with([
-                    'animals.images',       // For displaying animal photos
-                    'animals.medicals',     // For calculating medical fees
-                    'animals.vaccinations', // For calculating vaccination fees
-                    'user',                 // For booker information
-                    'adoptions'             // For showing adoption status
-                ]);
+                ->with($relationships);
 
             // Filter by status if provided
             if ($request->filled('status')) {
@@ -442,9 +514,19 @@ class BookingAdoptionController extends Controller
                 ->paginate(40)
                 ->appends($request->query());
 
+            // Manually load animals for bookings to avoid cross-database SQL joins
+            $this->loadAnimalsForBookings($bookings, $eilyaOnline);
+
+            // Prevent lazy-loading by setting empty collections for unloaded relationships
+            $bookings->each(function($booking) use ($taufiqOnline) {
+                if (!$taufiqOnline && !$booking->relationLoaded('user')) {
+                    $booking->setRelation('user', null);
+                }
+            });
+
             // Count statuses for this user only
             $statusCounts = Booking::where('userID', Auth::id())
-                ->select('status', DB::raw('COUNT(*) as total'))
+                ->select('status', DB::connection('danish')->raw('COUNT(*) as total'))
                 ->groupBy('status')
                 ->pluck('total', 'status');
 
@@ -467,13 +549,27 @@ class BookingAdoptionController extends Controller
     public function indexAdmin(Request $request)
     {
         $result = $this->safeQuery(function() use ($request) {
-            $query = Booking::with([
-                'animals.images',
-                'animals.medicals',
-                'animals.vaccinations',
-                'user',
-                'adoptions'
-            ]);
+            // Check which databases are available for conditional loading
+            $shafiqahOnline = $this->isDatabaseAvailable('shafiqah');
+            $eilyaOnline = $this->isDatabaseAvailable('eilya');
+            $taufiqOnline = $this->isDatabaseAvailable('taufiq');
+
+            // Build relationships array based on database availability
+            $relationships = [];
+
+            // Always try to load adoptions (same database)
+            $relationships[] = 'adoptions';
+
+            // Load user if taufiq database is online
+            if ($taufiqOnline) {
+                $relationships[] = 'user';
+            }
+
+            // Load animalBookings pivot data (same database - danish)
+            // We load animals separately after to avoid cross-database SQL joins
+            $relationships[] = 'animalBookings';
+
+            $query = Booking::with($relationships);
 
             // Filter by status if provided
             if ($request->filled('status')) {
@@ -485,7 +581,17 @@ class BookingAdoptionController extends Controller
                 ->paginate(40)
                 ->appends($request->query());
 
-            $statusCounts = Booking::select('status', DB::raw('COUNT(*) as total'))
+            // Manually load animals for bookings to avoid cross-database SQL joins
+            $this->loadAnimalsForBookings($bookings, $eilyaOnline);
+
+            // Prevent lazy-loading by setting empty collections for unloaded relationships
+            $bookings->each(function($booking) use ($taufiqOnline) {
+                if (!$taufiqOnline && !$booking->relationLoaded('user')) {
+                    $booking->setRelation('user', null);
+                }
+            });
+
+            $statusCounts = Booking::select('status', DB::connection('danish')->raw('COUNT(*) as total'))
                 ->groupBy('status')
                 ->pluck('total', 'status');
 

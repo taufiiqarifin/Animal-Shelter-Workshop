@@ -79,9 +79,32 @@ Migrations are designed to work with MySQL, PostgreSQL, and SQL Server. Be caref
 ## Development Commands
 
 ### Initial Setup
+
+**Full Setup (All Databases Online):**
 ```bash
 composer setup  # Install dependencies, copy .env, generate key, migrate, build assets
 ```
+
+**Individual Database Setup (Your Database Only):**
+```bash
+# 1. Copy your team-specific .env template
+cp .env.{your-name}.example .env  # Replace {your-name} with taufiq, danish, eilya, shafiqah, or atiqah
+
+# 2. Generate application key
+php artisan key:generate
+
+# 3. Install dependencies
+composer install && npm install
+
+# 4. Migrate only YOUR database
+php artisan db:fresh-one {your-connection} --seed
+# Example: php artisan db:fresh-one taufiq --seed
+
+# 5. Start development
+composer dev
+```
+
+**See `DISTRIBUTED_SETUP_GUIDE.md` for complete setup instructions for each team member.**
 
 ### Running the Development Environment
 ```bash
@@ -119,12 +142,38 @@ php artisan migrate
 php artisan db:seed
 ```
 
-**Database Connection Status Cache:**
+**Database Connection Status:**
 ```bash
 php artisan db:clear-status-cache  # Clear cached connection status and recheck all databases
+php artisan db:monitor             # Real-time connection monitoring (continuous)
+php artisan db:refresh-status      # Force immediate cache refresh
+php artisan db:check-connections   # Check and display current status
 ```
 
+**Individual Database Commands (NEW - For Distributed Development):**
+```bash
+php artisan db:migrate-one {connection}        # Run migrations for one database only
+php artisan db:fresh-one {connection} --seed   # Refresh one database only
+
+# Examples:
+php artisan db:fresh-one taufiq --seed    # Refresh Taufiq's database only
+php artisan db:migrate-one danish         # Migrate Danish's database only
+```
+
+**When to Use:**
+- **Individual Development:** When working on your own machine with only YOUR database online
+- **Network Issues:** When remote databases are unreachable
+- **Faster Development:** Quick iterations without waiting for all databases
+
+**Automatic Monitoring:** The application includes a scheduled task that checks database connections every minute and automatically updates the cache when status changes. This prevents stale cache issues. See `DATABASE_STATUS_MONITORING.md` for details.
+
 **IMPORTANT:** Use `db:fresh-all` instead of `migrate:fresh` for this project. Laravel's default `migrate:fresh` only drops tables from the default connection, not all 5 distributed databases. The custom `db:fresh-all` command properly drops all tables from all connections (taufiq, eilya, shafiqah, atiqah, danish) before running migrations.
+
+**RESILIENT DISTRIBUTED ARCHITECTURE:** The `db:fresh-all` command has been improved to gracefully handle offline databases. If some databases are unreachable (e.g., when working on your own machine), the command will:
+- Skip offline databases with a warning
+- Continue with available databases
+- Provide a summary of which databases were refreshed
+- This allows team members to work independently without requiring all databases to be online
 
 **IMPORTANT:** The application uses **smart caching** for database connection status in TWO places:
 
