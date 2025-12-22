@@ -8,9 +8,26 @@ use App\Http\Controllers\BookingAdoptionController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Dashboard;
 use App\Http\Controllers\RescueMapController;
+use App\Services\DatabaseConnectionChecker;
 
 Route::get('/rescue-map', [RescueMapController::class, 'index'])->name('rescue.map');
 Route::get('/api/rescue-clusters', [RescueMapController::class, 'getClusterData'])->name('rescue.clusters');
+
+// Real-time database status API endpoint
+Route::get('/api/database-status', function (DatabaseConnectionChecker $checker) {
+    $status = $checker->checkAll(true); // Use cache
+    $connected = array_filter($status, fn($db) => $db['connected']);
+    $disconnected = array_filter($status, fn($db) => !$db['connected']);
+
+    return response()->json([
+        'status' => $status,
+        'connected' => array_values($connected),
+        'disconnected' => array_values($disconnected),
+        'allOnline' => count($disconnected) === 0,
+        'timestamp' => now()->toIso8601String(),
+    ]);
+})->name('api.database.status');
+
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
 Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');

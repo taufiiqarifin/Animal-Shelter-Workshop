@@ -78,6 +78,29 @@ Migrations are designed to work with MySQL, PostgreSQL, and SQL Server. Be caref
 
 ## Development Commands
 
+### ⚠️ CRITICAL: Taufiq Database Requirement
+
+**The Taufiq database (PostgreSQL) MUST be online for the application to function.**
+
+**Why Taufiq is required:**
+- Stores the `users` table (authentication/login) - **Without it, nobody can login**
+- Provides the primary cache storage (connection status, sessions)
+- Handles cache locks for concurrency control
+
+**Other databases (eilya, shafiqah, atiqah, danish) can be offline:**
+- Their respective modules will be unavailable
+- Application remains functional with warning modal
+- No page load timeouts (fixed with circuit breaker pattern)
+
+**Team member requirements:**
+- **All team members**: Taufiq database must be online
+- **Your module**: Your own database should be online
+- **Other modules**: Other databases can be offline (their modules unavailable)
+
+See `DATABASE_TIMEOUT_FIX.md` for details on the timeout fix and cache architecture.
+
+---
+
 ### Initial Setup
 
 **Full Setup (All Databases Online):**

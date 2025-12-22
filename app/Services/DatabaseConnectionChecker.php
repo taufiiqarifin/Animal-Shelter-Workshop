@@ -46,18 +46,19 @@ class DatabaseConnectionChecker
      */
     public function checkAll(bool $useCache = true): array
     {
-        // Smart cache strategy: try database cache first, fallback to file cache
-        // This avoids circular dependency during initial connection checks
+        // Cache strategy: Use taufiq database cache as primary (taufiq must be online for auth)
+        // Fallback to file cache if taufiq is unreachable
         $cacheKey = 'db_connection_status';
+        $lockKey = 'db_connection_check_in_progress';
 
         if ($useCache) {
-            // Try database cache first (faster when online)
+            // Try taufiq database cache FIRST (taufiq must be online for authentication)
             try {
                 if (Cache::has($cacheKey)) {
                     return Cache::get($cacheKey);
                 }
             } catch (\Exception $e) {
-                // Database cache failed, try file cache
+                // Database cache failed (taufiq might be offline), try file cache as fallback
                 try {
                     $fileCache = Cache::store('file');
                     if ($fileCache->has($cacheKey)) {
@@ -67,6 +68,35 @@ class DatabaseConnectionChecker
                     // Both failed, continue to fresh check
                 }
             }
+        }
+
+        // Check if another request is already checking connections (mutex/lock)
+        // This prevents multiple simultaneous connection checks that cause timeouts
+        // Use file cache for lock (more reliable than database cache)
+        try {
+            $fileCache = Cache::store('file');
+            if ($fileCache->has($lockKey)) {
+                // Another request is checking, wait briefly and try to get cached result
+                usleep(100000); // Wait 100ms
+
+                // Try database cache first
+                try {
+                    if (Cache::has($cacheKey)) {
+                        return Cache::get($cacheKey);
+                    }
+                } catch (\Exception $e) {
+                    // Try file cache
+                    if ($fileCache->has($cacheKey)) {
+                        return $fileCache->get($cacheKey);
+                    }
+                }
+                // If still no cache, fall through to check ourselves
+            }
+
+            // Set lock to prevent other requests from checking simultaneously
+            $fileCache->put($lockKey, true, 10); // Lock for 10 seconds max
+        } catch (\Exception $e) {
+            // Lock failed, proceed anyway
         }
 
         $results = [];
@@ -79,94 +109,87 @@ class DatabaseConnectionChecker
         }
 
         // Smart cache duration:
-        // - All databases online: 30 minutes (stable state)
-        // - Any database offline: 60 seconds (check frequently for recovery)
+        // - All databases online: 5 minutes (stable state, check periodically)
+        // - Any database offline: 15 seconds (check frequently for real-time recovery detection)
         $allOnline = collect($results)->every(fn($db) => $db['connected']);
-        $cacheDuration = $allOnline ? 1800 : 60;
+        $cacheDuration = $allOnline ? 300 : 15;
 
-        // Store in both caches for redundancy
-        // Database cache (when online) - primary
+        // Store in taufiq database cache FIRST (primary - fast access, taufiq always online for auth)
         try {
             Cache::put($cacheKey, $results, $cacheDuration);
         } catch (\Exception $e) {
             // Database cache failed, not critical
         }
 
-        // File cache - fallback/backup
+        // Store in file cache as backup (fallback when taufiq temporarily unreachable)
         try {
             Cache::store('file')->put($cacheKey, $results, $cacheDuration);
         } catch (\Exception $e) {
             // File cache failed, not critical
         }
 
+        // Release lock
+        try {
+            Cache::store('file')->forget($lockKey);
+        } catch (\Exception $e) {
+            // Not critical
+        }
+
         return $results;
     }
 
     /**
-     * Check a single database connection with timeout and retry logic
+     * Check a single database connection with timeout
      *
      * @param string $connection
-     * @param int $maxRetries Maximum number of retry attempts (default: 2)
      * @return bool
      */
-    public function checkConnection(string $connection, int $maxRetries = 2): bool
+    public function checkConnection(string $connection): bool
     {
-        $attempt = 0;
+        // Check circuit breaker - if connection recently failed, don't try again immediately
+        $circuitKey = "db_circuit_breaker_{$connection}";
+        $circuitBreakerActive = false;
 
-        while ($attempt <= $maxRetries) {
-            try {
-                // Set timeout for connection check
-                // SQL Server requires longer timeout (~8-10s for initial connection)
-                // MySQL/PostgreSQL can use faster timeout (1s)
-                $startTime = microtime(true);
-                $maxTime = ($connection === 'danish') ? 10.0 : 1.0;
-
-                // Set PDO timeout attributes before connecting
-                // Note: SQL Server PDO driver (sqlsrv) does NOT support PDO::ATTR_TIMEOUT
-                $options = [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION];
-
-                // Only set timeout for non-SQL Server connections
-                if ($connection !== 'danish') {
-                    $options[\PDO::ATTR_TIMEOUT] = 1;
-                }
-
-                config(["database.connections.{$connection}.options" => $options]);
-
-                // Attempt to get PDO connection
-                $pdo = DB::connection($connection)->getPdo();
-
-                // Check if we exceeded timeout
-                if ((microtime(true) - $startTime) > $maxTime) {
-                    \Log::warning("Connection check for {$connection} took too long (attempt " . ($attempt + 1) . ")");
-
-                    // If this was the last attempt, return false
-                    if ($attempt >= $maxRetries) {
-                        return false;
-                    }
-
-                    // Otherwise, retry
-                    $attempt++;
-                    sleep(1); // Wait 1 second before retry
-                    continue;
-                }
-
-                // Connection successful
-                return true;
-
-            } catch (\Exception $e) {
-                // Log the error on final attempt
-                if ($attempt >= $maxRetries) {
-                    \Log::debug("Connection failed for {$connection} after " . ($maxRetries + 1) . " attempts: " . $e->getMessage());
-                    return false;
-                }
-
-                // Retry after brief delay
-                $attempt++;
-                usleep(500000); // Wait 0.5 seconds before retry
+        try {
+            if (Cache::store('file')->has($circuitKey)) {
+                // Circuit breaker is active, don't attempt connection
+                return false;
             }
+        } catch (\Exception $e) {
+            // File cache failed, proceed with check
         }
 
-        return false;
+        try {
+            // Timeouts are now configured in database.php:
+            // - MySQL/PostgreSQL: 0.5 seconds (PDO::ATTR_TIMEOUT)
+            // - SQL Server: 2 seconds (ConnectTimeout/LoginTimeout)
+            // - PostgreSQL: 0.5 seconds (connect_timeout)
+            // NO RETRIES - fail fast and use cache
+
+            // Attempt to get PDO connection (will use configured timeouts)
+            $pdo = DB::connection($connection)->getPdo();
+
+            // Connection successful - clear any existing circuit breaker
+            try {
+                Cache::store('file')->forget($circuitKey);
+            } catch (\Exception $e) {
+                // Not critical
+            }
+
+            return true;
+
+        } catch (\Exception $e) {
+            // Connection failed - activate circuit breaker for 30 seconds
+            // This prevents repeated connection attempts that cause page hangs
+            try {
+                Cache::store('file')->put($circuitKey, true, 30);
+            } catch (\Exception $e2) {
+                // Not critical
+            }
+
+            \Log::debug("Connection check failed for {$connection}: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -198,18 +221,18 @@ class DatabaseConnectionChecker
      */
     public function isConnected(string $connection): bool
     {
-        // Smart cache strategy: try database cache first, fallback to file cache
+        // Use taufiq database cache as primary (taufiq must be online for authentication)
         $allDbKey = 'db_connection_status';
         $singleDbKey = "db_connection_status_{$connection}";
 
-        // Try to get from ALL databases cache first (most complete)
+        // Try to get from ALL databases cache first (in taufiq database)
         try {
             if (Cache::has($allDbKey)) {
                 $status = Cache::get($allDbKey);
                 return $status[$connection]['connected'] ?? false;
             }
         } catch (\Exception $e) {
-            // Try file cache
+            // Database cache failed, try file cache as fallback
             try {
                 $fileCache = Cache::store('file');
                 if ($fileCache->has($allDbKey)) {
@@ -221,7 +244,7 @@ class DatabaseConnectionChecker
             }
         }
 
-        // Try individual connection cache
+        // Try individual connection cache from taufiq database
         try {
             if (Cache::has($singleDbKey)) {
                 return Cache::get($singleDbKey);
@@ -241,7 +264,7 @@ class DatabaseConnectionChecker
         // No cache found, check this connection
         $isConnected = $this->checkConnection($connection);
 
-        // Cache individual connection status for 60 seconds in both stores
+        // Cache individual connection status for 60 seconds - taufiq database first
         try {
             Cache::put($singleDbKey, $isConnected, 60);
         } catch (\Exception $e) {

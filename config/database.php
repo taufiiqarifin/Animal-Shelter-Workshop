@@ -87,8 +87,8 @@ return [
             'trust_server_certificate' => true,
             'options' => [
                 'TrustServerCertificate' => true,
-                'ConnectTimeout' => 5,
-                'LoginTimeout' => 5,
+                'ConnectTimeout' => 2, // Reduced from 5 to 2 seconds for faster failure
+                'LoginTimeout' => 2,   // Reduced from 5 to 2 seconds for faster failure
             ],
         ],
 
