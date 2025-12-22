@@ -40,7 +40,8 @@ class AnimalManagementController extends Controller
         // Get adopter profile with error handling
         $adopterProfile = $this->safeQuery(
             fn() => AdopterProfile::where('adopterID', $user->id)->first(),
-            null
+            null,
+            'taufiq'
         );
 
         if (!$adopterProfile) {
@@ -55,7 +56,8 @@ class AnimalManagementController extends Controller
             fn() => Animal::with('profile')
                 ->whereIn('adoption_status', ['Not Adopted', 'not adopted'])
                 ->get(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         // Calculate match scores
@@ -259,12 +261,14 @@ class AnimalManagementController extends Controller
         // Fetch data with fallbacks for offline databases
         $rescues = $this->safeQuery(
             fn() => Rescue::all(),
-            collect([])
+            collect([]),
+            'eilya'
         );
 
         $slots = $this->safeQuery(
             fn() => Slot::where('status', 'Available')->get(),
-            collect([])
+            collect([]),
+            'atiqah'
         );
 
         return view('animal-management.create', [
@@ -554,13 +558,27 @@ public function update(Request $request, $id)
         if (Auth::check()) {
             $user = Auth::user();
 
-            $animalList = $this->safeQuery(
-                fn() => VisitList::with('animals')
-                    ->firstOrCreate(['userID' => $user->id])
-                    ->animals,
-                collect([]),
-                'danish' // Pre-check danish database
-            );
+            $animalList = $this->safeQuery(function() use ($user) {
+                $visitList = VisitList::firstOrCreate(['userID' => $user->id]);
+
+                // Get animal IDs from pivot table directly (avoid cross-database JOIN)
+                $animalIds = DB::connection('danish')
+                    ->table('visit_list_animal')
+                    ->where('listID', $visitList->id)
+                    ->pluck('animalID')
+                    ->toArray();
+
+                if (empty($animalIds)) {
+                    return collect([]);
+                }
+
+                // Load animals from shafiqah database if available
+                if ($this->isDatabaseAvailable('shafiqah')) {
+                    return Animal::whereIn('id', $animalIds)->get();
+                }
+
+                return collect([]);
+            }, collect([]), 'danish');
         }
 
         return view('animal-management.main', compact('animals', 'animalList'));
@@ -610,17 +628,20 @@ public function update(Request $request, $id)
 
         $medicals = $this->safeQuery(
             fn() => Medical::with('vet')->where('animalID', $id)->get(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         $vaccinations = $this->safeQuery(
             fn() => Vaccination::with('vet')->where('animalID', $id)->get(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         $vets = $this->safeQuery(
             fn() => Vet::all(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         // Get available slots + the current slot (if any)
@@ -633,14 +654,18 @@ public function update(Request $request, $id)
                 ->orderBy('sectionID')
                 ->orderBy('name')
                 ->get(),
-            collect([])
+            collect([]),
+            'atiqah'
         );
 
         // Get all bookings for this animal (for calendar/time blocking) - only if danish database is online
         $bookedSlots = collect([]);
         if ($danishOnline && $animal->relationLoaded('bookings')) {
             $bookedSlots = $animal->bookings->map(function($booking) {
-                $dateTime = \Carbon\Carbon::parse($booking->appointment_date . ' ' . $booking->appointment_time);
+                // Parse date and time separately to avoid concatenation issues
+                $date = \Carbon\Carbon::parse($booking->appointment_date)->format('Y-m-d');
+                $time = \Carbon\Carbon::parse($booking->appointment_time)->format('H:i:s');
+                $dateTime = \Carbon\Carbon::parse($date . ' ' . $time);
 
                 return [
                     'date' => $dateTime->format('Y-m-d'),
@@ -663,7 +688,8 @@ public function update(Request $request, $id)
 
         $animalProfile = $this->safeQuery(
             fn() => AnimalProfile::where('animalID', $id)->first(),
-            null
+            null,
+            'shafiqah'
         );
 
         // ===== Only for logged-in user =====
@@ -671,12 +697,27 @@ public function update(Request $request, $id)
         if (Auth::check()) {
             $user = Auth::user();
 
-            $animalList = $this->safeQuery(
-                fn() => VisitList::with('animals')
-                    ->firstOrCreate(['userID' => $user->id])
-                    ->animals,
-                collect([])
-            );
+            $animalList = $this->safeQuery(function() use ($user) {
+                $visitList = VisitList::firstOrCreate(['userID' => $user->id]);
+
+                // Get animal IDs from pivot table directly (avoid cross-database JOIN)
+                $animalIds = DB::connection('danish')
+                    ->table('visit_list_animal')
+                    ->where('listID', $visitList->id)
+                    ->pluck('animalID')
+                    ->toArray();
+
+                if (empty($animalIds)) {
+                    return collect([]);
+                }
+
+                // Load animals from shafiqah database if available
+                if ($this->isDatabaseAvailable('shafiqah')) {
+                    return Animal::whereIn('id', $animalIds)->get();
+                }
+
+                return collect([]);
+            }, collect([]), 'danish');
         }
 
         return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots', 'animalProfile', 'animalList', 'activeBookings', 'imagesAvailable'));
@@ -696,7 +737,8 @@ public function update(Request $request, $id)
             $animal->save();
 
             $newSlot = Slot::findOrFail($request->slot_id);
-            $newSlotAnimalCount = $newSlot->animals()->count();
+            // Count animals in slot directly from shafiqah database (avoid cross-database JOIN)
+            $newSlotAnimalCount = Animal::where('slotID', $newSlot->id)->count();
 
             if ($newSlotAnimalCount >= $newSlot->capacity) {
                 $newSlot->status = 'occupied';
@@ -709,7 +751,8 @@ public function update(Request $request, $id)
                 $oldSlot = Slot::find($previousSlotId);
 
                 if ($oldSlot) {
-                    $oldSlotAnimalCount = $oldSlot->animals()->count();
+                    // Count animals in slot directly from shafiqah database (avoid cross-database JOIN)
+                    $oldSlotAnimalCount = Animal::where('slotID', $oldSlot->id)->count();
 
                     if ($oldSlotAnimalCount >= $oldSlot->capacity) {
                         $oldSlot->status = 'occupied';
