@@ -519,6 +519,7 @@ public function update(Request $request, $id)
             // Only load cross-database relationships if those databases are online
             if ($this->isDatabaseAvailable('eilya')) {
                 $with[] = 'images';
+                $with[] = 'rescue'; // Load rescue relationship for caretaker filter
             }
 
             if ($this->isDatabaseAvailable('atiqah')) {
@@ -527,6 +528,32 @@ public function update(Request $request, $id)
 
             $query = Animal::with($with);
 
+            // Caretaker Filter: Show only animals rescued by the logged-in caretaker
+            if ($request->filled('rescued_by_me') && $request->rescued_by_me === 'true' && Auth::check()) {
+                $user = Auth::user();
+
+                // Check if user has caretaker role
+                if ($user->hasRole('caretaker')) {
+                    // Get rescue IDs where the current user is the caretaker
+                    $rescueIds = $this->safeQuery(
+                        fn() => DB::connection('eilya')
+                            ->table('rescue')
+                            ->where('caretakerID', $user->id)
+                            ->pluck('id')
+                            ->toArray(),
+                        [],
+                        'eilya'
+                    );
+
+                    if (!empty($rescueIds)) {
+                        $query->whereIn('rescueID', $rescueIds);
+                    } else {
+                        // No rescues by this caretaker, return empty result
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+            }
+
             // Filters
             if ($request->filled('search')) {
                 $query->where(DB::raw('LOWER(name)'), 'LIKE', '%' . strtolower($request->search) . '%');
@@ -534,6 +561,10 @@ public function update(Request $request, $id)
 
             if ($request->filled('species')) {
                 $query->where(DB::raw('LOWER(species)'), 'LIKE', '%' . strtolower($request->species) . '%');
+            }
+
+            if ($request->filled('health_details')) {
+                $query->where('health_details', $request->health_details);
             }
 
             if ($request->filled('adoption_status')) {
