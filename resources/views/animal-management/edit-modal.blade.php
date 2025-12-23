@@ -1,9 +1,9 @@
 {{-- Edit Animal Modal --}}
-<div id="editAnimalModal-{{ $animal->id }}" 
+<div id="editAnimalModal-{{ $animal->id }}"
      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
 
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        
+
         {{-- Modal Header --}}
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 sticky top-0 z-10">
             <div class="flex justify-between items-center">
@@ -29,11 +29,11 @@
                     <label class="block text-gray-800 font-semibold mb-2">
                         Name <span class="text-red-600">*</span>
                     </label>
-                    <input type="text" name="name" value="{{ old('name', $animal->name ?? '') }}" 
-                           class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white" 
+                    <input type="text" name="name" value="{{ old('name', $animal->name ?? '') }}"
+                           class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white"
                            placeholder="Give name to the rescued animal" required>
                     @error('name')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -42,11 +42,11 @@
                     <label class="block text-gray-800 font-semibold mb-2">
                         Weight (kg) <span class="text-red-600">*</span>
                     </label>
-                    <input type="number" name="weight" min="0" step="0.1" value="{{ old('weight', $animal->weight ?? '') }}" 
-                           class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white" 
+                    <input type="number" name="weight" min="0" step="0.1" value="{{ old('weight', $animal->weight ?? '') }}"
+                           class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white"
                            placeholder="Enter animal weight in kg" required>
                     @error('weight')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -56,13 +56,13 @@
                         Species <span class="text-red-600">*</span>
                     </label>
                     <select name="species" required
-                        class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white">
+                            class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white">
                         <option value="" disabled>-- Select Species --</option>
                         <option value="Dog" {{ old('species', $animal->species) == 'Dog' ? 'selected' : '' }}>Dog</option>
                         <option value="Cat" {{ old('species', $animal->species) == 'Cat' ? 'selected' : '' }}>Cat</option>
                     </select>
                     @error('species')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -101,7 +101,7 @@
                             </div>
                         </div>
                         @error('age_category')
-                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -112,9 +112,9 @@
                         </label>
 
                         <div class="relative">
-                            <select name="gender" 
-                                class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition appearance-none cursor-pointer bg-white pr-10 text-gray-900"
-                                required>
+                            <select name="gender"
+                                    class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition appearance-none cursor-pointer bg-white pr-10 text-gray-900"
+                                    required>
                                 <option value="" disabled>Select gender</option>
                                 <option value="Male" {{ old('gender', $animal->gender) == 'Male' ? 'selected' : '' }}>Male</option>
                                 <option value="Female" {{ old('gender', $animal->gender) == 'Female' ? 'selected' : '' }}>Female</option>
@@ -126,7 +126,7 @@
                             </div>
                         </div>
                         @error('gender')
-                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
@@ -136,36 +136,69 @@
                     <label class="block text-gray-800 font-semibold mb-2">
                         Health Details <span class="text-red-600">*</span>
                     </label>
-                    <textarea name="health_details" rows="4" 
-                              class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white" 
-                              placeholder="Describe the animal's health condition, any injuries, etc..." required>{{ old('health_details', $animal->health_details) }}</textarea>
+                    <textarea name="health_details" rows="4"
+                              class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 focus:border-purple-500 focus:ring focus:ring-purple-200 transition text-gray-900 bg-white"
+                              placeholder="Describe the animal's physical condition .." required>{{ old('health_details', $animal->health_details) }}</textarea>
                     @error('health_details')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
                 {{-- Current Images --}}
                 @if($animal->images && count($animal->images) > 0)
-                <div>
-                    <label class="block text-gray-800 font-semibold mb-2">
-                        Current Images
-                    </label>
+                    <div class="space-y-4">
+                        <label class="block text-gray-800 font-semibold mb-2">
+                            Current Images
+                        </label>
 
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        @foreach($animal->images as $image)
-                            <div class="relative group">
-                                <img src="{{ asset('storage/' . $image->path) }}" alt="Animal image" class="w-full h-32 object-cover rounded-lg shadow">
+                        @php
+                            // The Model shows the correct column name is 'image_path'
+                            $firstImage = $animal->images->first();
+                            $remainingImages = $animal->images->slice(1);
+                        @endphp
 
-                                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                    <label class="cursor-pointer">
-                                        <input type="checkbox" name="delete_images[]" value="{{ $image->id }}" class="mr-2">
-                                        <span class="text-white text-sm">Delete</span>
+                        {{-- 1. Prominent Display of the Primary Image (using the correct 'image_path') --}}
+                        <div class="w-full max-w-lg mx-auto mb-6 p-4 border rounded-lg bg-gray-100 shadow-md">
+                            <h3 class="font-bold text-gray-700 mb-3">Primary Image</h3>
+                            <div class="relative">
+                                <img src="{{ asset('storage/' . $firstImage->image_path) }}"
+                                     alt="Primary image for {{ $animal->name }}"
+                                     class="w-full h-64 object-cover rounded-lg shadow-lg border-2 border-purple-500">
+
+                                {{-- Option to delete the Primary Image --}}
+                                <div class="absolute top-2 right-2 p-2 bg-black bg-opacity-60 rounded-lg text-white text-xs">
+                                    <label class="cursor-pointer flex items-center">
+                                        <input type="checkbox" name="delete_images[]" value="{{ $firstImage->id }}"
+                                               class="mr-1 w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500">
+                                        Delete
                                     </label>
                                 </div>
                             </div>
-                        @endforeach
+                        </div>
+
+                        {{-- 2. Grid for Remaining Images with Delete Overlay --}}
+                        @if(count($remainingImages) > 0)
+                            <h3 class="font-bold text-gray-700 mb-3">Other Images (Select to Delete)</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                @foreach($remainingImages as $image)
+                                    <div class="relative group">
+                                        <img src="{{ asset('storage/' . $image->image_path) }}"
+                                             alt="Animal image"
+                                             class="w-full h-32 object-cover rounded-lg shadow border border-gray-300">
+
+                                        {{-- Delete Overlay (your original hover effect) --}}
+                                        <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                            <label class="cursor-pointer text-white text-sm font-semibold flex items-center">
+                                                <input type="checkbox" name="delete_images[]" value="{{ $image->id }}"
+                                                       class="mr-1 w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500">
+                                                Delete
+                                            </label>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
-                </div>
                 @endif
 
                 {{-- Upload New Images --}}
@@ -178,10 +211,10 @@
                     <p class="text-sm text-gray-600 mt-2">You can upload multiple images (hold Ctrl/Cmd to select multiple files)</p>
 
                     @error('images')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                     @error('images.*')
-                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -192,7 +225,7 @@
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
 
-                    <button type="submit" 
+                    <button type="submit"
                             class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold rounded-lg hover:from-purple-700 hover:to-purple-800 transition duration-300 shadow-lg">
                         <i class="fas fa-save mr-2"></i>Update Animal
                     </button>
@@ -204,26 +237,26 @@
 </div>
 
 <script>
-function openEditModal(animalId) {
-    const modal = document.getElementById('editAnimalModal-' + animalId);
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+    function openEditModal(animalId) {
+        const modal = document.getElementById('editAnimalModal-' + animalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
     }
-}
 
-function closeEditModal(animalId) {
-    const modal = document.getElementById('editAnimalModal-' + animalId);
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
+    function closeEditModal(animalId) {
+        const modal = document.getElementById('editAnimalModal-' + animalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
     }
-}
 
-// Close modal when clicking outside the white dialog
-document.addEventListener('click', function(event) {
-    if (event.target.id && event.target.id.startsWith('editAnimalModal-')) {
-        closeEditModal(event.target.id.split('-')[1]);
-    }
-});
+    // Close modal when clicking outside the white dialog
+    document.addEventListener('click', function(event) {
+        if (event.target.id && event.target.id.startsWith('editAnimalModal-')) {
+            closeEditModal(event.target.id.split('-')[1]);
+        }
+    });
 </script>

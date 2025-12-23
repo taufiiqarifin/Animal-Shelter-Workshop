@@ -6,197 +6,498 @@
     <title>Animals - Stray Animal Shelter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Custom animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .slide-down {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .scale-in {
+            animation: scaleIn 0.3s ease-out;
+        }
+
+        /* Card hover effects */
+        .animal-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .animal-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .animal-card:hover .animal-image {
+            transform: scale(1.05);
+        }
+
+        .animal-image {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Smooth line clamp */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #9333ea;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7e22ce;
+        }
+
+        /* Badge pulse animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .badge-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Loading skeleton */
+        @keyframes shimmer {
+            0% { background-position: -468px 0; }
+            100% { background-position: 468px 0; }
+        }
+
+        .skeleton {
+            animation: shimmer 1.5s infinite linear;
+            background: linear-gradient(to right, #f0f0f0 8%, #e0e0e0 18%, #f0f0f0 33%);
+            background-size: 800px 104px;
+        }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gradient-to-br from-gray-50 to-purple-50 min-h-screen">
 @include('navbar')
 
 <!-- Limited Connectivity Warning Banner -->
 @if(isset($dbDisconnected) && count($dbDisconnected) > 0)
-<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow-sm">
-    <div class="flex items-start">
-        <div class="flex-shrink-0">
-            <svg class="h-6 w-6 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-            </svg>
-        </div>
-        <div class="ml-3 flex-1">
-            <h3 class="text-sm font-semibold text-yellow-800">Limited Connectivity</h3>
-            <p class="text-sm text-yellow-700 mt-1">{{ count($dbDisconnected) }} database(s) currently unavailable. You may experience limited functionality or missing data.</p>
-            <div class="mt-2 flex flex-wrap gap-2">
-                @foreach($dbDisconnected as $connection => $info)
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                    {{ $info['module'] }}
-                </span>
-                @endforeach
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow-sm slide-down">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
             </div>
+            <div class="ml-3 flex-1">
+                <h3 class="text-sm font-semibold text-yellow-800">Limited Connectivity</h3>
+                <p class="text-sm text-yellow-700 mt-1">{{ count($dbDisconnected) }} database(s) currently unavailable. You may experience limited functionality or missing data.</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach($dbDisconnected as $connection => $info)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                            {{ $info['module'] }}
+                        </span>
+                    @endforeach
+                </div>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-auto flex-shrink-0 text-yellow-400 hover:text-yellow-600 transition">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            </button>
         </div>
-        <button onclick="this.parentElement.parentElement.remove()" class="ml-auto flex-shrink-0 text-yellow-400 hover:text-yellow-600">
-            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-        </button>
     </div>
-</div>
 @endif
 
 <!-- Page Header -->
-    <div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-
+<div class="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white py-16 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <!-- Left: Title -->
-            <div>
-                <h1 class="text-4xl font-bold mb-2">Our Animals</h1>
-                <p class="text-purple-100">Browse all animals currently in our care. Add to visit list for the ones you are interested in adopting.</p>
+            <div class="fade-in">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-white bg-opacity-20 p-3 rounded-2xl backdrop-blur-sm">
+                        <i class="fas fa-paw text-4xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-4xl md:text-5xl font-bold mb-1">Our Animals</h1>
+                        <p class="text-purple-100 text-sm md:text-base">
+                            <i class="fas fa-heart mr-1"></i>
+                            Browse all animals currently in our care
+                        </p>
+                    </div>
+                </div>
+                <p class="text-purple-200 text-sm max-w-2xl">
+                    Add animals to your visit list to schedule an appointment and meet them in person. Each animal is waiting for their forever home.
+                </p>
             </div>
 
             @role('public user|caretaker|adopter')
             <!-- Right: Visit List Button -->
             <button onclick="openVisitModal()"
-                    class="bg-white/20 hover:bg-white/30 text-white px-4 py-3 rounded-xl
-           transition flex items-center gap-2 shadow-lg backdrop-blur">
-                <i class="fas fa-list text-xl"></i>
-                <span class="hidden sm:inline font-semibold">Visit List</span>
-            </button>@endrole
+                    class="bg-white bg-opacity-20 hover:bg-white hover:text-purple-700 text-white px-6 py-4 rounded-2xl transition-all duration-300 flex items-center gap-3 shadow-lg backdrop-blur-sm hover:shadow-xl transform hover:scale-105">
+                <div class="bg-white bg-opacity-30 p-2 rounded-lg">
+                    <i class="fas fa-clipboard-list text-2xl"></i>
+                </div>
+                <div class="text-left">
+                    <div class="font-bold text-lg">Visit List</div>
+                    <div class="text-xs opacity-90">View saved animals</div>
+                </div>
+            </button>
+            @endrole
         </div>
     </div>
+</div>
 
-    @include('booking-adoption.visit-list')
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        @if (session('success'))
-            <div class="bg-green-50 border-l-4 border-green-600 text-green-700 p-4 rounded-lg mb-6">
-                <p class="font-semibold">{{ session('success') }}</p>
-            </div>
-        @endif
-        @if (session('error'))
-            <div class="bg-red-50 border-l-4 border-red-600 text-red-700 p-4 rounded-lg mb-6">
-                <p class="font-semibold">{{ session('error') }}</p>
-            </div>
-        @endif
+@include('booking-adoption.visit-list')
 
-        <!-- Filters and Search -->
-        <div class="bg-white rounded-lg shadow p-6 mb-8">
-            <form method="GET" action="{{ route('animal-management.index') }}">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Species</label>
-                        <select name="species" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <option value="">All</option>
-                            <option value="Dog" {{ request('species') == 'Dog' ? 'selected' : '' }}>Dog</option>
-                            <option value="Cat" {{ request('species') == 'Cat' ? 'selected' : '' }}>Cat</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Adoption Status</label>
-                        <select name="adoption_status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <option value="">All</option>
-                            <option value="Not Adopted" {{ request('adoption_status') == 'Not Adopted' ? 'selected' : '' }}>Available</option>
-                            <option value="Adopted" {{ request('adoption_status') == 'Adopted' ? 'selected' : '' }}>Adopted</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                        <select name="gender" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <option value="">All</option>
-                            <option value="Male" {{ request('gender') == 'Male' ? 'selected' : '' }}>Male</option>
-                            <option value="Female" {{ request('gender') == 'Female' ? 'selected' : '' }}>Female</option>
-                        </select>
-                    </div>
+<!-- Main Content -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Success/Error Messages -->
+    @if (session('success'))
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-800 p-4 rounded-xl mb-6 shadow-lg slide-down">
+            <div class="flex items-center gap-3">
+                <div class="bg-green-500 text-white p-2 rounded-full">
+                    <i class="fas fa-check-circle text-lg"></i>
                 </div>
-                <div class="mt-4 flex justify-between items-center">
-                    <div class="flex gap-2">
-                        <button type="submit" class="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-lg font-medium transition duration-300">
-                            <i class="fas fa-filter mr-2"></i>Apply Filters
-                        </button>
-                        <a href="{{ route('animal-management.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium transition duration-300">
-                            <i class="fas fa-times mr-2"></i>Clear
-                        </a>
-                    </div>
-                    <p class="text-gray-600">Showing <span class="font-semibold">{{ $animals->total() }}</span> animals</p>
+                <p class="font-semibold flex-1">{{ session('success') }}</p>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-green-700 hover:text-green-900 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 text-red-800 p-4 rounded-xl mb-6 shadow-lg slide-down">
+            <div class="flex items-center gap-3">
+                <div class="bg-red-500 text-white p-2 rounded-full">
+                    <i class="fas fa-exclamation-circle text-lg"></i>
                 </div>
-            </form>
+                <p class="font-semibold flex-1">{{ session('error') }}</p>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-red-700 hover:text-red-900 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+
+    <!-- Filters and Search -->
+    <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8 scale-in border border-purple-100">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="bg-purple-100 p-3 rounded-xl">
+                <i class="fas fa-filter text-purple-700 text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Filter Animals</h2>
+                <p class="text-sm text-gray-600">Find the perfect companion</p>
+            </div>
         </div>
 
-            <!-- Animals Grid -->
-            @if($animals->count() > 0)
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach($animals as $animal)
-                        <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-xl transition duration-300">
-                            <!-- Animal Image -->
-                            <div class="h-48 bg-gradient-to-br from-purple-300 to-purple-400 flex items-center justify-center overflow-hidden">
-                                @if($animal->relationLoaded('images') && $animal->images && $animal->images->count() > 0)
-                                    <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
-                                         alt="{{ $animal->name }}"
-                                         class="w-full h-full object-cover">
+        <form method="GET" action="{{ route('animal-management.index') }}" class="space-y-6">
+            <!-- Filter Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                <!-- Search -->
+                <div class="xl:col-span-2">
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <i class="fas fa-search text-purple-600"></i>
+                        Search by Name
+                    </label>
+                    <div class="relative">
+                        <input type="text"
+                               name="search"
+                               value="{{ request('search') }}"
+                               placeholder="Type animal name..."
+                               class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200">
+                        <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- Species -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <i class="fas fa-dog text-purple-600"></i>
+                        Species
+                    </label>
+                    <select name="species"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white cursor-pointer">
+                        <option value="">All Species</option>
+                        <option value="Dog" {{ request('species') == 'Dog' ? 'selected' : '' }}>🐕 Dog</option>
+                        <option value="Cat" {{ request('species') == 'Cat' ? 'selected' : '' }}>🐈 Cat</option>
+                    </select>
+                </div>
+
+                <!-- Health Condition -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <i class="fas fa-heartbeat text-purple-600"></i>
+                        Health
+                    </label>
+                    <select name="health_details"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white cursor-pointer">
+                        <option value="">All Conditions</option>
+                        <option value="Healthy" {{ request('health_details') == 'Healthy' ? 'selected' : '' }}>✅ Healthy</option>
+                        <option value="Sick" {{ request('health_details') == 'Sick' ? 'selected' : '' }}>🤒 Sick</option>
+                        <option value="Need Observation" {{ request('health_details') == 'Need Observation' ? 'selected' : '' }}>👁️ Need Observation</option>
+                    </select>
+                </div>
+
+                <!-- Adoption Status -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <i class="fas fa-home text-purple-600"></i>
+                        Adoption Availability
+                    </label>
+                    <select name="adoption_status"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white cursor-pointer">
+                        <option value="">All Status</option>
+                        <option value="Not Adopted" {{ request('adoption_status') == 'Not Adopted' ? 'selected' : '' }}>💚 Available for Adoption</option>
+                        <option value="Adopted" {{ request('adoption_status') == 'Adopted' ? 'selected' : '' }}>💙 Adopted</option>
+                    </select>
+                </div>
+
+                <!-- Gender -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                        <i class="fas fa-venus-mars text-purple-600"></i>
+                        Gender
+                    </label>
+                    <select name="gender"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white cursor-pointer">
+                        <option value="">All Genders</option>
+                        <option value="Male" {{ request('gender') == 'Male' ? 'selected' : '' }}>♂️ Male</option>
+                        <option value="Female" {{ request('gender') == 'Female' ? 'selected' : '' }}>♀️ Female</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t-2 border-gray-100">
+                <div class="flex flex-wrap gap-3">
+                    <button type="submit"
+                            class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-8 py-3 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center gap-2">
+                        <i class="fas fa-search"></i>
+                        Apply Filters
+                    </button>
+                    <a href="{{ route('animal-management.index') }}"
+                       class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-3 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 flex items-center gap-2">
+                        <i class="fas fa-redo"></i>
+                        Clear All
+                    </a>
+                </div>
+                <div class="flex items-center gap-2 bg-purple-50 px-4 py-2 rounded-xl border border-purple-200">
+                    <i class="fas fa-paw text-purple-600"></i>
+                    <p class="text-gray-700">
+                        Showing <span class="font-bold text-purple-700">{{ $animals->total() }}</span> animal{{ $animals->total() != 1 ? 's' : '' }}
+                    </p>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Animals Grid -->
+    @if($animals->count() > 0)
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            @foreach($animals as $animal)
+                <div class="animal-card bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-transparent hover:border-purple-200 fade-in">
+                    <!-- Animal Image -->
+                    <div class="h-56 bg-gradient-to-br from-purple-200 via-purple-300 to-indigo-300 flex items-center justify-center overflow-hidden relative group">
+                        @if($animal->relationLoaded('images') && $animal->images && $animal->images->count() > 0)
+                            <img src="{{ asset('storage/' . $animal->images->first()->image_path) }}"
+                                 alt="{{ $animal->name }}"
+                                 class="animal-image w-full h-full object-cover">
+                        @else
+                            <div class="animal-image">
+                                @if(strtolower($animal->species) == 'dog')
+                                    <span class="text-9xl">🐕</span>
+                                @elseif(strtolower($animal->species) == 'cat')
+                                    <span class="text-9xl">🐈</span>
                                 @else
-                                    @if(strtolower($animal->species) == 'dog')
-                                        <span class="text-8xl">🐕</span>
-                                    @elseif(strtolower($animal->species) == 'cat')
-                                        <span class="text-8xl">🐈</span>
-                                    @else
-                                        <span class="text-8xl">🐾</span>
-                                    @endif
+                                    <span class="text-9xl">🐾</span>
                                 @endif
                             </div>
+                        @endif
 
-                            <div class="p-6">
-                                <div class="flex justify-between items-start mb-2">
-                                    <h3 class="text-xl font-bold text-gray-800">{{ $animal->name }}</h3>
-                                    @if($animal->adoption_status == 'Not Adopted')
-                                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Available for adoption</span>
-                                    @elseif($animal->adoption_status == 'Adopted')
-                                        <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Adopted</span>
-                                    @else
-                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">{{ $animal->adoption_status }}</span>
-                                    @endif
-                                </div>
+                        <!-- Image Overlay Badge -->
+                        <div class="absolute top-3 right-3">
+                            @if($animal->adoption_status == 'Not Adopted')
+                                <span class="inline-flex items-center px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                                    <i class="fas fa-heart mr-1"></i>
+                                    Available for Adoption
+                                </span>
+                            @elseif($animal->adoption_status == 'Adopted')
+                                <span class="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                                    <i class="fas fa-home mr-1"></i>
+                                    Adopted
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-3 py-1.5 bg-yellow-500 text-white rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                                    {{ $animal->adoption_status }}
+                                </span>
+                            @endif
+                        </div>
 
-                                <div class="space-y-2 text-sm text-gray-600 mb-4">
-                                    <p><span class="font-semibold">Species:</span> {{ $animal->species }}</p>
-                                    <p><span class="font-semibold">Age:</span> {{ $animal->age }}</p>
-                                    <p><span class="font-semibold">Gender:</span> {{ $animal->gender }}</p>
-                                    <p class="flex items-start">
-                                        <span class="font-semibold mr-1">Location:</span>
-                                        <span class="flex-1">
-                                @if($animal->slot)
-                                                Slot {{ $animal->slot->name ?? $animal->slot->id }} - {{ $animal->slot->section->name ?? 'Unknown Section' }}
-                                            @else
-                                                <span class="text-gray-400 italic">Not Assigned</span>
-                                            @endif
-                            </span>
-                                    </p>
-                                </div>
-
-                                <p class="text-gray-700 text-sm mb-4 line-clamp-2">{{ Str::limit($animal->health_details, 100) }}</p>
-
-                                <div class="flex space-x-2">
-                                    <a href="{{ route('animal-management.show', $animal->id) }}"
-                                       class="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-2 rounded-lg font-medium transition duration-300 text-center">
-                                        View Details
-                                    </a>
+                        <!-- Quick View Overlay -->
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div class="bg-white text-purple-700 px-4 py-2 rounded-full font-bold shadow-xl">
+                                    <i class="fas fa-eye mr-2"></i>View Details
                                 </div>
                             </div>
                         </div>
-                    @endforeach
-                </div>
+                    </div>
 
-                <!-- Pagination -->
-                <div class="mt-8 flex justify-center">
-                    {{ $animals->links() }}
+                    <!-- Card Content -->
+                    <div class="p-6">
+                        <!-- Name -->
+                        <div class="mb-4">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+                                {{ $animal->name }}
+                                @if(strtolower($animal->gender) == 'male')
+                                    <span class="text-blue-500 text-lg">♂</span>
+                                @else
+                                    <span class="text-pink-500 text-lg">♀</span>
+                                @endif
+                            </h3>
+                        </div>
+
+                        <!-- Details Grid -->
+                        <div class="space-y-3 mb-4">
+                            <div class="flex items-center gap-3 text-sm">
+                                <div class="bg-purple-100 p-2 rounded-lg">
+                                    <i class="fas fa-paw text-purple-600"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <span class="text-gray-600 text-xs font-semibold uppercase">Species</span>
+                                    <p class="text-gray-900 font-bold">{{ $animal->species }}</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-sm">
+                                <div class="bg-indigo-100 p-2 rounded-lg">
+                                    <i class="fas fa-birthday-cake text-indigo-600"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <span class="text-gray-600 text-xs font-semibold uppercase">Age</span>
+                                    <p class="text-gray-900 font-bold">{{ $animal->age }}</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-sm">
+                                <div class="bg-blue-100 p-2 rounded-lg">
+                                    <i class="fas fa-map-marker-alt text-blue-600"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <span class="text-gray-600 text-xs font-semibold uppercase">Location</span>
+                                    <p class="text-gray-900 font-bold text-xs">
+                                        @if($animal->slot)
+                                            Slot {{ $animal->slot->name ?? $animal->slot->id }} - {{ $animal->slot->section->name ?? 'Unknown' }}
+                                        @else
+                                            <span class="text-gray-400 italic">Not Assigned</span>
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Health Details -->
+                        @if($animal->health_details)
+                            <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-3 rounded-xl mb-4 border border-purple-100">
+                                <p class="text-gray-700 text-sm line-clamp-2 leading-relaxed">
+                                    <i class="fas fa-info-circle text-purple-600 mr-1"></i>
+                                    {{ Str::limit($animal->health_details, 80) }}
+                                </p>
+                            </div>
+                        @endif
+
+                        <!-- Action Button -->
+                        <a href="{{ route('animal-management.show', $animal->id) }}"
+                           class="block w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-3 rounded-xl font-bold transition-all duration-300 text-center shadow-md hover:shadow-xl transform hover:-translate-y-1">
+                            <i class="fas fa-arrow-right mr-2"></i>
+                            View Full Profile
+                        </a>
+                    </div>
                 </div>
-            @else
-                <div class="bg-white rounded-lg shadow p-12 text-center">
-                    <div class="text-6xl mb-4">🐾</div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">No Animals Found</h3>
-                    <p class="text-gray-600 mb-6">No animals match your current filters. Try adjusting your search criteria.</p>
-                    <a href="{{ route('animal-management.index') }}" class="inline-block bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-lg font-medium transition duration-300">
-                        Clear Filters
+            @endforeach
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-12 flex justify-center fade-in">
+            <div class="bg-white rounded-2xl shadow-lg p-4">
+                {{ $animals->links() }}
+            </div>
+        </div>
+    @else
+        <!-- Empty State -->
+        <div class="bg-white rounded-2xl shadow-xl p-12 md:p-16 text-center scale-in">
+            <div class="max-w-md mx-auto">
+                <div class="bg-purple-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-search text-5xl text-purple-600"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-gray-800 mb-3">No Animals Found</h3>
+                <p class="text-gray-600 mb-8 text-lg">
+                    We couldn't find any animals matching your current filters. Try adjusting your search criteria or clear all filters to see all available animals.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <a href="{{ route('animal-management.index') }}"
+                       class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                        <i class="fas fa-redo"></i>
+                        Clear All Filters
                     </a>
                 </div>
-            @endif
-    </div>
+            </div>
+        </div>
+    @endif
+</div>
+
+<script>
+    // Auto-dismiss success/error messages
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.slide-down');
+        alerts.forEach(alert => {
+            if (alert.classList.contains('from-green-50') || alert.classList.contains('from-red-50')) {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateY(-20px)';
+                setTimeout(() => alert.remove(), 300);
+            }
+        });
+    }, 5000);
+
+    // Add stagger animation to cards
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.animal-card');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.05}s`;
+        });
+    });
+</script>
+
 </body>
 </html>
