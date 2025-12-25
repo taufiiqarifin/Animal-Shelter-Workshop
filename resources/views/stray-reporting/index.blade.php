@@ -21,6 +21,33 @@
         @keyframes fadeOut {
             to { opacity: 0; visibility: hidden; }
         }
+        /* Smooth line clamp */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #9333ea;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7e22ce;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -180,23 +207,23 @@
             <p class="text-gray-600">No stray animal reports have been submitted.</p>
         </div>
     @else
-        <div class="bg-white rounded shadow overflow-hidden">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-100">
+                    <thead class="bg-gradient-to-r from-purple-500 to-purple-600">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Report </th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Status</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Location</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">City/State</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Submitted</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Images</th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Actions</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Report </th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Location</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">City/State</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Submitted</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Images</th>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                     </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($reports as $report)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">REP {{ $report->id }}</td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span class="px-2 py-1 text-xs rounded
@@ -218,11 +245,19 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                                 @if($report->images->count() > 0)
-                                    <a href="#" onclick="event.preventDefault(); showImagesModal({{ $report->id }}, {{ json_encode($report->images->map(fn($img) => asset('storage/' . $img->image_path))) }})" class="text-purple-600 hover:underline">
-                                        {{ $report->images->count() }} image(s)
-                                    </a>
+                                    <div class="flex items-center gap-1 cursor-pointer" onclick="event.preventDefault(); showImagesModal({{ $report->id }}, {{ json_encode($report->images->map(fn($img) => asset('storage/' . $img->image_path))) }})">
+                                        @foreach($report->images->take(3) as $image)
+                                            <img src="{{ asset('storage/' . $image->image_path) }}"
+                                                 alt="Report image"
+                                                 class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm hover:scale-110 transition-transform"
+                                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjZTVlN2ViIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPj88L3RleHQ+PC9zdmc+'">
+                                        @endforeach
+                                        @if($report->images->count() > 3)
+                                            <span class="text-xs text-gray-500 font-medium ml-1">+{{ $report->images->count() - 3 }}</span>
+                                        @endif
+                                    </div>
                                 @else
-                                    <span class="text-gray-400">None</span>
+                                    <span class="text-gray-400 text-xs">-</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm">
