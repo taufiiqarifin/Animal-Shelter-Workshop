@@ -33,10 +33,15 @@ class VisitList extends Model
      * CROSS-DATABASE: Many-to-many relationship to Animals (Shafiqah's database)
      * Through visit_list_animal pivot table (on danish database)
      * Uses custom pivot model to specify the correct database connection
+     *
+     * IMPORTANT: setConnection('danish') ensures the pivot table is queried
+     * from the correct database (Danish's SQL Server), not from the Animal model's
+     * database (Shafiqah's MySQL)
      */
     public function animals()
     {
-        return $this->belongsToMany(Animal::class, 'visit_list_animal', 'listID', 'animalID')
+        return $this->setConnection('danish')
+            ->belongsToMany(Animal::class, 'visit_list_animal', 'listID', 'animalID')
             ->using(VisitListAnimal::class)
             ->withPivot('remarks')
             ->withTimestamps();

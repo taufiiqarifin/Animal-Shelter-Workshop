@@ -33,6 +33,16 @@
                 </div>
             @endif
 
+            {{-- Error Alert --}}
+            @if (session('error'))
+                <div class="flex items-start gap-3 p-4 mb-6 bg-red-50 border border-red-200 rounded-xl shadow-sm mx-6 mt-6">
+                    <svg class="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <p class="font-semibold text-red-700">{{ session('error') }}</p>
+                </div>
+            @endif
+
             <div class="grid grid-cols-1 md:grid-cols-2">
 
                 <!-- Left Section -->
@@ -153,7 +163,18 @@
                                             🐾 View Assigned Rescue Reports
                                         </a>
                                     @endrole
-
+                                    @role('admin')
+                                    <a href="{{ route('admin.audit.index') }}"
+                                       class="flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold px-5 py-3.5 rounded-lg shadow-md hover:from-indigo-700 hover:to-indigo-800 hover:shadow-lg transition-all duration-200 group">
+                                        <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                        <span>View Audit Logs</span>
+                                        <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                    </a>
+                                    @endrole
                                 </div>
                             </div>
                         </div>
@@ -187,5 +208,14 @@
     <x-database-status-modal />
 
      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+     <script>
+        // Auto-open report modal if there are validation errors
+        @if ($errors->any() || session('error'))
+            document.addEventListener('DOMContentLoaded', function() {
+                openReportModal();
+            });
+        @endif
+     </script>
 </body>
 </html>

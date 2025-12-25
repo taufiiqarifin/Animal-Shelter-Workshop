@@ -47,9 +47,9 @@ class InjectDatabaseStatus
             $disconnected = array_filter($dbStatus, fn($db) => !$db['connected']);
 
             // Smart cache duration:
-            // - All online: 30 minutes (stable state, minimal overhead)
-            // - Any offline: 60 seconds (check frequently for recovery)
-            $cacheDuration = count($disconnected) > 0 ? 60 : 1800;
+            // - All online: 5 minutes (stable state, check periodically for real-time updates)
+            // - Any offline: 15 seconds (check frequently for real-time recovery detection)
+            $cacheDuration = count($disconnected) > 0 ? 15 : 300;
 
             // Store in session with smart expiry
             session([

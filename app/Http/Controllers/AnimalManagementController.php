@@ -12,6 +12,7 @@ use App\Models\Vet;
 use App\Models\Medical;
 use App\Models\Vaccination;
 use App\Models\VisitList;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,8 @@ class AnimalManagementController extends Controller
         // Get adopter profile with error handling
         $adopterProfile = $this->safeQuery(
             fn() => AdopterProfile::where('adopterID', $user->id)->first(),
-            null
+            null,
+            'taufiq'
         );
 
         if (!$adopterProfile) {
@@ -55,7 +57,8 @@ class AnimalManagementController extends Controller
             fn() => Animal::with('profile')
                 ->whereIn('adoption_status', ['Not Adopted', 'not adopted'])
                 ->get(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         // Calculate match scores
@@ -259,12 +262,14 @@ class AnimalManagementController extends Controller
         // Fetch data with fallbacks for offline databases
         $rescues = $this->safeQuery(
             fn() => Rescue::all(),
-            collect([])
+            collect([]),
+            'eilya'
         );
 
         $slots = $this->safeQuery(
             fn() => Slot::where('status', 'Available')->get(),
-            collect([])
+            collect([]),
+            'atiqah'
         );
 
         return view('animal-management.create', [
@@ -345,6 +350,23 @@ class AnimalManagementController extends Controller
             // Commit both transactions
             DB::connection('shafiqah')->commit();
             DB::connection('eilya')->commit();
+
+            // AUDIT: Animal created
+            AuditService::logAnimal(
+                'animal_created',
+                $animal->id,
+                $animal->name,
+                null, // No old values for new creation
+                $animal->toArray(),
+                [
+                    'rescue_id' => $validated['rescueID'],
+                    'slot_id' => $validated['slotID'],
+                    'image_count' => count($request->file('images') ?? []),
+                    'species' => $validated['species'],
+                    'age' => $age,
+                    'gender' => $validated['gender'],
+                ]
+            );
 
             return redirect()->route('animal-management.create', ['rescue_id' => $validated['rescueID']])
                 ->with('success', 'Animal "' . $animal->name . '" added successfully with ' . count($request->file('images') ?? []) . ' image(s)! Do you want to add another animal? If so, please fill all the required fields again.');
@@ -509,7 +531,46 @@ public function update(Request $request, $id)
     {
         // Safe query for animals with fallback
         $animals = $this->safeQuery(function() use ($request) {
-            $query = Animal::with(['images', 'slot']);
+            // Build with array based on database availability
+            $with = [];
+
+            // Only load cross-database relationships if those databases are online
+            if ($this->isDatabaseAvailable('eilya')) {
+                $with[] = 'images';
+                $with[] = 'rescue'; // Load rescue relationship for caretaker filter
+            }
+
+            if ($this->isDatabaseAvailable('atiqah')) {
+                $with[] = 'slot';
+            }
+
+            $query = Animal::with($with);
+
+            // Caretaker Filter: Show only animals rescued by the logged-in caretaker
+            if ($request->filled('rescued_by_me') && $request->rescued_by_me === 'true' && Auth::check()) {
+                $user = Auth::user();
+
+                // Check if user has caretaker role
+                if ($user->hasRole('caretaker')) {
+                    // Get rescue IDs where the current user is the caretaker
+                    $rescueIds = $this->safeQuery(
+                        fn() => DB::connection('eilya')
+                            ->table('rescue')
+                            ->where('caretakerID', $user->id)
+                            ->pluck('id')
+                            ->toArray(),
+                        [],
+                        'eilya'
+                    );
+
+                    if (!empty($rescueIds)) {
+                        $query->whereIn('rescueID', $rescueIds);
+                    } else {
+                        // No rescues by this caretaker, return empty result
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+            }
 
             // Filters
             if ($request->filled('search')) {
@@ -518,6 +579,10 @@ public function update(Request $request, $id)
 
             if ($request->filled('species')) {
                 $query->where(DB::raw('LOWER(species)'), 'LIKE', '%' . strtolower($request->species) . '%');
+            }
+
+            if ($request->filled('health_details')) {
+                $query->where('health_details', $request->health_details);
             }
 
             if ($request->filled('adoption_status')) {
@@ -534,7 +599,10 @@ public function update(Request $request, $id)
             // Secondary sorting
             $query->orderBy('created_at', 'desc');
 
-            return $query->paginate(12)->appends($request->query());
+            // Pagination: 50 items for caretaker table view, 12 for card view
+            $perPage = ($request->filled('rescued_by_me') && $request->rescued_by_me === 'true' && Auth::check() && Auth::user()->hasRole('caretaker')) ? 50 : 12;
+
+            return $query->paginate($perPage)->appends($request->query());
         }, new \Illuminate\Pagination\LengthAwarePaginator([], 0, 12), 'shafiqah'); // Pre-check shafiqah database
 
         // ===== Only for logged-in user =====
@@ -542,13 +610,27 @@ public function update(Request $request, $id)
         if (Auth::check()) {
             $user = Auth::user();
 
-            $animalList = $this->safeQuery(
-                fn() => VisitList::with('animals')
-                    ->firstOrCreate(['userID' => $user->id])
-                    ->animals,
-                collect([]),
-                'danish' // Pre-check danish database
-            );
+            $animalList = $this->safeQuery(function() use ($user) {
+                $visitList = VisitList::firstOrCreate(['userID' => $user->id]);
+
+                // Get animal IDs from pivot table directly (avoid cross-database JOIN)
+                $animalIds = DB::connection('danish')
+                    ->table('visit_list_animal')
+                    ->where('listID', $visitList->id)
+                    ->pluck('animalID')
+                    ->toArray();
+
+                if (empty($animalIds)) {
+                    return collect([]);
+                }
+
+                // Load animals from shafiqah database if available
+                if ($this->isDatabaseAvailable('shafiqah')) {
+                    return Animal::whereIn('id', $animalIds)->get();
+                }
+
+                return collect([]);
+            }, collect([]), 'danish');
         }
 
         return view('animal-management.main', compact('animals', 'animalList'));
@@ -557,14 +639,34 @@ public function update(Request $request, $id)
 
     public function show($id)
     {
+        // Check which databases are available
+        $eilyaOnline = $this->isDatabaseAvailable('eilya');
+        $atiqahOnline = $this->isDatabaseAvailable('atiqah');
+        $danishOnline = $this->isDatabaseAvailable('danish');
+
+        // Build with array based on database availability
+        $with = [];
+
+        // rescue and report are both on eilya database
+        if ($eilyaOnline) {
+            $with[] = 'rescue.report';
+            $with[] = 'images';
+        }
+
+        if ($atiqahOnline) {
+            $with[] = 'slot';
+        }
+
+        // bookings are on danish database
+        if ($danishOnline) {
+            $with[] = 'bookings.user';
+        }
+
         // Safe query for animal data
         $animal = $this->safeQuery(
-            fn() => Animal::with([
-                'images',
-                'slot',
-                'rescue.report',
-            ])->findOrFail($id),
-            null
+            fn() => Animal::with($with)->findOrFail($id),
+            null,
+            'shafiqah'
         );
 
         // If animal not found or database offline, redirect back
@@ -573,19 +675,25 @@ public function update(Request $request, $id)
                 ->with('error', 'Animal not found or database connection unavailable.');
         }
 
+        // Add flag to indicate if images are available
+        $imagesAvailable = $eilyaOnline && $animal->relationLoaded('images');
+
         $medicals = $this->safeQuery(
             fn() => Medical::with('vet')->where('animalID', $id)->get(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         $vaccinations = $this->safeQuery(
             fn() => Vaccination::with('vet')->where('animalID', $id)->get(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         $vets = $this->safeQuery(
             fn() => Vet::all(),
-            collect([])
+            collect([]),
+            'shafiqah'
         );
 
         // Get available slots + the current slot (if any)
@@ -598,37 +706,42 @@ public function update(Request $request, $id)
                 ->orderBy('sectionID')
                 ->orderBy('name')
                 ->get(),
-            collect([])
+            collect([]),
+            'atiqah'
         );
 
-        // Get all bookings for this animal (for calendar/time blocking)
-        $bookedSlots = $this->safeQuery(
-            fn() => $animal->bookings->map(function($booking) {
-                $dateTime = \Carbon\Carbon::parse($booking->appointment_date . ' ' . $booking->appointment_time);
+        // Get all bookings for this animal (for calendar/time blocking) - only if danish database is online
+        $bookedSlots = collect([]);
+        if ($danishOnline && $animal->relationLoaded('bookings')) {
+            $bookedSlots = $animal->bookings->map(function($booking) {
+                // Parse date and time separately to avoid concatenation issues
+                $date = \Carbon\Carbon::parse($booking->appointment_date)->format('Y-m-d');
+                $time = \Carbon\Carbon::parse($booking->appointment_time)->format('H:i:s');
+                $dateTime = \Carbon\Carbon::parse($date . ' ' . $time);
 
                 return [
                     'date' => $dateTime->format('Y-m-d'),
                     'time' => $dateTime->format('H:i'),
                     'datetime' => $dateTime->format('Y-m-d\TH:i'),
                 ];
-            }),
-            collect([])
-        );
+            });
+        }
 
-        // Get all active bookings for this animal (Pending or Confirmed)
-        $activeBookings = $this->safeQuery(
-            fn() => $animal->bookings()
+        // Get all active bookings for this animal (Pending or Confirmed) - only if danish database is online
+        $activeBookings = collect([]);
+        if ($danishOnline && $animal->relationLoaded('bookings')) {
+            $activeBookings = $animal->bookings
                 ->whereIn('status', ['Pending', 'Confirmed'])
-                ->with('user')
-                ->orderBy('appointment_date', 'asc')
-                ->orderBy('appointment_time', 'asc')
-                ->get(),
-            collect([])
-        );
+                ->sortBy([
+                    ['appointment_date', 'asc'],
+                    ['appointment_time', 'asc'],
+                ]);
+        }
 
         $animalProfile = $this->safeQuery(
             fn() => AnimalProfile::where('animalID', $id)->first(),
-            null
+            null,
+            'shafiqah'
         );
 
         // ===== Only for logged-in user =====
@@ -636,15 +749,30 @@ public function update(Request $request, $id)
         if (Auth::check()) {
             $user = Auth::user();
 
-            $animalList = $this->safeQuery(
-                fn() => VisitList::with('animals')
-                    ->firstOrCreate(['userID' => $user->id])
-                    ->animals,
-                collect([])
-            );
+            $animalList = $this->safeQuery(function() use ($user) {
+                $visitList = VisitList::firstOrCreate(['userID' => $user->id]);
+
+                // Get animal IDs from pivot table directly (avoid cross-database JOIN)
+                $animalIds = DB::connection('danish')
+                    ->table('visit_list_animal')
+                    ->where('listID', $visitList->id)
+                    ->pluck('animalID')
+                    ->toArray();
+
+                if (empty($animalIds)) {
+                    return collect([]);
+                }
+
+                // Load animals from shafiqah database if available
+                if ($this->isDatabaseAvailable('shafiqah')) {
+                    return Animal::whereIn('id', $animalIds)->get();
+                }
+
+                return collect([]);
+            }, collect([]), 'danish');
         }
 
-        return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots', 'animalProfile', 'animalList', 'activeBookings'));
+        return view('animal-management.show', compact('animal', 'vets', 'medicals', 'vaccinations', 'slots', 'bookedSlots', 'animalProfile', 'animalList', 'activeBookings', 'imagesAvailable'));
     }
 
     public function assignSlot(Request $request, $animalId)
@@ -661,7 +789,8 @@ public function update(Request $request, $id)
             $animal->save();
 
             $newSlot = Slot::findOrFail($request->slot_id);
-            $newSlotAnimalCount = $newSlot->animals()->count();
+            // Count animals in slot directly from shafiqah database (avoid cross-database JOIN)
+            $newSlotAnimalCount = Animal::where('slotID', $newSlot->id)->count();
 
             if ($newSlotAnimalCount >= $newSlot->capacity) {
                 $newSlot->status = 'occupied';
@@ -674,7 +803,8 @@ public function update(Request $request, $id)
                 $oldSlot = Slot::find($previousSlotId);
 
                 if ($oldSlot) {
-                    $oldSlotAnimalCount = $oldSlot->animals()->count();
+                    // Count animals in slot directly from shafiqah database (avoid cross-database JOIN)
+                    $oldSlotAnimalCount = Animal::where('slotID', $oldSlot->id)->count();
 
                     if ($oldSlotAnimalCount >= $oldSlot->capacity) {
                         $oldSlot->status = 'occupied';
@@ -713,22 +843,48 @@ public function update(Request $request, $id)
 
     public function destroy(Animal $animal)
     {
+        // Check which databases are available
+        $eilyaOnline = $this->isDatabaseAvailable('eilya');
+        $atiqahOnline = $this->isDatabaseAvailable('atiqah');
+
         // Start transactions on databases involved
         DB::connection('shafiqah')->beginTransaction();  // Animal database
-        DB::connection('eilya')->beginTransaction();      // Image database
-        if ($animal->slotID) {
+
+        if ($eilyaOnline) {
+            DB::connection('eilya')->beginTransaction();  // Image database
+        }
+
+        if ($animal->slotID && $atiqahOnline) {
             DB::connection('atiqah')->beginTransaction();  // Slot database
         }
 
         try {
-            foreach ($animal->images as $image) {
-                Storage::disk('public')->delete($image->image_path);
-                $image->delete();
+            // Only delete images if eilya database is online
+            if ($eilyaOnline) {
+                try {
+                    foreach ($animal->images as $image) {
+                        Storage::disk('public')->delete($image->image_path);
+                        $image->delete();
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to delete images from eilya database', [
+                        'animal_id' => $animal->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue with animal deletion even if image deletion fails
+                }
+            } else {
+                \Log::info('Skipping image deletion - eilya database offline', [
+                    'animal_id' => $animal->id
+                ]);
             }
 
-            $slot = Slot::find($animal->slotID);
-            if ($slot) {
-                $slot->update(['status' => 'available']);
+            // Update slot status if atiqah is online
+            if ($animal->slotID && $atiqahOnline) {
+                $slot = Slot::find($animal->slotID);
+                if ($slot) {
+                    $slot->update(['status' => 'available']);
+                }
             }
 
             $animalName = $animal->name;
@@ -736,19 +892,32 @@ public function update(Request $request, $id)
 
             // Commit all transactions
             DB::connection('shafiqah')->commit();
-            DB::connection('eilya')->commit();
-            if ($animal->slotID) {
+
+            if ($eilyaOnline) {
+                DB::connection('eilya')->commit();
+            }
+
+            if ($animal->slotID && $atiqahOnline) {
                 DB::connection('atiqah')->commit();
             }
 
+            $message = 'Animal "' . $animalName . '" deleted successfully!';
+            if (!$eilyaOnline) {
+                $message .= ' (Note: Images could not be deleted - image database offline)';
+            }
+
             return redirect()->route('animal-management.index')
-                ->with('success', 'Animal "' . $animalName . '" deleted successfully!');
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             // Rollback all database transactions
             DB::connection('shafiqah')->rollBack();
-            DB::connection('eilya')->rollBack();
-            if ($animal->slotID) {
+
+            if ($eilyaOnline) {
+                DB::connection('eilya')->rollBack();
+            }
+
+            if ($animal->slotID && $atiqahOnline) {
                 DB::connection('atiqah')->rollBack();
             }
 
@@ -860,6 +1029,24 @@ public function update(Request $request, $id)
 
             $medical = Medical::create($validated);
 
+            // AUDIT: Medical record added
+            $animal = Animal::find($validated['animalID']);
+            $vet = Vet::find($validated['vetID']);
+            AuditService::logMedical(
+                'medical_added',
+                $validated['animalID'],
+                $animal->name,
+                $medical->id,
+                [
+                    'treatment_type' => $validated['treatment_type'],
+                    'diagnosis' => $validated['diagnosis'],
+                    'action' => $validated['action'],
+                    'vet_id' => $validated['vetID'],
+                    'vet_name' => $vet->name,
+                    'costs' => $validated['costs'] ?? 0,
+                ]
+            );
+
             return redirect()->back()->with('success', 'Medical record added successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
@@ -887,6 +1074,24 @@ public function update(Request $request, $id)
             ]);
 
             $vaccination = Vaccination::create($validated);
+
+            // AUDIT: Vaccination record added
+            $animal = Animal::find($validated['animalID']);
+            $vet = Vet::find($validated['vetID']);
+            AuditService::logVaccination(
+                'vaccination_added',
+                $validated['animalID'],
+                $animal->name,
+                $vaccination->id,
+                [
+                    'vaccination_name' => $validated['name'],
+                    'type' => $validated['type'],
+                    'next_due_date' => $validated['next_due_date'] ?? 'Not set',
+                    'vet_id' => $validated['vetID'],
+                    'vet_name' => $vet->name,
+                    'costs' => $validated['costs'] ?? 0,
+                ]
+            );
 
             return redirect()->back()->with('success', 'Vaccination record added successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {

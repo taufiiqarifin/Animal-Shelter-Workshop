@@ -141,6 +141,87 @@
         </a>
     </div>
 
+    <!-- Search and Filter Form -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <form method="GET" action="{{ route('bookings.index') }}" class="space-y-4">
+            <!-- Keep current status filter -->
+            @if(request('status'))
+                <input type="hidden" name="status" value="{{ request('status') }}">
+            @endif
+
+            <div class="flex items-center gap-2 mb-4">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-gray-900">Search & Filter Bookings</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- General Search -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Search
+                    </label>
+                    <input type="text"
+                           name="search"
+                           value="{{ request('search') }}"
+                           placeholder="Booking ID, Date, Remarks..."
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <!-- Date From -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        From Date
+                    </label>
+                    <input type="date"
+                           name="date_from"
+                           value="{{ request('date_from') }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <!-- Date To -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        To Date
+                    </label>
+                    <input type="date"
+                           name="date_to"
+                           value="{{ request('date_to') }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit"
+                        class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition duration-300 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    Search
+                </button>
+                <a href="{{ route('bookings.index') }}"
+                   class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition duration-300 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Clear
+                </a>
+            </div>
+
+            @if(request()->hasAny(['search', 'date_from', 'date_to']))
+                <div class="mt-3 text-sm text-purple-600 font-medium">
+                    <span class="inline-flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        Active filters applied
+                    </span>
+                </div>
+            @endif
+        </form>
+    </div>
+
     @if($bookings->isEmpty())
         <div class="bg-white rounded-lg shadow-lg p-12 text-center">
             <div class="mb-6">
@@ -309,6 +390,147 @@
     </div>
 </div>
 
+<!-- Payment Status Modal -->
+@if(session('show_payment_modal') && session('payment_status'))
+    @php
+        $payment = session('payment_status');
+        $isSuccess = $payment['status_id'] == 1;
+    @endphp
+    <div id="paymentStatusModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <!-- Header -->
+            <div class="bg-gradient-to-r {{ $isSuccess ? 'from-green-600 to-green-700' : 'from-red-600 to-red-700' }} text-white p-8 rounded-t-2xl">
+                <div class="flex items-center justify-center mb-4">
+                    @if($isSuccess)
+                        <div class="bg-white rounded-full p-4">
+                            <svg class="w-16 h-16 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    @else
+                        <div class="bg-white rounded-full p-4">
+                            <svg class="w-16 h-16 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    @endif
+                </div>
+                <h2 class="text-3xl font-bold text-center">
+                    {{ $isSuccess ? 'Payment Successful!' : 'Payment Failed' }}
+                </h2>
+                <p class="text-center text-white text-opacity-90 mt-2">
+                    {{ $isSuccess ? 'Your adoption has been confirmed' : 'Payment could not be processed' }}
+                </p>
+            </div>
+
+            <!-- Body -->
+            <div class="p-8">
+                @if($isSuccess)
+                    <!-- Success Message -->
+                    <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-lg mb-6">
+                        <div class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div class="ml-3">
+                                <h3 class="text-lg font-semibold text-green-800">Congratulations!</h3>
+                                <p class="text-green-700 mt-1">
+                                    You have successfully adopted <strong>{{ $payment['animal_names'] }}</strong>.
+                                    Your booking has been completed and the animal(s) are now marked as adopted.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <!-- Failure Message -->
+                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg mb-6">
+                        <div class="flex items-start">
+                            <svg class="w-6 h-6 text-red-500 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                            </svg>
+                            <div class="ml-3">
+                                <h3 class="text-lg font-semibold text-red-800">Payment Failed</h3>
+                                <p class="text-red-700 mt-1">
+                                    The payment for <strong>{{ $payment['animal_names'] }}</strong> could not be processed.
+                                    Your booking remains confirmed. Please try again or contact support.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Payment Details -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-900 border-b pb-2">Payment Details</h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Booking ID</p>
+                            <p class="font-semibold text-gray-900">#{{ $payment['booking_id'] }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Amount</p>
+                            <p class="font-semibold text-gray-900">RM {{ number_format($payment['amount'], 2) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Bill Code</p>
+                            <p class="font-semibold text-gray-900">{{ $payment['billcode'] }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Reference Number</p>
+                            <p class="font-semibold text-gray-900">{{ $payment['reference_no'] }}</p>
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-sm text-gray-600">Animal(s)</p>
+                            <p class="font-semibold text-gray-900">{{ $payment['animal_names'] }} ({{ $payment['animal_count'] }} animal{{ $payment['animal_count'] > 1 ? 's' : '' }})</p>
+                        </div>
+                    </div>
+                </div>
+
+                @if($isSuccess)
+                    <!-- Next Steps -->
+                    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                        <h4 class="font-semibold text-blue-900 mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            What's Next?
+                        </h4>
+                        <ul class="space-y-2 text-sm text-blue-900">
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 mr-2 mt-0.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>A confirmation email has been sent to your email address</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 mr-2 mt-0.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>You can now pick up your adopted animal(s) from the shelter</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 mr-2 mt-0.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>Contact us if you have any questions or need assistance</span>
+                            </li>
+                        </ul>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-gray-50 px-8 py-6 rounded-b-2xl flex justify-center gap-4">
+                <button onclick="closePaymentModal()"
+                        class="px-8 py-3 bg-gradient-to-r {{ $isSuccess ? 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' }} text-white rounded-lg font-semibold transition duration-300 shadow-lg">
+                    {{ $isSuccess ? 'Close & View Bookings' : 'Close' }}
+                </button>
+            </div>
+        </div>
+    </div>
+@endif
+
 <script>
     function openModal(modalId) {
         document.getElementById(modalId).classList.remove('hidden');
@@ -318,6 +540,15 @@
     function closeModal(modalId) {
         document.getElementById(modalId).classList.add('hidden');
         document.body.style.overflow = 'auto';
+    }
+
+    // Close payment status modal
+    function closePaymentModal() {
+        const modal = document.getElementById('paymentStatusModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
     }
 
     // Close modal when clicking outside

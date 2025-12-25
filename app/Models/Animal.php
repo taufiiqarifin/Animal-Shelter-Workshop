@@ -85,6 +85,44 @@ class Animal extends Model
     }
 
     /**
+     * Safely get images from Eilya database with automatic fallback to empty collection
+     * Handles connection failures gracefully without throwing exceptions
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getImagesOrEmpty()
+    {
+        try {
+            // Check if Eilya database is available
+            if (!app(\App\Services\DatabaseConnectionChecker::class)->isConnected('eilya')) {
+                \Log::warning("Animal {$this->id}: Eilya database unavailable, returning empty images collection");
+                return collect([]);
+            }
+
+            return $this->images()->get();
+        } catch (\Exception $e) {
+            \Log::error("Animal {$this->id}: Failed to load images from Eilya database: " . $e->getMessage());
+            return collect([]);
+        }
+    }
+
+    /**
+     * Get the first image path or return placeholder
+     *
+     * @return string Image path for use with asset() helper
+     */
+    public function getFirstImageOrPlaceholder()
+    {
+        $images = $this->getImagesOrEmpty();
+
+        if ($images->isNotEmpty()) {
+            return 'storage/' . $images->first()->image_path;
+        }
+
+        return 'images/placeholder-animal.svg';
+    }
+
+    /**
      * CROSS-DATABASE: Relationship to AnimalBooking (Danish's database)
      * This is a logical relationship - no database-level foreign key
      */
@@ -101,7 +139,8 @@ class Animal extends Model
      */
     public function bookings()
     {
-        return $this->belongsToMany(Booking::class, 'animal_booking', 'animalID', 'bookingID')
+        return $this->setConnection('danish')
+            ->belongsToMany(Booking::class, 'animal_booking', 'animalID', 'bookingID')
             ->using(AnimalBooking::class)
             ->withPivot('remarks')
             ->withTimestamps();
@@ -114,7 +153,8 @@ class Animal extends Model
      */
     public function visitLists()
     {
-        return $this->belongsToMany(VisitList::class, 'visit_list_animal', 'animalID', 'listID')
+        return $this->setConnection('danish')
+            ->belongsToMany(VisitList::class, 'visit_list_animal', 'animalID', 'listID')
             ->using(VisitListAnimal::class)
             ->withPivot('remarks')
             ->withTimestamps();

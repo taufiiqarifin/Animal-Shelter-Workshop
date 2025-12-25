@@ -8,9 +8,27 @@ use App\Http\Controllers\BookingAdoptionController;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Dashboard;
 use App\Http\Controllers\RescueMapController;
+use App\Services\DatabaseConnectionChecker;
+use App\Http\Controllers\Admin\AuditController;
 
 Route::get('/rescue-map', [RescueMapController::class, 'index'])->name('rescue.map');
 Route::get('/api/rescue-clusters', [RescueMapController::class, 'getClusterData'])->name('rescue.clusters');
+
+// Real-time database status API endpoint
+Route::get('/api/database-status', function (DatabaseConnectionChecker $checker) {
+    $status = $checker->checkAll(true); // Use cache
+    $connected = array_filter($status, fn($db) => $db['connected']);
+    $disconnected = array_filter($status, fn($db) => !$db['connected']);
+
+    return response()->json([
+        'status' => $status,
+        'connected' => array_values($connected),
+        'disconnected' => array_values($disconnected),
+        'allOnline' => count($disconnected) === 0,
+        'timestamp' => now()->toIso8601String(),
+    ]);
+})->name('api.database.status');
+
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
 Route::get('/', [StrayReportingManagementController::class, 'indexUser'])->name('welcome');
@@ -153,11 +171,15 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Database Backup System Routes (NO authentication middleware - uses custom login)
-Route::get('/backup-login', [App\Http\Controllers\BackupController::class, 'showLogin'])->name('backup-login');
-Route::post('/backup-login', [App\Http\Controllers\BackupController::class, 'login'])->name('backup-login-submit');
-Route::get('/backup-dashboard', [App\Http\Controllers\BackupController::class, 'showDashboard'])->name('backup-dashboard');
-Route::post('/backup-all-databases', [App\Http\Controllers\BackupController::class, 'backupAllDatabases'])->name('backup-all-databases');
-Route::post('/backup-logout', [App\Http\Controllers\BackupController::class, 'logout'])->name('backup-logout');
+// Admin Audit Trail Routes
+Route::middleware(['auth'])->prefix('admin/audit')->name('admin.audit.')->group(function () {
+    Route::get('/', [AuditController::class, 'index'])->name('index');
+    Route::get('/authentication', [AuditController::class, 'authentication'])->name('authentication');
+    Route::get('/payments', [AuditController::class, 'payments'])->name('payments');
+    Route::get('/animals', [AuditController::class, 'animals'])->name('animals');
+    Route::get('/rescues', [AuditController::class, 'rescues'])->name('rescues');
+    Route::get('/timeline/{correlationId}', [AuditController::class, 'timeline'])->name('timeline');
+    Route::get('/export/{category}', [AuditController::class, 'export'])->name('export');
+});
 
 require __DIR__.'/auth.php';

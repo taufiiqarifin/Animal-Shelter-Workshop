@@ -7,6 +7,7 @@ use App\Models\Report;
 use App\Models\Image;
 use App\Models\AdopterProfile;
 use App\Models\AnimalProfile;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -73,13 +74,22 @@ class StrayReportingManagementController extends Controller
 
         try {
             $validator = Validator::make($request->all(), [
-                'latitude' => 'required',
-                'longitude' => 'required',
+                'latitude' => 'required|numeric',
+                'longitude' => 'required|numeric',
                 'address' => 'required|string|max:255',
                 'city' => 'required|string|max:255',
                 'state' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'description' => 'required|string|max:500',
+                'additional_notes' => 'nullable|string|max:1000',
+                'images' => 'required|array|min:1|max:5',
+                'images.*' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
+            ], [
+                'latitude.required' => 'Please select a location on the map.',
+                'longitude.required' => 'Please select a location on the map.',
+                'images.required' => 'Please upload at least one image.',
+                'images.min' => 'Please upload at least one image.',
+                'images.*.max' => 'Each image must not exceed 5MB.',
+                'description.required' => 'Please select a situation/urgency level.',
             ]);
 
             if ($validator->fails()) {
@@ -91,6 +101,12 @@ class StrayReportingManagementController extends Controller
 
             $validated = $validator->validated();
 
+            // Combine description and additional notes
+            $fullDescription = $validated['description'];
+            if (!empty($validated['additional_notes'])) {
+                $fullDescription .= "\n\nAdditional Notes: " . $validated['additional_notes'];
+            }
+
             $report = Report::create([
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
@@ -98,7 +114,7 @@ class StrayReportingManagementController extends Controller
                 'city' => $validated['city'],
                 'state' => $validated['state'],
                 'report_status' => 'Pending',
-                'description' => $validated['description'] ?? null,
+                'description' => $fullDescription,
                 'userID' => Auth::id(),
             ]);
 
@@ -150,17 +166,81 @@ class StrayReportingManagementController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $reports = $this->safeQuery(
-            fn() => Report::with('images')
-                ->orderBy('created_at', 'desc')
-                ->paginate(50),
-            new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50),
-            'eilya' // Pre-check eilya database
+        $reports = $this->safeQuery(function() use ($request) {
+            $query = Report::with('images');
+
+            // Check if taufiq database is online for user filtering
+            $taufiqOnline = $this->isDatabaseAvailable('taufiq');
+
+            // Search by user name or email (cross-database search)
+            if ($request->filled('user_search') && $taufiqOnline) {
+                $userSearch = $request->user_search;
+
+                // Get user IDs from taufiq database that match search
+                $userIds = DB::connection('taufiq')
+                    ->table('users')
+                    ->where(function($q) use ($userSearch) {
+                        $q->where('name', 'LIKE', "%{$userSearch}%")
+                          ->orWhere('email', 'LIKE', "%{$userSearch}%");
+                    })
+                    ->pluck('id')
+                    ->toArray();
+
+                if (!empty($userIds)) {
+                    $query->whereIn('userID', $userIds);
+                } else {
+                    // No users found, return empty result
+                    $query->whereRaw('1 = 0');
+                }
+            }
+
+            // Search by report ID
+            if ($request->filled('report_id')) {
+                $query->where('id', $request->report_id);
+            }
+
+            // Search by location (address, city, state)
+            if ($request->filled('location')) {
+                $location = $request->location;
+                $query->where(function($q) use ($location) {
+                    $q->where('address', 'LIKE', "%{$location}%")
+                      ->orWhere('city', 'LIKE', "%{$location}%")
+                      ->orWhere('state', 'LIKE', "%{$location}%");
+                });
+            }
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('report_status', $request->status);
+            }
+
+            // Date range filter
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+
+            return $query->orderBy('created_at', 'desc')
+                ->paginate(50)
+                ->appends($request->query());
+        }, new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50), 'eilya');
+
+        // Get status counts for filter badges
+        $statusCounts = $this->safeQuery(
+            fn() => Report::select('report_status', DB::connection('eilya')->raw('COUNT(*) as total'))
+                ->groupBy('report_status')
+                ->pluck('total', 'report_status'),
+            collect([]),
+            'eilya'
         );
 
-        return view('stray-reporting.index', compact('reports'));
+        $totalReports = $statusCounts->sum();
+
+        return view('stray-reporting.index', compact('reports', 'statusCounts', 'totalReports'));
     }
 
     public function show($id)
@@ -267,16 +347,45 @@ class StrayReportingManagementController extends Controller
             $rescue = Rescue::where('reportID', $report->id)->first();
 
             if ($rescue) {
+                $oldCaretakerId = $rescue->caretakerID;
                 $rescue->update([
                     'caretakerID' => $request->caretaker_id
                 ]);
+
+                // AUDIT: Caretaker reassigned
+                AuditService::logRescue(
+                    'caretaker_reassigned',
+                    $rescue->id,
+                    ['caretaker_id' => $oldCaretakerId],
+                    ['caretaker_id' => $request->caretaker_id],
+                    [
+                        'report_id' => $report->id,
+                        'new_caretaker_name' => $caretaker->name,
+                        'address' => $report->address,
+                        'priority' => $rescue->priority ?? 'normal',
+                    ]
+                );
             } else {
-                Rescue::create([
+                $rescue = Rescue::create([
                     'reportID' => $report->id,
                     'caretakerID' => $request->caretaker_id,
                     'status' => Rescue::STATUS_SCHEDULED,
                     'date' => null
                 ]);
+
+                // AUDIT: Caretaker assigned (new rescue)
+                AuditService::logRescue(
+                    'caretaker_assigned',
+                    $rescue->id,
+                    null,
+                    ['caretaker_id' => $request->caretaker_id, 'status' => Rescue::STATUS_SCHEDULED],
+                    [
+                        'report_id' => $report->id,
+                        'caretaker_name' => $caretaker->name,
+                        'address' => $report->address,
+                        'priority' => $rescue->priority ?? 'normal',
+                    ]
+                );
             }
 
             $report->update([
@@ -320,14 +429,39 @@ class StrayReportingManagementController extends Controller
             $query = Rescue::with(['report.images', 'caretaker'])
                 ->where('caretakerID', Auth::id());
 
+            // Filter by priority if provided
+            if ($request->has('priority') && in_array($request->priority, ['critical', 'high', 'normal'])) {
+                $query->where('priority', $request->priority);
+            }
+
+            // Filter by status if provided
             if ($request->has('status')) {
                 $query->where('status', $request->status);
             }
 
-            return $query->orderBy('created_at', 'desc')->paginate(50);
+            // Order by priority (critical=1, high=2, normal=3) then by created_at descending
+            return $query
+                ->orderByRaw("CASE
+                    WHEN priority = 'critical' THEN 1
+                    WHEN priority = 'high' THEN 2
+                    WHEN priority = 'normal' THEN 3
+                    ELSE 4
+                END")
+                ->orderBy('created_at', 'desc')
+                ->paginate(50);
         }, new \Illuminate\Pagination\LengthAwarePaginator([], 0, 50), 'eilya'); // Pre-check eilya database
 
-        return view('stray-reporting.index-caretaker', compact('rescues'));
+        // Get status counts for filter cards
+        $statusCounts = $this->safeQuery(
+            fn() => Rescue::select('status', DB::connection('eilya')->raw('COUNT(*) as total'))
+                ->where('caretakerID', Auth::id())
+                ->groupBy('status')
+                ->pluck('total', 'status'),
+            collect([]),
+            'eilya'
+        );
+
+        return view('stray-reporting.index-caretaker', compact('rescues', 'statusCounts'));
     }
 
     public function updateStatusCaretaker(Request $request, $id)
@@ -359,6 +493,9 @@ class StrayReportingManagementController extends Controller
                 ->where('caretakerID', Auth::id())
                 ->firstOrFail();
 
+            $oldStatus = $rescue->status;
+            $oldRemarks = $rescue->remarks;
+
             $updateData = ['status' => $request->status];
 
             if ($request->filled('remarks')) {
@@ -366,6 +503,20 @@ class StrayReportingManagementController extends Controller
             }
 
             $rescue->update($updateData);
+
+            // AUDIT: Rescue status updated
+            AuditService::logRescue(
+                'status_updated',
+                $rescue->id,
+                ['status' => $oldStatus, 'remarks' => $oldRemarks],
+                ['status' => $request->status, 'remarks' => $request->remarks ?? $oldRemarks],
+                [
+                    'priority' => $rescue->priority ?? 'normal',
+                    'report_id' => $rescue->reportID,
+                    'caretaker_name' => Auth::user()->name,
+                    'address' => $rescue->report->address ?? 'Unknown',
+                ]
+            );
 
             // Case-insensitive status comparison for cross-RDBMS compatibility
             $currentStatus = strtolower($request->status);
