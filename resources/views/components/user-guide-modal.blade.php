@@ -1,5 +1,5 @@
 <!-- User Guide Modal -->
-<div id="userGuideModal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+<div id="userGuideModal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
 
         <!-- Header -->
@@ -564,7 +564,8 @@ function openGuideModal(specificSection = null) {
 }
 
 function closeGuideModal() {
-    document.getElementById('userGuideModal').classList.add('hidden');
+    const modal = document.getElementById('userGuideModal');
+    modal.classList.add('hidden');
     document.body.style.overflow = 'auto';
 }
 

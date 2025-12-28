@@ -624,10 +624,7 @@ public function update(Request $request, $id)
                 $query->where('gender', $request->gender);
             }
 
-            // ⭐ PRIORITIZE Not Adopted animals
-            $query->orderByRaw("CASE WHEN adoption_status = 'Not Adopted' THEN 0 ELSE 1 END");
-
-            // Secondary sorting
+            // ⭐ Sort by newest animals first (most recently added)
             $query->orderBy('created_at', 'desc');
 
             // Pagination: 50 items for caretaker table view, 12 for card view

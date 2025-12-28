@@ -7,34 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Custom animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .slide-down {
-            animation: slideDown 0.3s ease-out;
-        }
-
-        .scale-in {
-            animation: scaleIn 0.3s ease-out;
-        }
-
         /* Card hover effects */
         .animal-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -80,28 +52,6 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #7e22ce;
         }
-
-        /* Badge pulse animation */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-        }
-
-        .badge-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        /* Loading skeleton */
-        @keyframes shimmer {
-            0% { background-position: -468px 0; }
-            100% { background-position: 468px 0; }
-        }
-
-        .skeleton {
-            animation: shimmer 1.5s infinite linear;
-            background: linear-gradient(to right, #f0f0f0 8%, #e0e0e0 18%, #f0f0f0 33%);
-            background-size: 800px 104px;
-        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-purple-50 min-h-screen">
@@ -109,7 +59,7 @@
 
 <!-- Limited Connectivity Warning Banner -->
 @if(isset($dbDisconnected) && count($dbDisconnected) > 0)
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow-sm slide-down">
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow-sm">
         <div class="flex items-start">
             <div class="flex-shrink-0">
                 <svg class="h-6 w-6 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -140,7 +90,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <!-- Left: Title -->
-            <div class="fade-in">
+            <div>
                 <div class="flex items-center gap-3 mb-3">
                     <div class="bg-white bg-opacity-20 p-3 rounded-2xl backdrop-blur-sm">
                         <i class="fas fa-paw text-4xl"></i>
@@ -201,7 +151,7 @@
 
     <!-- Caretaker Toggle (Only visible for caretakers) -->
     @role('caretaker')
-        <div class="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl shadow-md p-4 mb-4 scale-in border border-purple-300">
+        <div class="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl shadow-md p-4 mb-4 border border-purple-300">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <div class="bg-purple-600 text-white p-2 rounded-lg">
@@ -236,7 +186,7 @@
     @endrole
 
     <!-- Filters and Search -->
-    <div class="bg-white rounded-xl shadow-md p-4 md:p-5 mb-6 scale-in border border-purple-100">
+    <div class="bg-white rounded-xl shadow-md p-4 md:p-5 mb-6 border border-purple-100">
         <div class="flex items-center gap-2 mb-4">
             <div class="bg-purple-100 p-2 rounded-lg">
                 <i class="fas fa-filter text-purple-700 text-base"></i>
@@ -357,7 +307,7 @@
     @if($animals->count() > 0)
         @if(request('rescued_by_me') === 'true' && Auth::check() && Auth::user()->hasRole('caretaker'))
             <!-- Table View for Caretakers -->
-            <div class="bg-white rounded-2xl shadow-xl overflow-hidden fade-in border border-purple-100">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-purple-100">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gradient-to-r from-purple-600 to-indigo-600">
@@ -451,7 +401,7 @@
                                     <!-- Location -->
                                     <td class="px-6 py-4">
                                         <div class="text-sm text-gray-900">
-                                            @if($animal->slot)
+                                            @if($animal->relationLoaded('slot') && $animal->slot)
                                                 <div class="flex items-center gap-1.5">
                                                     <i class="fas fa-map-pin text-purple-500 text-xs"></i>
                                                     <span class="font-medium">Slot {{ $animal->slot->name ?? $animal->slot->id }}</span>
@@ -514,7 +464,7 @@
             <!-- Card View for Regular Users -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 @foreach($animals as $animal)
-                <div class="animal-card bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-transparent hover:border-purple-200 fade-in">
+                <div class="animal-card bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-transparent hover:border-purple-200">
                     <!-- Animal Image -->
                     <div class="h-56 bg-gradient-to-br from-purple-200 via-purple-300 to-indigo-300 flex items-center justify-center overflow-hidden relative group">
                         @if($animal->relationLoaded('images') && $animal->images && $animal->images->count() > 0)
@@ -605,7 +555,7 @@
                                 <div class="flex-1">
                                     <span class="text-gray-600 text-xs font-semibold uppercase">Location</span>
                                     <p class="text-gray-900 font-bold text-xs">
-                                        @if($animal->slot)
+                                        @if($animal->relationLoaded('slot') && $animal->slot)
                                             Slot {{ $animal->slot->name ?? $animal->slot->id }} - {{ $animal->slot->section->name ?? 'Unknown' }}
                                         @else
                                             <span class="text-gray-400 italic">Not Assigned</span>
@@ -637,7 +587,7 @@
             </div>
 
             <!-- Pagination for Card View -->
-            <div class="mt-12 flex justify-center fade-in">
+            <div class="mt-12 flex justify-center">
                 <div class="bg-white rounded-2xl shadow-lg p-4">
                     {{ $animals->links() }}
                 </div>
@@ -646,7 +596,7 @@
 
         <!-- Pagination for Table View -->
         @if(request('rescued_by_me') === 'true' && Auth::check() && Auth::user()->hasRole('caretaker'))
-            <div class="mt-6 flex justify-center fade-in">
+            <div class="mt-6 flex justify-center">
                 <div class="bg-white rounded-2xl shadow-lg p-4">
                     {{ $animals->links() }}
                 </div>
@@ -654,7 +604,7 @@
         @endif
     @else
         <!-- Empty State -->
-        <div class="bg-white rounded-2xl shadow-xl p-12 md:p-16 text-center scale-in">
+        <div class="bg-white rounded-2xl shadow-xl p-12 md:p-16 text-center">
             <div class="max-w-md mx-auto">
                 <div class="bg-purple-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
                     <i class="fas fa-search text-5xl text-purple-600"></i>
@@ -675,27 +625,6 @@
     @endif
 </div>
 
-<script>
-    // Auto-dismiss success/error messages
-    setTimeout(function() {
-        const alerts = document.querySelectorAll('.slide-down');
-        alerts.forEach(alert => {
-            if (alert.classList.contains('from-green-50') || alert.classList.contains('from-red-50')) {
-                alert.style.opacity = '0';
-                alert.style.transform = 'translateY(-20px)';
-                setTimeout(() => alert.remove(), 300);
-            }
-        });
-    }, 5000);
-
-    // Add stagger animation to cards
-    document.addEventListener('DOMContentLoaded', function() {
-        const cards = document.querySelectorAll('.animal-card');
-        cards.forEach((card, index) => {
-            card.style.animationDelay = `${index * 0.05}s`;
-        });
-    });
-</script>
 
 </body>
 </html>

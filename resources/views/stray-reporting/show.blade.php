@@ -563,9 +563,15 @@ document.querySelector('form[action*="assign-caretaker"]').addEventListener('sub
     const assignBtnText = document.getElementById('assignBtnText');
     const caretakerSelect = document.getElementById('caretakerSelect');
 
-    // Disable button and select
+    // Validate that a caretaker is selected
+    if (!caretakerSelect.value) {
+        e.preventDefault();
+        alert('Please select a caretaker before submitting.');
+        return false;
+    }
+
+    // Disable button only (NOT the select, as disabled inputs don't submit)
     assignBtn.disabled = true;
-    caretakerSelect.disabled = true;
 
     // Add spinner and update text
     assignBtn.innerHTML = `

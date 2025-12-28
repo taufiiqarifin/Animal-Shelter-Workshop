@@ -9,6 +9,143 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated mesh gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                #667eea 0%,
+                #764ba2 25%,
+                #f093fb 50%,
+                #4facfe 75%,
+                #00f2fe 100%);
+            background-size: 400% 400%;
+            animation: gradientFlow 20s ease infinite;
+            opacity: 0.04;
+            z-index: -1;
+        }
+
+        @keyframes gradientFlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Floating orbs */
+        .floating-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatOrb 25s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            top: -250px;
+            left: -250px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            bottom: -200px;
+            right: -200px;
+            animation-delay: 8s;
+        }
+
+        .orb-3 {
+            width: 350px;
+            height: 350px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            top: 40%;
+            left: 50%;
+            animation-delay: 16s;
+        }
+
+        @keyframes floatOrb {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -80px) scale(1.1); }
+            66% { transform: translate(-30px, 40px) scale(0.9); }
+        }
+
+        /* Card hover effects with shimmer */
+        .card-modern {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-modern::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.3) 50%,
+                transparent 70%
+            );
+            transform: rotate(45deg);
+            animation: shimmerMove 3s infinite;
+        }
+
+        @keyframes shimmerMove {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .card-modern:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Glassmorphism effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Icon pulse animation */
+        .icon-pulse {
+            animation: iconPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         /* Smooth line clamp */
         .line-clamp-2 {
             display: -webkit-box;
@@ -19,26 +156,38 @@
 
         /* Custom scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: linear-gradient(to bottom, #f1f5f9, #e2e8f0);
             border-radius: 10px;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #9333ea;
+            background: linear-gradient(to bottom, #9333ea, #7e22ce);
             border-radius: 10px;
+            border: 2px solid #f1f5f9;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #7e22ce;
+            background: linear-gradient(to bottom, #7e22ce, #6b21a8);
+        }
+
+        /* Neon glow effect */
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(147, 51, 234, 0.3),
+                        0 0 40px rgba(147, 51, 234, 0.2),
+                        0 0 60px rgba(147, 51, 234, 0.1);
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50 min-h-screen">
+    <!-- Floating gradient orbs -->
+    <div class="floating-orb orb-1"></div>
+    <div class="floating-orb orb-2"></div>
+    <div class="floating-orb orb-3"></div>
 @include('navbar')
 
 <!-- Limited Connectivity Warning Banner -->
@@ -77,10 +226,41 @@
 @endif
 
 <!-- Page Header -->
-<div class="bg-gradient-to-r from-purple-600 to-purple-800 text-white py-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 class="text-4xl font-bold mb-2">Clinics & Veterinarians</h1>
-        <p class="text-purple-100">Our trusted medical partners for animal care</p>
+<div class="relative bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white py-20 overflow-hidden">
+    <!-- Animated background pattern -->
+    <div class="absolute inset-0 opacity-10">
+        <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 40px 40px;"></div>
+    </div>
+
+    <!-- Floating particles -->
+    <div class="absolute inset-0">
+        <div class="absolute w-2 h-2 bg-white rounded-full opacity-40 animate-ping" style="top: 20%; left: 10%; animation-delay: 0s; animation-duration: 3s;"></div>
+        <div class="absolute w-2 h-2 bg-white rounded-full opacity-40 animate-ping" style="top: 60%; left: 80%; animation-delay: 1s; animation-duration: 4s;"></div>
+        <div class="absolute w-2 h-2 bg-white rounded-full opacity-40 animate-ping" style="top: 40%; left: 50%; animation-delay: 2s; animation-duration: 3.5s;"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div class="flex items-center gap-4 mb-4">
+            <div class="bg-white bg-opacity-20 backdrop-blur-md p-4 rounded-2xl icon-pulse">
+                <i class="fas fa-hospital-alt text-5xl"></i>
+            </div>
+            <div>
+                <h1 class="text-5xl font-black mb-2 tracking-tight">
+                    Clinics & Veterinarians
+                </h1>
+                <p class="text-purple-100 text-lg font-medium">🏥 Our trusted medical partners for animal care</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-6 mt-6">
+            <div class="flex items-center gap-2 bg-white bg-opacity-10 backdrop-blur-sm px-4 py-2 rounded-full border border-white border-opacity-20">
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span class="text-sm font-semibold">{{ $clinics->count() }} Active Clinics</span>
+            </div>
+            <div class="flex items-center gap-2 bg-white bg-opacity-10 backdrop-blur-sm px-4 py-2 rounded-full border border-white border-opacity-20">
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span class="text-sm font-semibold">{{ $vets->count() }} Veterinarians</span>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -103,37 +283,75 @@
             </div>
         @endif
     <!-- Add New Clinic/Vet Cards --> @role('admin')
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
         <!-- Add Clinic Card -->
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition duration-300">
-            <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-8 text-white">
-                <div class="flex items-center mb-2">
-                    <span class="text-4xl mr-4">🏥</span>
-                    <h2 class="text-2xl font-bold">Add New Clinic</h2>
+        <div class="card-modern glass-card rounded-3xl overflow-hidden group relative">
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+            <div class="relative bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 p-10 text-white overflow-hidden">
+                <!-- Background pattern -->
+                <div class="absolute inset-0 opacity-10">
+                    <div class="absolute inset-0" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px);"></div>
                 </div>
-                <p class="text-blue-100">Register a new veterinary clinic</p>
+
+                <div class="relative z-10">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-white bg-opacity-20 p-3 rounded-2xl mr-4 backdrop-blur-sm">
+                            <span class="text-5xl">🏥</span>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-bold mb-1">Add New Clinic</h2>
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                <p class="text-blue-100 text-sm">Register a new veterinary clinic</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="p-6">
-                <p class="text-gray-600 mb-4">Add clinics that provide medical services for our shelter animals.</p>
-                <button onclick="openModal('clinic')" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-blue-700 transition duration-300 shadow-lg">
-                    <i class="fas fa-plus mr-2"></i>Add Clinic
+            <div class="p-8 relative z-10">
+                <p class="text-gray-700 mb-6 text-lg">Add clinics that provide medical services for our shelter animals.</p>
+                <button onclick="openModal('clinic')" class="w-full bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-600 text-white py-4 px-6 rounded-2xl font-bold hover:shadow-2xl hover:scale-105 transition-all duration-300 neon-glow flex items-center justify-center gap-3 group-hover:from-blue-600 group-hover:via-blue-700 group-hover:to-cyan-700">
+                    <i class="fas fa-plus-circle text-xl"></i>
+                    <span>Add Clinic</span>
+                    <i class="fas fa-arrow-right transform group-hover:translate-x-2 transition-transform"></i>
                 </button>
             </div>
         </div>
 
         <!-- Add Vet Card -->
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition duration-300">
-            <div class="bg-gradient-to-r from-green-500 to-green-600 p-8 text-white">
-                <div class="flex items-center mb-2">
-                    <span class="text-4xl mr-4">👨‍⚕️</span>
-                    <h2 class="text-2xl font-bold">Add New Veterinarian</h2>
+        <div class="card-modern glass-card rounded-3xl overflow-hidden group relative">
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+            <div class="relative bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600 p-10 text-white overflow-hidden">
+                <!-- Background pattern -->
+                <div class="absolute inset-0 opacity-10">
+                    <div class="absolute inset-0" style="background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255,255,255,.05) 10px, rgba(255,255,255,.05) 20px);"></div>
                 </div>
-                <p class="text-green-100">Register a new veterinarian</p>
+
+                <div class="relative z-10">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-white bg-opacity-20 p-3 rounded-2xl mr-4 backdrop-blur-sm">
+                            <span class="text-5xl">👨‍⚕️</span>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-bold mb-1">Add New Veterinarian</h2>
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                <p class="text-green-100 text-sm">Register a new veterinarian</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="p-6">
-                <p class="text-gray-600 mb-4">Add veterinarians who provide care for our animals.</p>
-                <button onclick="openModal('vet')" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-lg font-semibold hover:from-green-600 hover:to-green-700 transition duration-300 shadow-lg">
-                    <i class="fas fa-plus mr-2"></i>Add Veterinarian
+            <div class="p-8 relative z-10">
+                <p class="text-gray-700 mb-6 text-lg">Add veterinarians who provide care for our animals.</p>
+                <button onclick="openModal('vet')" class="w-full bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 text-white py-4 px-6 rounded-2xl font-bold hover:shadow-2xl hover:scale-105 transition-all duration-300 neon-glow flex items-center justify-center gap-3 group-hover:from-green-600 group-hover:via-emerald-700 group-hover:to-teal-700">
+                    <i class="fas fa-plus-circle text-xl"></i>
+                    <span>Add Veterinarian</span>
+                    <i class="fas fa-arrow-right transform group-hover:translate-x-2 transition-transform"></i>
                 </button>
             </div>
         </div>
@@ -141,12 +359,23 @@
 
     <!-- Clinics Section -->
     <div class="mb-12">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-3xl font-bold text-gray-800 flex items-center">
-                <i class="fas fa-hospital text-blue-600 mr-3"></i>
-                Clinics
-            </h2>
-            <span class="text-gray-600">{{ $clinics->count() }} Clinics</span>
+        <div class="glass-card rounded-3xl p-8 mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="bg-gradient-to-br from-blue-500 to-cyan-600 p-4 rounded-2xl shadow-lg">
+                        <i class="fas fa-hospital text-white text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-4xl font-black gradient-text mb-1">Clinics</h2>
+                        <p class="text-gray-600">Medical facilities partnered with us</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-blue-50 px-6 py-3 rounded-full border-2 border-blue-200">
+                    <i class="fas fa-building text-blue-600 text-xl"></i>
+                    <span class="text-2xl font-bold text-blue-700">{{ $clinics->count() }}</span>
+                    <span class="text-gray-600 font-medium">Clinics</span>
+                </div>
+            </div>
         </div>
 
         @if($clinics->count() > 0)

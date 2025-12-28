@@ -211,13 +211,15 @@
                                     @include('adopter-animal-matching.adopter-modal')
                                     <script>
                                     function openAdopterModal() {
-                                        document.getElementById('adopterModal').classList.remove('hidden');
-                                        document.getElementById('adopterModal').classList.add('flex');
+                                        const modal = document.getElementById('adopterModal');
+                                        modal.classList.remove('hidden');
+                                        modal.classList.add('flex');
                                     }
 
                                     function closeAdopterModal() {
-                                        document.getElementById('adopterModal').classList.add('hidden');
-                                        document.getElementById('adopterModal').classList.remove('flex');
+                                        const modal = document.getElementById('adopterModal');
+                                        modal.classList.add('hidden');
+                                        modal.classList.remove('flex');
                                     }
 
                                     // Close modal when clicking outside
@@ -355,7 +357,7 @@
     <x-user-guide-modal />
 
     <!-- Add Caretaker Modal -->
-    <div id="caretakerModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 items-center justify-center p-4">
+    <div id="caretakerModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm z-50 items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div class="sticky top-0 bg-gradient-to-r from-teal-600 to-teal-700 text-white p-6 rounded-t-2xl z-10">
                 <div class="flex items-center justify-between">
@@ -619,13 +621,15 @@
 
         // Caretaker Modal Functions
         function openCaretakerModal() {
-            document.getElementById('caretakerModal').classList.remove('hidden');
-            document.getElementById('caretakerModal').classList.add('flex');
+            const modal = document.getElementById('caretakerModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function closeCaretakerModal() {
-            document.getElementById('caretakerModal').classList.add('hidden');
-            document.getElementById('caretakerModal').classList.remove('flex');
+            const modal = document.getElementById('caretakerModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         // Close modal when clicking outside

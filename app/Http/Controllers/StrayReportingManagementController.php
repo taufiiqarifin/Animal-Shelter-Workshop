@@ -619,4 +619,150 @@ class StrayReportingManagementController extends Controller
                 ->with('error', 'Failed to load rescue details: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Handle successful rescue with animal creation (AJAX endpoint)
+     * This method processes the multi-step animal addition form
+     */
+    public function updateStatusWithAnimals(Request $request, $id)
+    {
+        // Start transactions on both eilya (Rescue) and shafiqah (Animal) databases
+        DB::connection('eilya')->beginTransaction();
+        DB::connection('shafiqah')->beginTransaction();
+
+        $uploadedFiles = [];
+
+        try {
+            // Validate rescue authorization
+            $rescue = Rescue::where('id', $id)
+                ->where('caretakerID', Auth::id())
+                ->firstOrFail();
+
+            // Validate input
+            $request->validate([
+                'status' => 'required|in:Success',
+                'remarks' => 'required|string|min:10|max:1000',
+                'animals' => 'required|json',
+            ]);
+
+            // Parse animals data
+            $animalsData = json_decode($request->animals, true);
+
+            if (empty($animalsData)) {
+                throw new \Exception('No animals data provided');
+            }
+
+            // Update rescue status
+            $rescue->update([
+                'status' => $request->status,
+                'remarks' => $request->remarks
+            ]);
+
+            // Update report status
+            $rescue->report->update([
+                'report_status' => 'Resolved'
+            ]);
+
+            // Create animals
+            foreach ($animalsData as $index => $animalData) {
+                // Create animal record
+                $animal = Animal::create([
+                    'name' => $animalData['name'],
+                    'species' => $animalData['species'],
+                    'gender' => $animalData['gender'],
+                    'age' => $animalData['age'],
+                    'weight' => $animalData['weight'],
+                    'health_details' => $animalData['health_details'],
+                    'adoption_status' => $animalData['adoption_status'], // 'Not Adopted'
+                    'rescueID' => $animalData['rescueID'],
+                    'slotID' => null, // Assign slot later
+                ]);
+
+                // Handle image uploads for this animal
+                $imageFiles = $request->file("animal_{$index}_images", []);
+
+                foreach ($imageFiles as $imageFile) {
+                    // Upload to Cloudinary
+                    $uploadResult = cloudinary()->uploadApi()->upload($imageFile->getRealPath(), [
+                        'folder' => 'animals',
+                        'public_id' => pathinfo($imageFile->getClientOriginalName(), PATHINFO_FILENAME)
+                    ]);
+
+                    $path = $uploadResult['public_id'];
+                    $uploadedFiles[] = $path;
+
+                    // Create image record
+                    Image::create([
+                        'image_path' => $path,
+                        'animalID' => $animal->id,
+                        'reportID' => null,
+                    ]);
+                }
+            }
+
+            // Audit log
+            AuditService::logRescue(
+                'rescue_completed_with_animals',
+                $rescue->id,
+                ['status' => $rescue->status],
+                ['status' => 'Success', 'animals_added' => count($animalsData)],
+                [
+                    'report_id' => $rescue->reportID,
+                    'caretaker_name' => Auth::user()->name,
+                    'animal_count' => count($animalsData),
+                ]
+            );
+
+            DB::connection('eilya')->commit();
+            DB::connection('shafiqah')->commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Rescue completed successfully! ' . count($animalsData) . ' animal(s) added to the shelter.',
+                'redirect' => route('rescues.index')
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::connection('eilya')->rollBack();
+            DB::connection('shafiqah')->rollBack();
+
+            // Clean up uploaded files
+            foreach ($uploadedFiles as $filePath) {
+                try {
+                    cloudinary()->uploadApi()->destroy($filePath);
+                } catch (\Exception $e) {
+                    // Continue cleanup
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Rescue not found or you are not authorized.'
+            ], 404);
+
+        } catch (\Exception $e) {
+            DB::connection('eilya')->rollBack();
+            DB::connection('shafiqah')->rollBack();
+
+            // Clean up uploaded files
+            foreach ($uploadedFiles as $filePath) {
+                try {
+                    cloudinary()->uploadApi()->destroy($filePath);
+                } catch (\Exception $e) {
+                    // Continue cleanup
+                }
+            }
+
+            \Log::error('Error updating rescue with animals: ' . $e->getMessage(), [
+                'rescue_id' => $id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to complete rescue: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

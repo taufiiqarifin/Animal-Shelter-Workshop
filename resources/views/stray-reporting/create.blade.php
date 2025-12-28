@@ -1,5 +1,5 @@
 <!-- Modal Overlay -->
-<div id="reportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+<div id="reportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden my-8">
         <!-- Header Section -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 relative">
@@ -764,7 +764,8 @@
 
     // Open modal
     function openReportModal() {
-        document.getElementById('reportModal').classList.remove('hidden');
+        const modal = document.getElementById('reportModal');
+        modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
 
         // Check online status
@@ -787,7 +788,8 @@
 
     // Close modal
     function closeReportModal() {
-        document.getElementById('reportModal').classList.add('hidden');
+        const modal = document.getElementById('reportModal');
+        modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
 
         // Stop location tracking

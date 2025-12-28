@@ -9,15 +9,89 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow-x: hidden;
         }
+
+        /* Animated gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                #667eea 0%,
+                #764ba2 25%,
+                #f093fb 50%,
+                #4facfe 75%,
+                #00f2fe 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            opacity: 0.03;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Floating orbs */
+        .floating-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            top: -200px;
+            right: -200px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            bottom: -150px;
+            left: -150px;
+            animation-delay: 7s;
+        }
+
+        .orb-3 {
+            width: 350px;
+            height: 350px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            top: 50%;
+            right: 10%;
+            animation-delay: 14s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -50px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
         #map {
             height: 100%;
             width: 100%;
             filter: brightness(0.95) contrast(1.05);
             z-index: 0;
+            border-radius: 0;
         }
         .cluster-marker {
             border-radius: 50%;
@@ -54,19 +128,53 @@
         }
 
         .stat-card {
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
         }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         }
 
         .glassmorphism {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             z-index: 10;
+        }
+
+        /* Shimmer effect for live data indicator */
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .live-indicator {
+            background: linear-gradient(90deg,
+                #10b981 30%,
+                #34d399 50%,
+                #10b981 70%
+            );
+            background-size: 200% auto;
+            animation: shimmer 2s linear infinite;
         }
 
         .details-panel {
@@ -135,7 +243,12 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-50 to-slate-100">
+<body class="bg-gradient-to-br from-slate-50 via-purple-50 to-blue-50">
+    <!-- Floating gradient orbs -->
+    <div class="floating-orb orb-1"></div>
+    <div class="floating-orb orb-2"></div>
+    <div class="floating-orb orb-3"></div>
+
     {{-- Navbar --}}
     @include('navbar')
 
@@ -182,9 +295,9 @@
                     <h1 class="text-3xl font-bold text-gray-800">Animal Rescue Reports</h1>
                     <p class="text-sm text-gray-500 mt-1">Real-time rescue operations dashboard</p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-sm text-gray-600 font-medium">Live Data</span>
+                <div class="flex items-center gap-3 px-4 py-2 rounded-full bg-green-50 border border-green-200">
+                    <div class="w-3 h-3 live-indicator rounded-full shadow-lg shadow-green-500/50"></div>
+                    <span class="text-sm text-gray-700 font-semibold">Live Data</span>
                 </div>
             </div>
 
@@ -335,18 +448,87 @@
     </div>
 
     <script>
-        // --- START OF CORRECTED JAVASCRIPT ---
+        // --- START OF OPTIMIZED JAVASCRIPT FOR MALAYSIA ---
 
-        // 1. Initialize map centered on Malaysia
-        const map = L.map('map', { zoomControl: false }).setView([4.2105, 101.9758], 6);
+        // 1. Define Malaysia bounds for optimization (Southwest and Northeast corners)
+        const malaysiaBounds = L.latLngBounds(
+            L.latLng(0.855222, 99.643478),  // Southwest corner (Southernmost point)
+            L.latLng(7.363417, 119.267502)   // Northeast corner (Easternmost point)
+        );
 
-        // 2. Add controls and tiles
+        // 2. Initialize map centered on Malaysia with restrictions
+        const map = L.map('map', {
+            zoomControl: false,
+            maxBounds: malaysiaBounds.pad(0.5), // Allow 50% padding for better UX
+            maxBoundsViscosity: 1.0, // Prevents dragging outside bounds completely
+            minZoom: 5,  // Prevent zooming out too far (whole Malaysia visible)
+            maxZoom: 18, // Maximum detail level
+            worldCopyJump: false, // Disable world wrapping
+            bounceAtZoomLimits: true // Bounce effect at zoom limits
+        }).setView([4.2105, 101.9758], 6); // Center on Malaysia
+
+        // 3. Add controls
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
 
-        // 3. Reports data from Laravel (Keep this one)
+        // 4. Add optimized tile layer with performance settings
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18,
+            minZoom: 5,
+            bounds: malaysiaBounds, // Only load tiles within Malaysia bounds
+            keepBuffer: 2, // Keep 2 rows/columns of tiles outside view (reduces loading)
+            updateWhenIdle: true, // Only update tiles when map stops moving (better performance)
+            updateWhenZooming: false, // Don't update tiles while zooming (smoother)
+            updateInterval: 200, // Throttle tile updates to 200ms
+            tileSize: 256, // Standard tile size
+            className: 'map-tiles', // For custom styling if needed
+            crossOrigin: true, // Enable CORS for better caching
+            errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' // Transparent 1x1 pixel for failed tiles
+        }).addTo(map);
+
+        // 5. Add loading indicator
+        const loadingControl = L.control({ position: 'topright' });
+        let tilesLoading = 0;
+
+        loadingControl.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'leaflet-control-loading');
+            div.innerHTML = `
+                <div id="mapLoadingIndicator" class="hidden bg-white bg-opacity-90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-purple-200">
+                    <div class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-700">Loading map...</span>
+                    </div>
+                </div>
+            `;
+            return div;
+        };
+        loadingControl.addTo(map);
+
+        // Show/hide loading indicator based on tile loading
+        map.on('layeradd', function() {
+            tilesLoading++;
+            document.getElementById('mapLoadingIndicator').classList.remove('hidden');
+        });
+
+        map.on('load', function() {
+            tilesLoading = 0;
+            document.getElementById('mapLoadingIndicator').classList.add('hidden');
+        });
+
+        map.on('tileerror', function() {
+            tilesLoading--;
+            if (tilesLoading <= 0) {
+                document.getElementById('mapLoadingIndicator').classList.add('hidden');
+            }
+        });
+
+        // 6. Reports data from Laravel
         const reportsData = @json($reports);
 
+        // 7. Cluster reports function for better performance
         function clusterReports(reports) {
             const clusters = [];
             // Adjusted clusterRadius for better clustering across larger areas
@@ -546,7 +728,14 @@
         function closeDetails() {
             document.getElementById('detailsPanel').classList.add('hidden');
         }
-        // --- END OF CORRECTED JAVASCRIPT ---
+        // --- END OF OPTIMIZED JAVASCRIPT FOR MALAYSIA ---
+        // Performance optimizations applied:
+        // ✓ Geographic bounds restricted to Malaysia only
+        // ✓ Min/max zoom levels set appropriately
+        // ✓ Tile loading throttled and optimized
+        // ✓ Map panning restricted to Malaysia region
+        // ✓ Loading indicator for better UX
+        // ✓ Error handling for failed tiles
     </script>
 </body>
 </html>

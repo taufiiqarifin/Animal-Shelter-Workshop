@@ -1,5 +1,5 @@
 <!-- My Reports Modal -->
-<div id="myReportsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+<div id="myReportsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-[1400px] max-w-full max-h-[90vh] flex flex-col">
         <!-- Modal Header -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 flex-shrink-0 rounded-t-2xl">
@@ -165,7 +165,7 @@
 </div>
 
 <!-- Report Detail Modal (Expanded View) -->
-<div id="reportDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+<div id="reportDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-[1000px] max-w-full max-h-[90vh] overflow-y-auto">
         <!-- Detail Header -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 sticky top-0 z-10 rounded-t-2xl">
@@ -193,7 +193,7 @@
 </div>
 
 <!-- Image Modal (Full Size Preview) -->
-<div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-[70] flex items-center justify-center p-4" onclick="closeImageModal()">
+<div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm z-[70] flex items-center justify-center p-4" onclick="closeImageModal()">
     <div class="relative max-w-6xl max-h-full">
         <button onclick="closeImageModal()" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition">
             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,7 +339,8 @@
 
     // Close Report Detail Modal
     function closeReportDetailModal() {
-        document.getElementById('reportDetailModal').classList.add('hidden');
+        const modal = document.getElementById('reportDetailModal');
+        modal.classList.add('hidden');
 
         if (detailMap) {
             detailMap.remove();
@@ -356,19 +357,22 @@
 
     // Close My Reports Modal
     function closeMyReportsModal() {
-        document.getElementById('myReportsModal').classList.add('hidden');
+        const modal = document.getElementById('myReportsModal');
+        modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
     }
 
     // Image modal functions
     function openImageModal(imageSrc) {
         event.stopPropagation();
+        const modal = document.getElementById('imageModal');
         document.getElementById('modalImage').src = imageSrc;
-        document.getElementById('imageModal').classList.remove('hidden');
+        modal.classList.remove('hidden');
     }
 
     function closeImageModal() {
-        document.getElementById('imageModal').classList.add('hidden');
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
     }
 
     // Close modals when clicking outside

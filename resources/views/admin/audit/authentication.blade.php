@@ -843,6 +843,18 @@
                 return;
             }
 
+            // Show loading state
+            const confirmBtn = event.target;
+            const originalBtnContent = confirmBtn.innerHTML;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Suspending...
+            `;
+
             fetch(`/admin/users/${currentUserId}/suspend`, {
                 method: 'POST',
                 headers: {
@@ -851,22 +863,41 @@
                 },
                 body: JSON.stringify({ reason })
             })
-            .then(response => response.json())
+            .then(response => {
+                // Handle non-200 responses
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        try {
+                            const data = JSON.parse(text);
+                            throw new Error(data.error || data.message || 'Server error');
+                        } catch (e) {
+                            throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+                        }
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    showMessage(data.message, 'success');
-                    hideForm();
+                    // Hide the form but keep the message visible
+                    document.getElementById('formContainer').innerHTML = '';
+                    // Show success message
+                    showMessage(data.message || 'User suspended successfully!', 'success');
+                    // Close modal and reload after showing message
                     setTimeout(() => {
                         closeUserManagementModal();
                         location.reload();
-                    }, 1500);
+                    }, 2000);
                 } else {
-                    showMessage(data.error || 'Failed to suspend user', 'error');
+                    throw new Error(data.error || 'Failed to suspend user');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showMessage('An error occurred while suspending the user', 'error');
+                showMessage(error.message || 'An error occurred while suspending the user', 'error');
+                // Restore button state
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalBtnContent;
             });
         }
 
@@ -888,6 +919,18 @@
                 }
             }
 
+            // Show loading state
+            const confirmBtn = event.target;
+            const originalBtnContent = confirmBtn.innerHTML;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Locking...
+            `;
+
             fetch(`/admin/users/${currentUserId}/lock`, {
                 method: 'POST',
                 headers: {
@@ -896,27 +939,49 @@
                 },
                 body: JSON.stringify({ duration, custom_duration: customDuration, reason })
             })
-            .then(response => response.json())
+            .then(response => {
+                // Handle non-200 responses
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        try {
+                            const data = JSON.parse(text);
+                            throw new Error(data.error || data.message || 'Server error');
+                        } catch (e) {
+                            throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+                        }
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    showMessage(data.message, 'success');
-                    hideForm();
+                    // Hide the form but keep the message visible
+                    document.getElementById('formContainer').innerHTML = '';
+                    // Show success message
+                    showMessage(data.message || 'User locked successfully!', 'success');
+                    // Close modal and reload after showing message
                     setTimeout(() => {
                         closeUserManagementModal();
                         location.reload();
-                    }, 1500);
+                    }, 2000);
                 } else {
-                    showMessage(data.error || 'Failed to lock user', 'error');
+                    throw new Error(data.error || 'Failed to lock user');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showMessage('An error occurred while locking the user', 'error');
+                showMessage(error.message || 'An error occurred while locking the user', 'error');
+                // Restore button state
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalBtnContent;
             });
         }
 
         function unlockUser() {
             if (!confirm('Are you sure you want to unlock this user account?')) return;
+
+            // Show a temporary message that unlock is in progress
+            showMessage('Unlocking user account...', 'success');
 
             fetch(`/admin/users/${currentUserId}/unlock`, {
                 method: 'POST',
@@ -924,21 +989,36 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                // Handle non-200 responses
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        try {
+                            const data = JSON.parse(text);
+                            throw new Error(data.error || data.message || 'Server error');
+                        } catch (e) {
+                            throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+                        }
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    showMessage(data.message, 'success');
+                    // Show success message
+                    showMessage(data.message || 'User unlocked successfully!', 'success');
+                    // Close modal and reload after showing message
                     setTimeout(() => {
                         closeUserManagementModal();
                         location.reload();
-                    }, 1500);
+                    }, 2000);
                 } else {
-                    showMessage(data.error || 'Failed to unlock user', 'error');
+                    throw new Error(data.error || 'Failed to unlock user');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showMessage('An error occurred while unlocking the user', 'error');
+                showMessage(error.message || 'An error occurred while unlocking the user', 'error');
             });
         }
 

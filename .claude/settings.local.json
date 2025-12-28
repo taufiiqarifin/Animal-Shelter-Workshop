@@ -47,7 +47,8 @@
       "Bash(php fix-ssl.php:*)",
       "Bash(php -i:*)",
       "Bash(php fix-missing-cloudinary-images.php:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dir C:xampphtdocsAnimal-Shelter-Workshopstoragecacert.pem)"
     ]
   }
 }
