@@ -376,7 +376,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button onclick="openModal('bookingModal-{{ $booking->id }}')"
+                                <button onclick="openBookingModal({{ $booking->id }})"
                                         class="text-purple-600 hover:text-purple-900 transition duration-150"
                                         title="View Details">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,7 +394,7 @@
 
         <!-- Modals for all bookings (outside table structure) -->
         @foreach($bookings as $booking)
-            @include('booking-adoption.show-modal', ['booking' => $booking])
+            @include('booking-adoption.partials.booking-modal-steps', ['booking' => $booking])
         @endforeach
     @endif
 
@@ -556,17 +556,13 @@
     </div>
 @endif
 
+<!-- Global Loading Overlay -->
+@include('booking-adoption.partials.loading-overlay')
+
+<!-- Booking Modal JavaScript -->
+<script src="{{ asset('js/booking-modal.js') }}"></script>
+
 <script>
-    function openModal(modalId) {
-        document.getElementById(modalId).classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).classList.add('hidden');
-        document.body.style.overflow = 'auto';
-    }
-
     // Close payment status modal
     function closePaymentModal() {
         const modal = document.getElementById('paymentStatusModal');
@@ -575,156 +571,6 @@
             document.body.style.overflow = 'auto';
         }
     }
-
-    // Close modal when clicking outside
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal-backdrop')) {
-            e.target.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
-    });
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-backdrop:not(.hidden)').forEach(modal => {
-                modal.classList.add('hidden');
-            });
-            document.body.style.overflow = 'auto';
-        }
-    });
-
-    // Back to booking details - just close adoption fee modal
-    // Booking details modal is still open underneath
-    function backToBookingDetails(bookingId) {
-        closeModal('adoptionFeeModal-' + bookingId);
-    }
-
-    // Update selection count and estimated fee in booking details modal
-    function updateSelectionSummary(bookingId) {
-        const checkboxes = document.querySelectorAll('.animal-select-' + bookingId + ':checked');
-        let total = 0;
-        let count = 0;
-
-        checkboxes.forEach(function(cb) {
-            total += parseFloat(cb.dataset.fee) || 0;
-            count++;
-        });
-
-        const countEl = document.getElementById('selectedCount-' + bookingId);
-        const feeEl = document.getElementById('estimatedFee-' + bookingId);
-
-        if (countEl) countEl.innerText = count;
-        if (feeEl) feeEl.innerText = 'RM ' + total.toFixed(2);
-    }
-
-    // Open adoption fee modal and populate with selected animals
-    // Does NOT close the booking details modal
-    function openAdoptionFeeModal(bookingId) {
-        const checkboxes = document.querySelectorAll('.animal-select-' + bookingId + ':checked');
-
-        // Check if at least one animal is selected
-        if (checkboxes.length === 0) {
-            alert('Please select at least one animal to adopt.');
-            return;
-        }
-
-        // Get containers
-        const listContainer = document.getElementById('selectedAnimalsList-' + bookingId);
-        const hiddenInputsContainer = document.getElementById('hiddenAnimalInputs-' + bookingId);
-        const grandTotalEl = document.getElementById('grandTotal-' + bookingId);
-        const noAnimalsMsg = document.getElementById('noAnimalsSelected-' + bookingId);
-        const submitBtn = document.getElementById('submitBtn-' + bookingId);
-
-        // Clear previous content
-        listContainer.innerHTML = '';
-        hiddenInputsContainer.innerHTML = '';
-
-        let grandTotal = 0;
-
-        checkboxes.forEach(function(cb) {
-            const animalId = cb.dataset.animalId;
-            const animalName = cb.dataset.animalName;
-            const animalSpecies = cb.dataset.animalSpecies;
-            const baseFee = parseFloat(cb.dataset.baseFee) || 0;
-            const medicalFee = parseFloat(cb.dataset.medicalFee ?? 0);
-            const medicalCount = parseInt(cb.dataset.medicalCount ?? 0);
-            const vaccinationFee = parseFloat(cb.dataset.vaccinationFee ?? 0);
-            const vaccinationCount = parseInt(cb.dataset.vaccinationCount ?? 0);
-            const totalFee = parseFloat(cb.dataset.fee) || 0;
-
-            grandTotal += totalFee;
-
-            // Create animal card (read-only) with detailed breakdown
-            const animalCard = document.createElement('div');
-            animalCard.className = 'flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200';
-            animalCard.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-gray-800">${animalName} (${animalSpecies})</p>
-                            <p class="text-sm text-gray-600">
-                                Base: RM ${baseFee.toFixed(2)} |
-                                Medical: RM ${medicalFee.toFixed(2)} (${medicalCount} record${medicalCount !== 1 ? 's' : ''}) |
-                                Vaccination: RM ${vaccinationFee.toFixed(2)} (${vaccinationCount} shot${vaccinationCount !== 1 ? 's' : ''})
-                            </p>
-                        </div>
-                    </div>
-                    <span class="font-bold text-gray-800">RM ${totalFee.toFixed(2)}</span>
-                `;
-            listContainer.appendChild(animalCard);
-
-            // Create hidden input for form submission
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'animal_ids[]';
-            hiddenInput.value = animalId;
-            hiddenInputsContainer.appendChild(hiddenInput);
-        });
-
-        // *** ADD THIS: Create hidden input for total fee ***
-        const totalFeeInput = document.createElement('input');
-        totalFeeInput.type = 'hidden';
-        totalFeeInput.name = 'total_fee';
-        totalFeeInput.value = grandTotal.toFixed(2);
-        hiddenInputsContainer.appendChild(totalFeeInput);
-        // *** END OF ADDITION ***
-
-        // Update grand total
-        grandTotalEl.innerText = 'RM ' + grandTotal.toFixed(2);
-
-        // Show/hide no animals message and enable/disable submit
-        if (checkboxes.length === 0) {
-            noAnimalsMsg.classList.remove('hidden');
-            submitBtn.disabled = true;
-        } else {
-            noAnimalsMsg.classList.add('hidden');
-            submitBtn.disabled = false;
-        }
-
-        // Open adoption fee modal WITHOUT closing booking modal
-        openModal('adoptionFeeModal-' + bookingId);
-    }
-
-    // Add event listeners for animal selection checkboxes
-    document.addEventListener('DOMContentLoaded', function() {
-        // Find all animal selection checkboxes and add change listeners
-        document.querySelectorAll('[class*="animal-select-"]').forEach(function(cb) {
-            cb.addEventListener('change', function() {
-                // Extract booking ID from class name
-                const classes = this.className.split(' ');
-                const selectClass = classes.find(c => c.startsWith('animal-select-'));
-                if (selectClass) {
-                    const bookingId = selectClass.replace('animal-select-', '');
-                    updateSelectionSummary(bookingId);
-                }
-            });
-        });
-    });
 </script>
 </body>
 </html>
