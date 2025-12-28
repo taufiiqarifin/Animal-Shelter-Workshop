@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stray Animal Reports - Stray Animals Shelter</title>
 
-    {{-- Vite Assets (compiled Tailwind) --}}
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Tailwind CSS CDN --}}
+    <script src="https://cdn.tailwindcss.com"></script>
 
     {{-- Leaflet CSS with error handling --}}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"

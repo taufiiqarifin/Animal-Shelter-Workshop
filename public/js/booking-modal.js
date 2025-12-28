@@ -154,26 +154,66 @@ function updateStepDisplay(bookingId) {
     const indicators = document.querySelectorAll(`#bookingModal-${bookingId} .step-indicator`);
     indicators.forEach((indicator) => {
         const step = parseInt(indicator.dataset.step);
-        const numberEl = indicator.querySelector('.step-number');
+        const circleEl = indicator.querySelector('.step-circle');
+        const numberIcon = indicator.querySelector('.step-number-icon');
+        const checkmarkIcon = indicator.querySelector('.step-checkmark-icon');
+        const titleEl = indicator.querySelector('h4');
+        const subtitleEl = indicator.querySelector('p');
 
         if (step < currentStep) {
-            // Completed step
-            indicator.classList.remove('opacity-50');
-            numberEl.classList.remove('bg-purple-400', 'bg-white', 'text-white', 'text-purple-700');
-            numberEl.classList.add('bg-green-500', 'text-white');
-            numberEl.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>';
+            // Completed step - green checkmark
+            indicator.classList.remove('opacity-60');
+            indicator.classList.add('opacity-100');
+            circleEl.classList.remove('border-purple-300', 'border-purple-600', 'bg-white', 'bg-purple-600', 'shadow-md');
+            circleEl.classList.add('border-green-500', 'bg-green-500', 'shadow-md');
+            if (numberIcon) numberIcon.classList.add('hidden');
+            if (checkmarkIcon) checkmarkIcon.classList.remove('hidden');
+            if (titleEl) {
+                titleEl.classList.remove('text-purple-900', 'text-gray-700');
+                titleEl.classList.add('text-green-700', 'font-bold');
+            }
+            if (subtitleEl) {
+                subtitleEl.classList.remove('text-purple-600', 'text-gray-500');
+                subtitleEl.classList.add('text-green-600');
+            }
         } else if (step === currentStep) {
-            // Active step
-            indicator.classList.remove('opacity-50');
-            numberEl.classList.remove('bg-purple-400', 'bg-green-500', 'text-white');
-            numberEl.classList.add('bg-white', 'text-purple-700');
-            numberEl.textContent = step;
+            // Active step - purple filled
+            indicator.classList.remove('opacity-60');
+            indicator.classList.add('opacity-100');
+            circleEl.classList.remove('border-purple-300', 'border-green-500', 'bg-white', 'bg-green-500');
+            circleEl.classList.add('border-purple-600', 'bg-purple-600', 'shadow-md');
+            if (numberIcon) {
+                numberIcon.classList.remove('hidden', 'text-purple-400');
+                numberIcon.classList.add('text-white', 'font-bold');
+            }
+            if (checkmarkIcon) checkmarkIcon.classList.add('hidden');
+            if (titleEl) {
+                titleEl.classList.remove('text-gray-700', 'text-green-700', 'font-semibold');
+                titleEl.classList.add('text-purple-900', 'font-bold');
+            }
+            if (subtitleEl) {
+                subtitleEl.classList.remove('text-gray-500', 'text-green-600');
+                subtitleEl.classList.add('text-purple-600');
+            }
         } else {
-            // Upcoming step
-            indicator.classList.add('opacity-50');
-            numberEl.classList.remove('bg-white', 'bg-green-500', 'text-purple-700');
-            numberEl.classList.add('bg-purple-400', 'text-white');
-            numberEl.textContent = step;
+            // Upcoming step - purple outline
+            indicator.classList.remove('opacity-100');
+            indicator.classList.add('opacity-60');
+            circleEl.classList.remove('border-purple-600', 'border-green-500', 'bg-purple-600', 'bg-green-500', 'shadow-md');
+            circleEl.classList.add('border-purple-300', 'bg-white');
+            if (numberIcon) {
+                numberIcon.classList.remove('hidden', 'text-white', 'font-bold');
+                numberIcon.classList.add('text-purple-400', 'font-bold');
+            }
+            if (checkmarkIcon) checkmarkIcon.classList.add('hidden');
+            if (titleEl) {
+                titleEl.classList.remove('text-purple-900', 'text-green-700', 'font-bold');
+                titleEl.classList.add('text-gray-700', 'font-semibold');
+            }
+            if (subtitleEl) {
+                subtitleEl.classList.remove('text-purple-600', 'text-green-600');
+                subtitleEl.classList.add('text-gray-500');
+            }
         }
     });
 
@@ -260,11 +300,15 @@ function populateStep3(bookingId) {
     const grandTotalEl = document.getElementById(`grandTotal-${bookingId}`);
     const noAnimalsMsg = document.getElementById(`noAnimalsSelected-${bookingId}`);
     const submitBtn = document.getElementById(`submitBtn-${bookingId}`);
+    const termsCheckbox = document.getElementById(`agree_terms_${bookingId}`);
 
     // Clear previous content
     if (listContainer) listContainer.innerHTML = '';
     if (feeBreakdownContainer) feeBreakdownContainer.innerHTML = '';
     if (hiddenInputsContainer) hiddenInputsContainer.innerHTML = '';
+
+    // Reset terms checkbox to force re-confirmation
+    if (termsCheckbox) termsCheckbox.checked = false;
 
     if (checkboxes.length === 0) {
         if (noAnimalsMsg) noAnimalsMsg.classList.remove('hidden');
@@ -274,7 +318,13 @@ function populateStep3(bookingId) {
     }
 
     if (noAnimalsMsg) noAnimalsMsg.classList.add('hidden');
-    if (submitBtn) submitBtn.disabled = false;
+
+    // Keep button disabled - will be enabled only when terms checkbox is checked
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        submitBtn.classList.remove('hover:bg-purple-700');
+    }
 
     let grandTotal = 0;
 
@@ -294,20 +344,20 @@ function populateStep3(bookingId) {
         // Create animal card for selected animals list
         if (listContainer) {
             const animalCard = document.createElement('div');
-            animalCard.className = 'flex items-center justify-between bg-white rounded-lg p-4 border-2 border-purple-200 shadow-md';
+            animalCard.className = 'flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-200';
             animalCard.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                     </div>
                     <div>
-                        <p class="font-bold text-gray-800 text-lg">${animalName}</p>
+                        <p class="font-semibold text-gray-900">${animalName}</p>
                         <p class="text-sm text-gray-600">${animalSpecies}</p>
                     </div>
                 </div>
-                <span class="font-bold text-purple-700 text-lg">RM ${totalFee.toFixed(2)}</span>
+                <span class="font-semibold text-gray-900">RM ${totalFee.toFixed(2)}</span>
             `;
             listContainer.appendChild(animalCard);
         }
@@ -315,25 +365,25 @@ function populateStep3(bookingId) {
         // Create fee breakdown item
         if (feeBreakdownContainer) {
             const breakdownItem = document.createElement('div');
-            breakdownItem.className = 'border-b border-gray-200 pb-3 last:border-0 last:pb-0';
+            breakdownItem.className = 'pb-3 border-b border-gray-100 last:border-0 last:pb-0';
             breakdownItem.innerHTML = `
-                <div class="flex justify-between items-start mb-2">
-                    <span class="font-semibold text-gray-800">${animalName} (${animalSpecies})</span>
-                    <span class="font-bold text-gray-800">RM ${totalFee.toFixed(2)}</span>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-semibold text-gray-900">${animalName}</span>
+                    <span class="font-semibold text-gray-900">RM ${totalFee.toFixed(2)}</span>
                 </div>
-                <div class="space-y-1 text-sm ml-4">
-                    <div class="flex justify-between text-gray-600">
-                        <span>• Base Fee:</span>
+                <div class="space-y-1 text-xs text-gray-600">
+                    <div class="flex justify-between">
+                        <span>Base</span>
                         <span>RM ${baseFee.toFixed(2)}</span>
                     </div>
                     ${medicalFee > 0 ? `
-                    <div class="flex justify-between text-gray-600">
-                        <span>• Medical Records (${medicalCount}):</span>
+                    <div class="flex justify-between">
+                        <span>Medical (${medicalCount})</span>
                         <span>RM ${medicalFee.toFixed(2)}</span>
                     </div>` : ''}
                     ${vaccinationFee > 0 ? `
-                    <div class="flex justify-between text-gray-600">
-                        <span>• Vaccinations (${vaccinationCount}):</span>
+                    <div class="flex justify-between">
+                        <span>Vaccines (${vaccinationCount})</span>
                         <span>RM ${vaccinationFee.toFixed(2)}</span>
                     </div>` : ''}
                 </div>
@@ -560,6 +610,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+/**
+ * Toggle payment button based on terms checkbox
+ */
+function togglePaymentButton(bookingId) {
+    const checkbox = document.getElementById(`agree_terms_${bookingId}`);
+    const submitBtn = document.getElementById(`submitBtn-${bookingId}`);
+
+    if (checkbox && submitBtn) {
+        if (checkbox.checked) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            submitBtn.classList.add('hover:bg-purple-700');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            submitBtn.classList.remove('hover:bg-purple-700');
+        }
+    }
+}
 
 // Animations
 const style = document.createElement('style');

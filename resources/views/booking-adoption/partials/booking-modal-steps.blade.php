@@ -41,81 +41,94 @@
     }
 @endphp
 
-<div id="bookingModal-{{ $booking->id }}" class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex" onclick="event.stopPropagation()">
+<div id="bookingModal-{{ $booking->id }}" class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation()">
 
-        {{-- Left Sidebar - Steps Indicator --}}
-        <div class="bg-gradient-to-b from-purple-600 to-purple-800 text-white w-64 p-8 flex-shrink-0">
-            <div class="mb-8">
-                <h3 class="text-2xl font-bold">Adoption Process</h3>
-                <p class="text-purple-200 text-sm mt-2">Booking #{{ $booking->id }}</p>
-            </div>
-
-            {{-- Step Indicators --}}
-            <div class="space-y-6">
-                {{-- Step 1 --}}
-                <div class="step-indicator flex items-start gap-4" data-step="1">
-                    <div class="step-number flex-shrink-0 w-10 h-10 rounded-full bg-white text-purple-700 flex items-center justify-center font-bold text-lg">
-                        1
+        {{-- Row 1: Header (Full Width) --}}
+        <div class="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white bg-opacity-20 p-3 rounded-xl backdrop-blur-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
                     </div>
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-lg">Booking Details</h4>
-                        <p class="text-purple-200 text-sm mt-1">Review your appointment</p>
+                    <div>
+                        <h2 class="text-2xl font-bold" id="step-title-{{ $booking->id }}">Booking Details</h2>
+                        <p class="text-purple-100 text-sm" id="step-subtitle-{{ $booking->id }}">Review your booking information</p>
                     </div>
                 </div>
-
-                {{-- Step 2 --}}
-                <div class="step-indicator flex items-start gap-4 opacity-50" data-step="2">
-                    <div class="step-number flex-shrink-0 w-10 h-10 rounded-full bg-purple-400 text-white flex items-center justify-center font-bold text-lg">
-                        2
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-lg">Select Animals</h4>
-                        <p class="text-purple-200 text-sm mt-1">Choose animals to adopt</p>
-                    </div>
-                </div>
-
-                {{-- Step 3 --}}
-                <div class="step-indicator flex items-start gap-4 opacity-50" data-step="3">
-                    <div class="step-number flex-shrink-0 w-10 h-10 rounded-full bg-purple-400 text-white flex items-center justify-center font-bold text-lg">
-                        3
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="font-semibold text-lg">Confirm & Pay</h4>
-                        <p class="text-purple-200 text-sm mt-1">Review and complete</p>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Progress Bar --}}
-            <div class="mt-12">
-                <div class="flex items-center justify-between text-sm mb-2">
-                    <span class="text-purple-200">Progress</span>
-                    <span class="font-semibold" id="progress-text-{{ $booking->id }}">33%</span>
-                </div>
-                <div class="w-full bg-purple-900 rounded-full h-2">
-                    <div id="progress-bar-{{ $booking->id }}" class="bg-white h-2 rounded-full transition-all duration-300" style="width: 33%"></div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Right Content Area --}}
-        <div class="flex-1 flex flex-col overflow-hidden">
-            {{-- Header --}}
-            <div class="bg-gray-50 border-b border-gray-200 p-6 flex items-center justify-between flex-shrink-0">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800" id="step-title-{{ $booking->id }}">Booking Details</h2>
-                    <p class="text-gray-600 text-sm mt-1" id="step-subtitle-{{ $booking->id }}">Review your booking information</p>
-                </div>
-                <button type="button" onclick="closeBookingModal({{ $booking->id }})" class="text-gray-400 hover:text-gray-600 transition">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                <button type="button" onclick="closeBookingModal({{ $booking->id }})" class="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </button>
             </div>
+        </div>
 
-            {{-- Content Steps --}}
-            <div class="flex-1 overflow-y-auto p-8">
+        {{-- Row 2: Two Columns (Steps + Content) --}}
+        <div class="grid grid-cols-12 gap-0">
+
+            {{-- Column 1: Steps Sidebar (3 cols) --}}
+            <div class="col-span-3 bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-50 border-r border-purple-200 p-6">
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-purple-900">Adoption Steps</h3>
+                    <p class="text-sm text-purple-700 mt-1 font-medium">Booking #{{ $booking->id }}</p>
+                </div>
+
+                {{-- Step Indicators --}}
+                <div class="relative space-y-1">
+                    {{-- Vertical connecting line --}}
+                    <div class="absolute left-4 top-10 bottom-10 w-px bg-purple-300"></div>
+
+                    {{-- Step 1 --}}
+                    <div class="step-indicator relative flex items-start gap-3 py-2" data-step="1">
+                        <div class="step-circle relative z-10 flex-shrink-0 w-8 h-8 rounded-full border-2 border-purple-600 bg-purple-600 flex items-center justify-center shadow-md">
+                            <div class="step-number-icon text-white font-bold text-sm">1</div>
+                            <svg class="step-checkmark-icon hidden w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 pt-0.5">
+                            <h4 class="font-bold text-sm text-purple-900">Details</h4>
+                            <p class="text-purple-600 text-xs mt-0.5">Review booking</p>
+                        </div>
+                    </div>
+
+                    {{-- Step 2 --}}
+                    <div class="step-indicator relative flex items-start gap-3 py-2 opacity-60" data-step="2">
+                        <div class="step-circle relative z-10 flex-shrink-0 w-8 h-8 rounded-full border-2 border-purple-300 bg-white flex items-center justify-center">
+                            <div class="step-number-icon text-purple-400 font-bold text-sm">2</div>
+                            <svg class="step-checkmark-icon hidden w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 pt-0.5">
+                            <h4 class="font-semibold text-sm text-gray-700">Select</h4>
+                            <p class="text-gray-500 text-xs mt-0.5">Choose animals</p>
+                        </div>
+                    </div>
+
+                    {{-- Step 3 --}}
+                    <div class="step-indicator relative flex items-start gap-3 py-2 opacity-60" data-step="3">
+                        <div class="step-circle relative z-10 flex-shrink-0 w-8 h-8 rounded-full border-2 border-purple-300 bg-white flex items-center justify-center">
+                            <div class="step-number-icon text-purple-400 font-bold text-sm">3</div>
+                            <svg class="step-checkmark-icon hidden w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 pt-0.5">
+                            <h4 class="font-semibold text-sm text-gray-700">Confirm</h4>
+                            <p class="text-gray-500 text-xs mt-0.5">Complete adoption</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Column 2: Main Content (9 cols) --}}
+            <div class="col-span-9 flex flex-col max-h-[calc(90vh-120px)]">
+                {{-- Content Steps --}}
+                <div class="flex-1 overflow-y-auto p-6">
 
                 {{-- Step 1: Booking Details --}}
                 <div class="step-content" data-step="1" id="step1-{{ $booking->id }}">
@@ -132,28 +145,27 @@
                     @include('booking-adoption.partials.step3-confirm', ['booking' => $booking])
                 </div>
 
-            </div>
+                </div>
 
-            {{-- Footer Navigation --}}
-            <div class="bg-gray-50 border-t border-gray-200 p-6 flex items-center justify-between flex-shrink-0">
-                <button type="button"
-                        id="prev-btn-{{ $booking->id }}"
-                        onclick="previousStep({{ $booking->id }})"
-                        class="hidden px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition duration-300 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
-                    Back
-                </button>
+                {{-- Footer Navigation - Always Visible --}}
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0 sticky bottom-0">
+                    <button type="button"
+                            id="prev-btn-{{ $booking->id }}"
+                            onclick="previousStep({{ $booking->id }})"
+                            class="hidden inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition-all shadow-sm hover:shadow-md border-2 border-gray-200 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        <span>Back</span>
+                    </button>
 
-                <div class="flex gap-3 ml-auto">
                     @if(in_array(strtolower($booking->status), ['pending', 'confirmed']))
                         <button type="button"
                                 id="next-btn-{{ $booking->id }}"
                                 onclick="nextStep({{ $booking->id }})"
-                                class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition duration-300 shadow-lg flex items-center gap-2">
-                            Next
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="ml-auto inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm">
+                            <span>Next</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
                         </button>

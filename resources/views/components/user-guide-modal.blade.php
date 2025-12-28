@@ -271,7 +271,7 @@
 
                         <div class="flex items-start gap-3 bg-white p-4 rounded-lg shadow-sm">
                             <div class="bg-teal-100 text-teal-600 p-2 rounded-lg flex-shrink-0">
-                                <i class="fas fa-home-heart"></i>
+                                <i class="fas fa-heart"></i>
                             </div>
                             <div>
                                 <h4 class="font-bold text-gray-800">Adopt Animals</h4>

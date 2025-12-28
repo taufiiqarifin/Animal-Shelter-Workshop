@@ -1,35 +1,29 @@
 {{-- Step 2: Select Animals to Adopt --}}
-<div class="space-y-6">
+<div class="space-y-5">
 
     @if($animals->isNotEmpty())
         {{-- Instructions --}}
-        <div class="bg-purple-50 border-l-4 border-purple-600 rounded-lg p-5">
-            <h3 class="font-bold text-gray-800 mb-2 flex items-center">
-                <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Select Animals to Adopt
-            </h3>
+        <div class="bg-purple-50 rounded-xl p-4 border border-purple-200">
             <p class="text-sm text-gray-700">
-                Choose one or more animals from your booking that you would like to adopt. The adoption fee will be calculated based on your selection.
+                Select the animals you'd like to adopt. Fees include medical care and vaccinations.
             </p>
         </div>
 
         {{-- Animal Selection Grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             @foreach($animals as $index => $animal)
                 @php
                     $breakdown = $allFeeBreakdowns[$animal->id] ?? null;
                 @endphp
 
                 <label class="cursor-pointer group block">
-                    <div class="bg-white rounded-xl p-5 shadow-lg border-3 border-transparent group-hover:border-purple-400 transition-all relative
-                        has-[:checked]:border-purple-600 has-[:checked]:ring-4 has-[:checked]:ring-purple-200 has-[:checked]:shadow-xl">
+                    <div class="bg-white rounded-xl p-4 border border-gray-200 group-hover:border-purple-300 transition-all relative
+                        has-[:checked]:border-purple-500 has-[:checked]:bg-purple-50">
 
                         {{-- Checkbox --}}
                         <input type="checkbox"
                                id="selectAnimal-{{ $booking->id }}-{{ $animal->id }}"
-                               class="animal-select-{{ $booking->id }} absolute top-4 right-4 w-6 h-6 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                               class="animal-select-{{ $booking->id }} absolute top-4 right-4 w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500 cursor-pointer"
                                data-animal-id="{{ $animal->id }}"
                                data-animal-name="{{ $animal->name }}"
                                data-animal-species="{{ $animal->species }}"
@@ -42,8 +36,8 @@
                                {{ $index === 0 ? 'checked' : '' }}>
 
                         {{-- Selected Badge --}}
-                        <div class="selected-badge hidden absolute top-4 right-4 bg-purple-600 text-white rounded-full p-2 shadow-lg">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <div class="selected-badge hidden absolute top-3 right-3 bg-purple-600 text-white rounded-full p-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                             </svg>
                         </div>
@@ -52,10 +46,10 @@
                         @if($animal->images && $animal->images->count() > 0)
                             <img src="{{ $animal->images->first()->url }}"
                                  alt="{{ $animal->name }}"
-                                 class="w-full h-48 object-cover rounded-lg mb-4">
+                                 class="w-full h-40 object-cover rounded-lg mb-3">
                         @else
-                            <div class="w-full h-48 bg-gradient-to-br from-purple-300 to-purple-400 rounded-lg flex items-center justify-center mb-4">
-                                <span class="text-6xl">
+                            <div class="w-full h-40 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
+                                <span class="text-5xl">
                                     @if(strtolower($animal->species) == 'dog') 🐕
                                     @elseif(strtolower($animal->species) == 'cat') 🐈
                                     @else 🐾
@@ -65,53 +59,49 @@
                         @endif
 
                         {{-- Animal Info --}}
-                        <div class="mb-4">
-                            <h4 class="text-xl font-bold text-gray-800 mb-1">{{ $animal->name }}</h4>
-                            <p class="text-gray-600 text-sm mb-3">{{ $animal->species }} • {{ $animal->age }} • {{ $animal->gender }}</p>
+                        <div class="mb-3">
+                            <h4 class="text-lg font-semibold text-gray-900 mb-1">{{ $animal->name }}</h4>
+                            <p class="text-sm text-gray-600 mb-2">{{ $animal->species }} • {{ $animal->age }} • {{ $animal->gender }}</p>
 
                             {{-- Health Records Summary --}}
-                            <div class="flex gap-2 flex-wrap mb-3">
-                                @if($breakdown && $breakdown['medical_count'] > 0)
-                                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        {{ $breakdown['medical_count'] }} Medical Record{{ $breakdown['medical_count'] > 1 ? 's' : '' }}
+                            @if($breakdown && ($breakdown['medical_count'] > 0 || $breakdown['vaccination_count'] > 0))
+                            <div class="flex gap-1.5 flex-wrap">
+                                @if($breakdown['medical_count'] > 0)
+                                    <span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                                        {{ $breakdown['medical_count'] }} Medical
                                     </span>
                                 @endif
-                                @if($breakdown && $breakdown['vaccination_count'] > 0)
-                                    <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        {{ $breakdown['vaccination_count'] }} Vaccination{{ $breakdown['vaccination_count'] > 1 ? 's' : '' }}
+                                @if($breakdown['vaccination_count'] > 0)
+                                    <span class="px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium">
+                                        {{ $breakdown['vaccination_count'] }} Vaccine{{ $breakdown['vaccination_count'] > 1 ? 's' : '' }}
                                     </span>
                                 @endif
                             </div>
+                            @endif
                         </div>
 
                         {{-- Fee Breakdown --}}
                         @if($breakdown)
-                            <div class="border-t pt-4 space-y-2">
-                                <div class="flex justify-between text-sm">
-                                    <span class="text-gray-600">Base Fee ({{ $animal->species }}):</span>
-                                    <span class="font-medium text-gray-800">RM {{ number_format($breakdown['base_fee'], 2) }}</span>
+                            <div class="pt-3 border-t border-gray-100 space-y-1.5">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Base</span>
+                                    <span class="font-medium text-gray-900">RM {{ number_format($breakdown['base_fee'], 2) }}</span>
                                 </div>
                                 @if($breakdown['medical_fee'] > 0)
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">Medical ({{ $breakdown['medical_count'] }} × RM {{ $breakdown['medical_rate'] }}):</span>
-                                        <span class="font-medium text-gray-800">RM {{ number_format($breakdown['medical_fee'], 2) }}</span>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-600">Medical</span>
+                                        <span class="font-medium text-gray-900">RM {{ number_format($breakdown['medical_fee'], 2) }}</span>
                                     </div>
                                 @endif
                                 @if($breakdown['vaccination_fee'] > 0)
-                                    <div class="flex justify-between text-sm">
-                                        <span class="text-gray-600">Vaccination ({{ $breakdown['vaccination_count'] }} × RM {{ $breakdown['vaccination_rate'] }}):</span>
-                                        <span class="font-medium text-gray-800">RM {{ number_format($breakdown['vaccination_fee'], 2) }}</span>
+                                    <div class="flex justify-between text-xs">
+                                        <span class="text-gray-600">Vaccines</span>
+                                        <span class="font-medium text-gray-900">RM {{ number_format($breakdown['vaccination_fee'], 2) }}</span>
                                     </div>
                                 @endif
-                                <div class="flex justify-between text-base font-bold pt-2 border-t">
-                                    <span class="text-purple-700">Total Fee:</span>
-                                    <span class="text-purple-700">RM {{ number_format($breakdown['total_fee'], 2) }}</span>
+                                <div class="flex justify-between text-sm font-semibold pt-1.5 border-t border-gray-100">
+                                    <span class="text-gray-900">Total</span>
+                                    <span class="text-purple-600">RM {{ number_format($breakdown['total_fee'], 2) }}</span>
                                 </div>
                             </div>
                         @endif
@@ -121,24 +111,18 @@
         </div>
 
         {{-- Selection Summary --}}
-        <div class="bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-6">
-            <h3 class="font-bold text-gray-800 mb-4 flex items-center text-lg">
-                <svg class="w-6 h-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                </svg>
-                Selection Summary
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-white rounded-lg p-5 shadow-md">
-                    <p class="text-sm text-gray-600 mb-1">Animals Selected</p>
-                    <p class="text-3xl font-bold text-purple-700">
+        <div class="bg-purple-600 rounded-xl p-5">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-purple-200 mb-1">Selected</p>
+                    <p class="text-2xl font-bold text-white">
                         <span id="selectedCount-{{ $booking->id }}">1</span>
-                        <span class="text-lg text-gray-600">/ {{ $animals->count() }}</span>
+                        <span class="text-base text-purple-200 font-normal">/ {{ $animals->count() }}</span>
                     </p>
                 </div>
-                <div class="bg-white rounded-lg p-5 shadow-md">
-                    <p class="text-sm text-gray-600 mb-1">Estimated Adoption Fee</p>
-                    <p class="text-3xl font-bold text-green-600" id="estimatedFee-{{ $booking->id }}">
+                <div>
+                    <p class="text-sm text-purple-200 mb-1">Total Fee</p>
+                    <p class="text-2xl font-bold text-white" id="estimatedFee-{{ $booking->id }}">
                         RM {{ number_format($allFeeBreakdowns[$animals->first()->id]['total_fee'] ?? 0, 2) }}
                     </p>
                 </div>

@@ -118,6 +118,37 @@
             </div>
         </div>
 
+        <!-- Shelter Slot Assignment -->
+        <div>
+            <label class="flex items-center gap-2 text-gray-800 font-semibold mb-2">
+                <i class="fas fa-home text-purple-600"></i>
+                Assign to Shelter Slot <span class="text-red-600">*</span>
+            </label>
+            <div class="relative">
+                <select id="animalSlot" required
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition appearance-none cursor-pointer bg-white">
+                    <option value="">Select available slot</option>
+                    @if(isset($availableSlots) && $availableSlots->count() > 0)
+                        @foreach($availableSlots as $slot)
+                            <option value="{{ $slot->id }}">
+                                🏠 {{ $slot->section->name ?? 'Unknown Section' }} - Slot {{ $slot->slot_number }}
+                                (Capacity: {{ $slot->capacity }})
+                            </option>
+                        @endforeach
+                    @else
+                        <option value="" disabled>No available slots</option>
+                    @endif
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-600">
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <i class="fas fa-info-circle text-purple-600"></i>
+                <span>Only available slots are shown</span>
+            </p>
+        </div>
+
         <!-- Animal Images -->
         <div>
             <label class="flex items-center gap-2 text-gray-800 font-semibold mb-2">

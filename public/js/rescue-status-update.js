@@ -116,34 +116,45 @@ function closeSuccessRemarksModal() {
 
 function proceedToAnimalAddition() {
     const remarks = document.getElementById('successRescueRemarks').value.trim();
+    const textarea = document.getElementById('successRescueRemarks');
+    let errorMessage = '';
 
+    // Validate remarks
     if (!remarks) {
-        // Show validation error in the remarks modal
-        const textarea = document.getElementById('successRescueRemarks');
+        errorMessage = 'Please provide rescue remarks before proceeding.';
+    } else if (remarks.length < 10) {
+        errorMessage = `Remarks must be at least 10 characters. Currently: ${remarks.length} characters.`;
+    } else if (remarks.length > 1000) {
+        errorMessage = `Remarks must not exceed 1000 characters. Currently: ${remarks.length} characters.`;
+    }
+
+    // If validation fails, show error and prevent modal from opening
+    if (errorMessage) {
+        // Add error styling to textarea
         textarea.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
         textarea.classList.remove('border-gray-200', 'focus:ring-green-200', 'focus:border-green-500');
 
-        // Create temporary error message
+        // Create or update error message
         let errorDiv = document.getElementById('remarksError');
         if (!errorDiv) {
             errorDiv = document.createElement('div');
             errorDiv.id = 'remarksError';
             errorDiv.className = 'mt-2 flex items-start gap-2 bg-red-50 p-3 rounded-lg border border-red-300';
-            errorDiv.innerHTML = `
-                <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <p class="text-sm text-red-700 font-medium">Please provide rescue remarks before proceeding.</p>
-            `;
             textarea.parentNode.appendChild(errorDiv);
         }
 
+        errorDiv.innerHTML = `
+            <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm text-red-700 font-medium">${errorMessage}</p>
+        `;
+
         textarea.focus();
-        return;
+        return; // Prevent modal from opening
     }
 
-    // Remove error styling if it exists
-    const textarea = document.getElementById('successRescueRemarks');
+    // Remove error styling if validation passes
     textarea.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
     textarea.classList.add('border-gray-200', 'focus:ring-green-200', 'focus:border-green-500');
     const errorDiv = document.getElementById('remarksError');
@@ -167,15 +178,49 @@ function submitStatusUpdate(event) {
     event.preventDefault();
 
     const remarks = document.getElementById('remarks').value.trim();
+    const textarea = document.getElementById('remarks');
+    let errorMessage = '';
 
+    // Validate remarks
     if (!remarks) {
-        // Show validation error in the remarks modal
-        const textarea = document.getElementById('remarks');
+        errorMessage = 'Please provide rescue remarks before submitting.';
+    } else if (remarks.length < 10) {
+        errorMessage = `Remarks must be at least 10 characters. Currently: ${remarks.length} characters.`;
+    } else if (remarks.length > 1000) {
+        errorMessage = `Remarks must not exceed 1000 characters. Currently: ${remarks.length} characters.`;
+    }
+
+    // If validation fails, show error and prevent submission
+    if (errorMessage) {
+        // Add error styling to textarea
         textarea.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
         textarea.classList.remove('border-gray-300', 'focus:ring-purple-500', 'focus:border-transparent');
+
+        // Create or update error message
+        let errorDiv = document.getElementById('failedRemarksError');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.id = 'failedRemarksError';
+            errorDiv.className = 'mt-2 flex items-start gap-2 bg-red-50 p-3 rounded-lg border border-red-300';
+            textarea.parentNode.appendChild(errorDiv);
+        }
+
+        errorDiv.innerHTML = `
+            <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm text-red-700 font-medium">${errorMessage}</p>
+        `;
+
         textarea.focus();
-        return;
+        return; // Prevent submission
     }
+
+    // Remove error styling if validation passes
+    textarea.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+    textarea.classList.add('border-gray-300', 'focus:ring-purple-500', 'focus:border-transparent');
+    const errorDiv = document.getElementById('failedRemarksError');
+    if (errorDiv) errorDiv.remove();
 
     // Continue with form submission
     const form = document.getElementById('statusForm');
@@ -276,18 +321,41 @@ function showValidationAlert(message) {
     messageElement.textContent = message;
     alert.classList.remove('hidden');
 
-    // Scroll to the alert
-    alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Scroll modal content to top to ensure alert is visible
+    const modalBody = document.getElementById('successModalBody');
+    if (modalBody) {
+        // Scroll the parent container (the modal's scrollable content)
+        const scrollContainer = modalBody.closest('.overflow-y-auto');
+        if (scrollContainer) {
+            scrollContainer.scrollTop = 0;
+        }
+    }
 
-    // Auto-hide after 5 seconds
+    // Also scroll the alert into view as backup
     setTimeout(() => {
-        hideValidationAlert();
-    }, 5000);
+        alert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    // Don't auto-hide errors - user must manually dismiss them
 }
 
 function hideValidationAlert() {
     const alert = document.getElementById('validationAlert');
     alert.classList.add('hidden');
+}
+
+function scrollModalToTop() {
+    // Find the scrollable modal content container and scroll to top
+    const step2Content = document.getElementById('step2Content');
+    if (step2Content) {
+        const scrollContainer = step2Content.closest('.overflow-y-auto');
+        if (scrollContainer) {
+            scrollContainer.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    }
 }
 
 // ==================== ANIMAL FORM FUNCTIONS ====================
@@ -395,6 +463,9 @@ function updateStepDisplay() {
         document.getElementById('nextBtn').classList.remove('hidden');
         document.getElementById('submitSuccessBtn').classList.add('hidden');
         updateAnimalProgress();
+
+        // Scroll to top when entering step 2 or moving between animals
+        scrollModalToTop();
     } else if (currentStep === 3) {
         document.getElementById('step3Content').classList.remove('hidden');
         document.getElementById('backBtn').classList.remove('hidden');
@@ -565,9 +636,10 @@ function validateAnimalForm() {
     const age = document.getElementById('animalAge').value;
     const weight = document.getElementById('animalWeight').value;
     const healthDetails = document.getElementById('animalHealthDetails').value;
+    const slotID = document.getElementById('animalSlot').value;
     const images = document.getElementById('animalImages').files;
 
-    if (!name || !species || !gender || !age || !weight || !healthDetails) {
+    if (!name || !species || !gender || !age || !weight || !healthDetails || !slotID) {
         showValidationAlert('Please fill in all required fields');
 
         // Focus on first empty field
@@ -577,6 +649,7 @@ function validateAnimalForm() {
         else if (!age) document.getElementById('animalAge').focus();
         else if (!weight) document.getElementById('animalWeight').focus();
         else if (!healthDetails) document.getElementById('animalHealthDetails').focus();
+        else if (!slotID) document.getElementById('animalSlot').focus();
 
         return false;
     }
@@ -608,6 +681,7 @@ function saveCurrentAnimal() {
         age: document.getElementById('animalAge').value,
         weight: parseFloat(document.getElementById('animalWeight').value),
         health_details: document.getElementById('animalHealthDetails').value,
+        slotID: document.getElementById('animalSlot').value, // Shelter slot assignment
         adoption_status: 'Not Adopted', // All rescued animals start as 'Not Adopted'
         rescueID: rescueId // Uses global rescueId variable from inline script
     };
@@ -633,6 +707,7 @@ function clearAnimalForm() {
     document.getElementById('animalAge').value = '';
     document.getElementById('animalWeight').value = '';
     document.getElementById('animalHealthDetails').value = '';
+    document.getElementById('animalSlot').value = '';
     document.getElementById('animalImages').value = '';
     document.getElementById('animalImagePreview').innerHTML = '';
 
@@ -650,6 +725,7 @@ function loadAnimalData(index) {
         document.getElementById('animalAge').value = animal.age;
         document.getElementById('animalWeight').value = animal.weight;
         document.getElementById('animalHealthDetails').value = animal.health_details;
+        document.getElementById('animalSlot').value = animal.slotID || '';
 
         // Restore image preview if exists
         if (animalImagesMap[index] && animalImagesMap[index].length > 0) {
@@ -816,8 +892,12 @@ function submitSuccessRescue() {
         mapContainer.style.zIndex = '1';
     }
 
+    // Change form action to use the correct endpoint for animal additions
+    const originalAction = form.action;
+    const updateWithAnimalsUrl = originalAction.replace('/update-status', '/update-status-with-animals');
+
     // Submit form using AJAX since we have file uploads
-    fetch(form.action, {
+    fetch(updateWithAnimalsUrl, {
         method: 'POST',
         body: formData,
         headers: {
@@ -825,21 +905,81 @@ function submitSuccessRescue() {
             'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
         }
     })
-    .then(response => {
-        if (response.ok) {
-            // Reload page on success
-            window.location.reload();
+    .then(async response => {
+        // Always parse JSON response
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success) {
+            // Success - redirect to the page specified in response or reload
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                window.location.reload();
+            }
         } else {
-            throw new Error('Submission failed');
+            // Hide loading overlay
+            loadingOverlay.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+
+            // Restore map z-index
+            if (mapContainer) {
+                mapContainer.style.zIndex = '1';
+            }
+
+            // Get error message from server response
+            let errorMessage = '';
+
+            // Handle Laravel validation errors (422 status)
+            if (response.status === 422 && data.errors) {
+                errorMessage = 'Validation errors:\n\n';
+                for (const field in data.errors) {
+                    const messages = Array.isArray(data.errors[field]) ? data.errors[field] : [data.errors[field]];
+                    messages.forEach(msg => {
+                        errorMessage += `• ${msg}\n`;
+                    });
+                }
+            }
+            // Handle database offline errors (503 status)
+            else if (response.status === 503) {
+                errorMessage = data.message || 'Service temporarily unavailable. Required databases are offline.';
+            }
+            // Handle other errors
+            else {
+                errorMessage = data.message ||
+                              data.error ||
+                              `Server error (${response.status}): ${response.statusText}`;
+            }
+
+            // Re-open modal to show error
+            openSuccessModal();
+
+            // Show detailed error message
+            showValidationAlert(errorMessage.trim());
+
+            // Log full error details for debugging
+            console.error('Submission failed:', {
+                status: response.status,
+                statusText: response.statusText,
+                data: data
+            });
         }
     })
     .catch(error => {
+        // Network error or unexpected error
         loadingOverlay.classList.add('hidden');
         document.body.style.overflow = 'auto';
 
+        // Restore map z-index
+        if (mapContainer) {
+            mapContainer.style.zIndex = '1';
+        }
+
         // Show error in modal
         openSuccessModal();
-        showValidationAlert('An error occurred while submitting. Please try again.');
-        console.error(error);
+        showValidationAlert(
+            'Network error: Unable to connect to the server. Please check your connection and try again.\n\n' +
+            'Error details: ' + error.message
+        );
+        console.error('Network error:', error);
     });
 }

@@ -74,7 +74,9 @@ Route::middleware('auth')->group(function () {
     // Rescue Management Routes
     Route::prefix('rescues')->group(function () {
         Route::get('/', [StrayReportingManagementController::class, 'indexcaretaker'])->name('rescues.index');
+        Route::get('/count/new', [StrayReportingManagementController::class, 'getNewRescueCount'])->name('rescues.count.new');
         Route::get('/{id}', [StrayReportingManagementController::class, 'showCaretaker'])->name('rescues.show');
+        Route::patch('/{id}/update-status-with-animals', [StrayReportingManagementController::class, 'updateStatusWithAnimals'])->name('rescues.update-status-with-animals');
         Route::patch('/{id}/update-status', [StrayReportingManagementController::class, 'updateStatusCaretaker'])->name('rescues.update-status');
     });
 });

@@ -88,6 +88,14 @@ class StrayReportingManagementController extends Controller
             ]);
 
             if ($validator->fails()) {
+                if ($request->wantsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Please check the form and try again.',
+                        'errors' => $validator->errors()
+                    ], 422);
+                }
+
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput()
@@ -141,6 +149,13 @@ class StrayReportingManagementController extends Controller
 
             DB::connection('eilya')->commit();
 
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Report submitted successfully! Our team will review it shortly.'
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Report submitted successfully!');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -149,6 +164,14 @@ class StrayReportingManagementController extends Controller
             // Clean up uploaded files
             foreach ($uploadedFiles as $filePath) {
                 cloudinary()->uploadApi()->destroy($filePath);
+            }
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please check the form and try again.',
+                    'errors' => $e->errors()
+                ], 422);
             }
 
             return redirect()->back()
@@ -167,6 +190,13 @@ class StrayReportingManagementController extends Controller
                 'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to submit report: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()
                 ->withInput()
@@ -486,6 +516,23 @@ class StrayReportingManagementController extends Controller
 
     public function updateStatusCaretaker(Request $request, $id)
     {
+        // Check if atiqah database (Slots) is required and available
+        if ($request->status === Rescue::STATUS_SUCCESS) {
+            if (!$this->isDatabaseAvailable('atiqah')) {
+                return redirect()->back()->with('error',
+                    'Cannot complete rescue: Shelter Management database (slots) is currently offline. ' .
+                    'Animals must be assigned to shelter slots. Please try again later or contact the system administrator.'
+                );
+            }
+
+            if (!$this->isDatabaseAvailable('shafiqah')) {
+                return redirect()->back()->with('error',
+                    'Cannot complete rescue: Animal Management database is currently offline. ' .
+                    'Please try again later or contact the system administrator.'
+                );
+            }
+        }
+
         // Start transaction on eilya database (Rescue and Report tables)
         DB::connection('eilya')->beginTransaction();
 
@@ -598,7 +645,36 @@ class StrayReportingManagementController extends Controller
                 ->where('caretakerID', Auth::id())
                 ->firstOrFail();
 
-            return view('stray-reporting.show-caretaker', compact('rescue'));
+            // Check if databases required for animal addition are available
+            $canCompleteRescue = $this->isDatabaseAvailable('atiqah') && $this->isDatabaseAvailable('shafiqah');
+            $dbWarning = null;
+
+            if (!$canCompleteRescue) {
+                $offlineDbs = [];
+                if (!$this->isDatabaseAvailable('atiqah')) {
+                    $offlineDbs[] = 'Shelter Management (Slots)';
+                }
+                if (!$this->isDatabaseAvailable('shafiqah')) {
+                    $offlineDbs[] = 'Animal Management';
+                }
+                $dbWarning = 'Cannot complete rescue and add animals: ' . implode(', ', $offlineDbs) . ' database is offline.';
+            }
+
+            // Fetch available slots for animal assignment (only if atiqah is online)
+            $availableSlots = collect([]);
+            if ($this->isDatabaseAvailable('atiqah')) {
+                $availableSlots = $this->safeQuery(
+                    fn() => \App\Models\Slot::with('section')
+                        ->where('status', 'available')
+                        ->orderBy('sectionID')
+                        ->orderBy('id')
+                        ->get(),
+                    collect([]),
+                    'atiqah'
+                );
+            }
+
+            return view('stray-reporting.show-caretaker', compact('rescue', 'canCompleteRescue', 'dbWarning', 'availableSlots'));
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             \Log::error('Rescue not found or unauthorized for caretaker view: ' . $e->getMessage(), [
@@ -621,11 +697,57 @@ class StrayReportingManagementController extends Controller
     }
 
     /**
+     * Get count of new assigned rescues for caretaker (AJAX endpoint)
+     * Returns count of rescues with "Scheduled" status
+     */
+    public function getNewRescueCount()
+    {
+        try {
+            $count = Rescue::where('caretakerID', Auth::id())
+                ->where('status', Rescue::STATUS_SCHEDULED)
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'count' => $count
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'count' => 0,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Handle successful rescue with animal creation (AJAX endpoint)
      * This method processes the multi-step animal addition form
      */
     public function updateStatusWithAnimals(Request $request, $id)
     {
+        // Check critical database availability before processing
+        if (!$this->isDatabaseAvailable('atiqah')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot add animals: Shelter Management database (slots) is currently offline. Animals must be assigned to shelter slots. Please try again later.'
+            ], 503);
+        }
+
+        if (!$this->isDatabaseAvailable('shafiqah')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot add animals: Animal Management database is currently offline. Please try again later.'
+            ], 503);
+        }
+
+        if (!$this->isDatabaseAvailable('eilya')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update rescue: Rescue database is currently offline. Please try again later.'
+            ], 503);
+        }
+
         // Start transactions on both eilya (Rescue) and shafiqah (Animal) databases
         DB::connection('eilya')->beginTransaction();
         DB::connection('shafiqah')->beginTransaction();
@@ -675,7 +797,7 @@ class StrayReportingManagementController extends Controller
                     'health_details' => $animalData['health_details'],
                     'adoption_status' => $animalData['adoption_status'], // 'Not Adopted'
                     'rescueID' => $animalData['rescueID'],
-                    'slotID' => null, // Assign slot later
+                    'slotID' => $animalData['slotID'] ?? null, // Shelter slot assignment
                 ]);
 
                 // Handle image uploads for this animal
@@ -716,10 +838,13 @@ class StrayReportingManagementController extends Controller
             DB::connection('eilya')->commit();
             DB::connection('shafiqah')->commit();
 
+            // Store success message in session for display after redirect
+            session()->flash('success', 'Rescue completed successfully! ' . count($animalsData) . ' animal(s) added to the shelter.');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Rescue completed successfully! ' . count($animalsData) . ' animal(s) added to the shelter.',
-                'redirect' => route('rescues.index')
+                'redirect' => route('rescues.show', $rescue->id)
             ]);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

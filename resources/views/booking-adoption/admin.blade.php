@@ -258,30 +258,30 @@
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
+                    <thead class="bg-gradient-to-r from-purple-500 to-purple-600">
                     <tr>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             Booking ID
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             User
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             Status
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             Appointment Date
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             Time
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             Animals
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                             Adoption
                         </th>
-                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th scope="col" class="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
                             Actions
                         </th>
                     </tr>
@@ -303,69 +303,54 @@
                                 'cancelled' => '❌',
                             ];
                         @endphp
-                        <tr class="hover:bg-gray-50 transition duration-150">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-bold text-gray-900">#{{ $booking->id }}</div>
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">📅</span>
+                                    <span class="text-sm font-bold text-purple-700">#{{ $booking->id }}</span>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap">
                                 @if($booking->user)
-                                    <div class="flex items-center">
-                                        <div class="bg-green-100 rounded-full p-2 mr-3">
-                                            <svg class="w-4 h-4 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900">{{ $booking->user->name }}</div>
-                                            <div class="text-xs text-gray-500">{{ $booking->user->email }}</div>
-                                        </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ $booking->user->name }}</div>
+                                        <div class="text-xs text-gray-500">{{ $booking->user->email }}</div>
                                     </div>
                                 @else
                                     <span class="text-sm text-gray-500">N/A</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-3 py-1 inline-flex items-center gap-1 text-xs leading-5 font-semibold rounded-full border {{ $badgeColors[$statusKey] ?? 'bg-gray-100 text-gray-800' }}">
-                                        <span>{{ $statusEmojis[$statusKey] ?? '📅' }}</span>
-                                        {{ ucfirst($booking->status) }}
-                                    </span>
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $badgeColors[$statusKey] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ ucfirst($booking->status) }}
+                                </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 text-purple-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span class="text-sm font-medium text-gray-700">
-                                            {{ \Carbon\Carbon::parse($booking->appointment_date)->format('M d, Y') }}
-                                        </span>
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 font-medium">
+                                    {{ \Carbon\Carbon::parse($booking->appointment_date)->format('M d, Y') }}
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 text-purple-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span class="text-sm font-medium text-gray-700">
-                                            {{ \Carbon\Carbon::parse($booking->appointment_time)->format('h:i A') }}
-                                        </span>
+                            <td class="px-4 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 font-medium">
+                                    {{ \Carbon\Carbon::parse($booking->appointment_time)->format('h:i A') }}
                                 </div>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-4 py-4">
                                 @if($booking->animals->isNotEmpty())
                                     <div class="flex items-center gap-2">
-                                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
-                                                {{ $booking->animals->count() }}
-                                            </span>
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
+                                            {{ $booking->animals->count() }}
+                                        </span>
                                         <div class="flex flex-wrap gap-1">
                                             @foreach($booking->animals->take(2) as $animal)
                                                 <span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                        {{ $animal->name }}
-                                                    </span>
+                                                    {{ $animal->name }}
+                                                </span>
                                             @endforeach
                                             @if($booking->animals->count() > 2)
                                                 <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                        +{{ $booking->animals->count() - 2 }}
-                                                    </span>
+                                                    +{{ $booking->animals->count() - 2 }}
+                                                </span>
                                             @endif
                                         </div>
                                     </div>
@@ -373,7 +358,7 @@
                                     <span class="text-sm text-gray-400">No animals</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <td class="px-4 py-4 whitespace-nowrap text-center">
                                 @if($booking->adoptions->isNotEmpty())
                                     <button onclick="openAdoptionModal({{ $booking->id }})"
                                             class="inline-flex items-center px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded-full text-xs font-semibold transition"
@@ -387,14 +372,15 @@
                                     <span class="text-xs text-gray-400">—</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button onclick="openBookingModal({{ $booking->id }})"
-                                        class="text-purple-600 hover:text-purple-900 transition duration-150"
-                                        title="View Details">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <td class="px-4 py-4 whitespace-nowrap text-center">
+                                <button type="button"
+                                        onclick="openBookingModal({{ $booking->id }})"
+                                        class="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200 shadow-sm hover:shadow-md">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
+                                    View
                                 </button>
                             </td>
                         </tr>

@@ -46,10 +46,25 @@ class ProfileController extends Controller
                        'Adopter Profile updated successfully!' :
                        'Adopter Profile created successfully!';
 
-            // 4. Redirect back with success message
+            // 4. Return JSON for AJAX requests, redirect for regular requests
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message
+                ]);
+            }
+
             return redirect()->back()->with('success', $message);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please check the form and try again.',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput()
@@ -59,6 +74,13 @@ class ProfileController extends Controller
                 'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save Adopter Profile: ' . $e->getMessage()
+                ], 500);
+            }
 
             return redirect()->back()
                 ->withInput()
