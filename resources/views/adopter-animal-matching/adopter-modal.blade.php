@@ -8,7 +8,7 @@
 
         <div class="sticky top-0 bg-purple-600 text-white p-6 rounded-t-2xl flex justify-between items-center">
             <h2 class="text-2xl font-bold flex items-center">
-                <i class="fas fa-user-circle mr-3"></i> 
+                <i class="fas fa-user-circle mr-3"></i>
                 Adopter Profile
             </h2>
             <button type="button" onclick="closeAdopterModal()" class="hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition">
@@ -18,7 +18,10 @@
             </button>
         </div>
 
-        <form action="{{ route('adopter.profile.store') }}" method="POST" class="p-6 space-y-5">
+        <!-- Alert Container (Hidden by default) -->
+        <div id="adopterModalAlert" class="hidden mx-6 mt-6"></div>
+
+        <form id="adopterProfileForm" action="{{ route('adopter.profile.store') }}" method="POST" class="p-6 space-y-5">
             @csrf
 
             <!-- Housing Type -->
@@ -100,16 +103,28 @@
             </div>
 
             <div class="flex gap-3 pt-4">
-                <button type="button" onclick="closeAdopterModal()" class="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition">
+                <button type="button" onclick="closeAdopterModal()" id="cancelAdopterBtn" class="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition">
                     Cancel
                 </button>
-                <button type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg">
-                    Save Profile
+                <button type="submit" id="saveAdopterBtn" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg flex items-center gap-2 justify-center">
+                    <span id="saveAdopterBtnText">Save Profile</span>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<style>
+    /* Loading spinner animation */
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+</style>
 
 <script>
     // Function to open the modal
@@ -122,5 +137,113 @@
     function closeAdopterModal() {
         document.getElementById('adopterModal').classList.add('hidden');
         document.getElementById('adopterModal').classList.remove('flex');
+    }
+
+    // Handle form submission with AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        const adopterForm = document.getElementById('adopterProfileForm');
+        const alertContainer = document.getElementById('adopterModalAlert');
+
+        if (adopterForm) {
+            adopterForm.addEventListener('submit', async function(e) {
+                e.preventDefault(); // Prevent default form submission
+
+                const saveBtn = document.getElementById('saveAdopterBtn');
+                const cancelBtn = document.getElementById('cancelAdopterBtn');
+                const originalBtnText = saveBtn.innerHTML;
+
+                // Hide any existing alerts
+                alertContainer.classList.add('hidden');
+                alertContainer.innerHTML = '';
+
+                // Disable both buttons
+                saveBtn.disabled = true;
+                cancelBtn.disabled = true;
+
+                // Show loading spinner
+                saveBtn.innerHTML = `
+                    <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Saving Profile...</span>
+                `;
+
+                try {
+                    const formData = new FormData(adopterForm);
+                    const response = await fetch(adopterForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Show success message
+                        showModalAlert('success', data.message || 'Profile saved successfully!');
+
+                        // Auto-hide success message after 3 seconds
+                        setTimeout(() => {
+                            alertContainer.classList.add('hidden');
+                        }, 3000);
+                    } else {
+                        // Show error message
+                        let errorMessage = data.message || 'An error occurred while saving your profile.';
+
+                        // Handle validation errors
+                        if (data.errors) {
+                            errorMessage = '<ul class="list-disc list-inside">';
+                            for (const field in data.errors) {
+                                data.errors[field].forEach(error => {
+                                    errorMessage += `<li>${error}</li>`;
+                                });
+                            }
+                            errorMessage += '</ul>';
+                        }
+
+                        showModalAlert('error', errorMessage);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showModalAlert('error', 'Network error. Please check your connection and try again.');
+                } finally {
+                    // Re-enable buttons and restore original text
+                    saveBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                    saveBtn.innerHTML = originalBtnText;
+                }
+            });
+        }
+    });
+
+    function showModalAlert(type, message) {
+        const alertContainer = document.getElementById('adopterModalAlert');
+        const isSuccess = type === 'success';
+
+        alertContainer.innerHTML = `
+            <div class="flex items-start gap-3 p-4 bg-${isSuccess ? 'green' : 'red'}-50 border border-${isSuccess ? 'green' : 'red'}-200 rounded-xl shadow-sm">
+                <svg class="w-6 h-6 text-${isSuccess ? 'green' : 'red'}-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    ${isSuccess
+                        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />'
+                        : '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />'
+                    }
+                </svg>
+                <div class="flex-1">
+                    <p class="font-semibold text-${isSuccess ? 'green' : 'red'}-700">${message}</p>
+                </div>
+                <button onclick="document.getElementById('adopterModalAlert').classList.add('hidden')" class="text-${isSuccess ? 'green' : 'red'}-600 hover:text-${isSuccess ? 'green' : 'red'}-800 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+        alertContainer.classList.remove('hidden');
+
+        // Scroll to alert
+        alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 </script>

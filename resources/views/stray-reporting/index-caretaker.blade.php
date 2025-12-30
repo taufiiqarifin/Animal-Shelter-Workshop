@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Assigned Rescues - Stray Animals Shelter</title>
 
-    {{-- Vite Assets (compiled Tailwind) --}}
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Tailwind CSS CDN --}}
+    <script src="https://cdn.tailwindcss.com"></script>
 
     {{-- Leaflet CSS --}}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -45,6 +45,41 @@
 <!-- Include Navbar -->
 @include('navbar')
 
+<!-- Limited Connectivity Warning Banner -->
+@if(isset($dbDisconnected) && count($dbDisconnected) > 0)
+    <div id="connectivityBanner" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 shadow-sm">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3 flex-1">
+                <h3 class="text-sm font-semibold text-yellow-800">Limited Connectivity</h3>
+                <p class="text-sm text-yellow-700 mt-1">{{ count($dbDisconnected) }} database(s) currently unavailable. Some features may not work properly.</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach($dbDisconnected as $connection => $info)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    {{ $info['module'] }}
+                </span>
+                    @endforeach
+                </div>
+            </div>
+            <button onclick="closeConnectivityBanner()" class="flex-shrink-0 ml-4 text-yellow-400 hover:text-yellow-600 transition-colors">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function closeConnectivityBanner() {
+            document.getElementById('connectivityBanner').style.display = 'none';
+        }
+    </script>
+@endif
+
 <div class="mb-6 bg-purple-600 shadow p-6">
     <div class="max-w-7xl mx-auto px-4">
         <h1 class="text-3xl font-bold text-white">My Assigned Rescues</h1>
@@ -53,12 +88,12 @@
 </div>
 
 <div class="max-w-7xl mx-auto mt-10 p-4 md:p-6 pb-10">
-    @if (session('success'))
-        <div class="flex items-start gap-3 p-4 mb-6 bg-green-50 border border-green-200 rounded-xl shadow-sm">
-            <svg class="w-6 h-6 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    @if(session('success'))
+        <div class="flex items-start gap-3 p-4 mb-6 bg-green-50 border-l-4 border-green-500 rounded">
+            <svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <p class="font-semibold text-green-700">{{ session('success') }}</p>
+            <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
         </div>
     @endif
 
@@ -185,9 +220,15 @@
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                                 {{ $rescue->created_at->format('M d, Y') }}
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-sm">
-                                <a href="{{ route('rescues.show', $rescue->id) }}" class="text-purple-600 hover:underline mr-3">View</a>
-                                <a href="#" onclick="event.preventDefault(); showMapModal({{ $rescue->report->latitude }}, {{ $rescue->report->longitude }}, '{{ addslashes($rescue->report->address) }}')" class="text-purple-600 hover:underline">Map</a>
+                            <td class="px-4 py-3 whitespace-nowrap text-center">
+                                <a href="{{ route('rescues.show', $rescue->id) }}"
+                                   class="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-200 shadow-sm hover:shadow-md">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    View
+                                </a>
                             </td>
                         </tr>
                     @endforeach
@@ -261,6 +302,12 @@
             closeMapModal();
         }
     });
+
+    // Close connectivity banner
+    function closeConnectivityBanner() {
+        document.getElementById('connectivityBanner').style.display = 'none';
+    }
 </script>
+
 </body>
 </html>

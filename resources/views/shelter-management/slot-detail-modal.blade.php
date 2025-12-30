@@ -1,5 +1,5 @@
 <!-- Slot Detail Modal -->
-<div id="slotDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+<div id="slotDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[100vh] overflow-y-auto">
         <!-- Modal Header -->
         <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 sticky top-0 z-10">
@@ -14,7 +14,7 @@
                         <span id="detailSlotSection"></span>
                     </p>
                 </div>
-                <button onclick="closeSlotDetailModal()" class="text-white hover:text-gray-200 transition">
+                <button onclick="closeSlotDetailModal()" class="text-white hover:text-gray-200">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
             </div>
@@ -49,7 +49,7 @@
                         <span id="detailOccupancyPercent" class="font-semibold">0%</span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                        <div id="detailProgressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        <div id="detailProgressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-4 rounded-full" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
@@ -82,8 +82,9 @@
                             <span id="detailInventoryCount" class="ml-2 bg-blue-600 text-white px-3 py-1 rounded-full text-sm">0</span>
                         </h3>
                         @role('admin|caretaker')
-                        <button onclick="openInventoryModalForSlot()" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 transition duration-300 shadow-sm">
-                            <i class="fas fa-plus mr-2"></i>Add Inventory
+                        <button onclick="openInventoryModalForSlot()" id="addInventoryBtn" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-sm flex items-center gap-2">
+                            <i class="fas fa-plus" id="addInventoryIcon"></i>
+                            <span id="addInventoryText">Add Inventory</span>
                         </button>
                         @endrole
                     </div>
@@ -203,7 +204,7 @@
 
             return `
             <div onclick="viewAnimalDetails(${animal.id})"
-                 class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-lg hover:border-green-400 transition duration-300 cursor-pointer transform hover:scale-105">
+                 class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 hover:shadow-lg hover:border-green-400 cursor-pointer">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center space-x-3">
                         <div class="bg-green-600 text-white rounded-full w-12 h-12 flex items-center justify-center text-2xl">
@@ -277,7 +278,7 @@
 
             return `
             <div onclick="viewInventoryDetails(${item.id})"
-                 class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200 hover:shadow-lg hover:border-blue-400 transition cursor-pointer transform hover:scale-105">
+                 class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200 hover:shadow-lg hover:border-blue-400 cursor-pointer">
 
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center space-x-3">
@@ -350,10 +351,30 @@
     function openInventoryModalForSlot() {
         if (!currentSlotId) return;
 
+        const addInventoryBtn = document.getElementById('addInventoryBtn');
+        const addInventoryIcon = document.getElementById('addInventoryIcon');
+        const addInventoryText = document.getElementById('addInventoryText');
+
+        // Show loading state
+        if (addInventoryBtn) {
+            addInventoryBtn.disabled = true;
+            addInventoryIcon.className = 'fas fa-spinner fa-spin';
+            addInventoryText.textContent = 'Loading...';
+        }
+
         const slotName = document.getElementById('detailSlotName').textContent;
         if (typeof openInventoryModal === 'function') {
             openInventoryModal(currentSlotId, slotName);
         }
+
+        // Reset button state after a brief moment (modal is now open)
+        setTimeout(() => {
+            if (addInventoryBtn) {
+                addInventoryBtn.disabled = false;
+                addInventoryIcon.className = 'fas fa-plus';
+                addInventoryText.textContent = 'Add Inventory';
+            }
+        }, 500);
     }
 
     function viewInventoryDetails(inventoryId) {
@@ -376,3 +397,15 @@
         }
     });
 </script>
+
+<style>
+    /* Spinner animation */
+    .fa-spin {
+        animation: fa-spin 1s infinite linear;
+    }
+
+    @keyframes fa-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
