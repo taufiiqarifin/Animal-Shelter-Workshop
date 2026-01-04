@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $animal->name }} - Stray Animal Shelter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -80,10 +79,44 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #7e22ce;
         }
+
+        /* Modal Styles - Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden !important;
+            height: 100vh !important;
+        }
+
+        /* Ensure modals are above everything */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+        }
+
+        /* Smooth modal animations */
+        .modal-content {
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
 @include('navbar')
+@include('adopter-animal-matching.animal-modal')
+
 
 <!-- Page Header -->
 <div class="bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 text-white py-6 shadow-xl">
@@ -125,7 +158,11 @@
                     <i class="fas fa-list text-lg group-hover:scale-110 transition-transform"></i>
                     <span class="hidden sm:inline font-semibold">Visit List</span>
                 </button>
+                @include('booking-adoption.visit-list')
             </div>
+
+            {{-- Include the edit modal --}}
+            @include('animal-management.edit-modal', ['animal' => $animal])
             @endrole
         </div>
     </div>
@@ -148,12 +185,6 @@
             <p class="font-semibold text-red-700">{{ session('error') }}</p>
         </div>
     @endif
-
-    @php
-        // Safely load images with automatic fallback when Eilya database is offline
-        $animalImages = $animal->getImagesOrEmpty();
-        $hasImages = $animalImages->isNotEmpty();
-    @endphp
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Column - Images -->
@@ -249,7 +280,7 @@
             </div>
 
             <!-- Rescue Information -->
-            @if($animal->rescue)
+            @if($animal->relationLoaded('rescue') && $animal->rescue)
                 <div class="fade-in bg-gradient-to-br from-white to-pink-50/30 rounded-2xl shadow-xl p-4 border border-pink-100 hover-scale">
                     <h2 class="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
                         <div class="bg-gradient-to-br from-pink-500 to-rose-600 p-2 rounded-lg shadow-lg">
@@ -316,9 +347,9 @@
                     @endrole
                 </div>
 
-                @if($animal->medicals && $animal->medicals->count() > 0)
+                @if($medicals && $medicals->count() > 0)
                     <div class="space-y-2 max-h-64 overflow-y-auto">
-                        @foreach($animal->medicals->sortByDesc('created_at') as $medical)
+                        @foreach($medicals->sortByDesc('created_at') as $medical)
                             <div class="bg-white border-l-4 border-blue-500 rounded-lg p-3 hover:shadow-md transition-all duration-200">
                                 <div class="flex items-start justify-between mb-3">
                                     <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 shadow-sm">
@@ -386,9 +417,9 @@
                     @endrole
                 </div>
 
-                @if($animal->vaccinations && $animal->vaccinations->count() > 0)
+                @if($vaccinations && $vaccinations->count() > 0)
                     <div class="space-y-2 max-h-64 overflow-y-auto">
-                        @foreach($animal->vaccinations->sortByDesc('created_at') as $vaccination)
+                        @foreach($vaccinations->sortByDesc('created_at') as $vaccination)
                             <div class="bg-white border-l-4 border-green-500 rounded-lg p-3 hover:shadow-md transition-all duration-200">
                                 <div class="flex items-start justify-between mb-3">
                                     <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-green-200 text-green-700 shadow-sm">
@@ -447,6 +478,313 @@
                 @endif
             </div>
 
+            <!-- Modal for Add Medical Record -->
+            <div id="medicalModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 modal-content">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold">Add Medical Record</h2>
+                            <button onclick="closeMedicalModal()" class="text-white hover:text-gray-200">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ route('medical-records.store') }}" class="p-6 space-y-4" id="medicalForm">
+                        @csrf
+                        <input type="hidden" name="animalID" value="{{ $animal->id }}">
+
+                        <!-- Error Display Area -->
+                        <div id="medicalFormErrors" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-circle text-red-500 mt-1 mr-3"></i>
+                                <div id="medicalFormErrorList" class="flex-1"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Treatment Type <span class="text-red-600">*</span></label>
+                            <select name="treatment_type" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition" required>
+                                <option value="">Select Treatment Type</option>
+                                <option value="Checkup">Checkup</option>
+                                <option value="Surgery">Surgery</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="Dental">Dental</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">
+                                Weight during treatment (kg) <span class="text-red-600">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                name="weight"
+                                step="0.01"
+                                min="0"
+                                value="{{ old('weight', $animal->weight) }}"
+                                class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
+                                placeholder="Enter animal weight"
+                                required
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Diagnosis <span class="text-red-600">*</span></label>
+                            <textarea name="diagnosis" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition" placeholder="Enter diagnosis" required></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Action Taken <span class="text-red-600">*</span></label>
+                            <textarea name="action" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition" placeholder="Enter action taken" required></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Remarks</label>
+                            <textarea name="remarks" rows="2" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition" placeholder="Additional remarks (optional)"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Veterinarian <span class="text-red-600">*</span></label>
+                            <select name="vetID" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition" required>
+                                <option value="">Select Veterinarian</option>
+                                @foreach($vets as $vet)
+                                    <option value="{{ $vet->id }}">{{ $vet->name }} - {{ $vet->specialization }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Cost (RM)</label>
+                            <input type="number" name="costs" step="0.01" min="0" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition" placeholder="0.00">
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" onclick="closeMedicalModal()" id="medicalCancelBtn" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
+                                Cancel
+                            </button>
+                            <button type="submit" id="medicalSubmitBtn" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-700 transition duration-300 flex items-center gap-2">
+                                <i class="fas fa-plus" id="medicalSubmitIcon"></i>
+                                <span id="medicalSubmitText">Add Record</span>
+                                <svg class="animate-spin h-5 w-5 text-white hidden" id="medicalSubmitSpinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal for Add Vaccination -->
+            <div id="vaccinationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 modal-content">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold">Add Vaccination Record</h2>
+                            <button onclick="closeVaccinationModal()" class="text-white hover:text-gray-200">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ route('vaccination-records.store') }}" class="p-6 space-y-4" id="vaccinationForm">
+                        @csrf
+                        <input type="hidden" name="animalID" value="{{ $animal->id }}">
+
+                        <!-- Error Display Area -->
+                        <div id="vaccinationFormErrors" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-circle text-red-500 mt-1 mr-3"></i>
+                                <div id="vaccinationFormErrorList" class="flex-1"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Vaccine Name <span class="text-red-600">*</span></label>
+                            <input type="text" name="name" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-green-500 focus:ring focus:ring-green-200 transition" placeholder="e.g., Rabies Vaccine" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Vaccine Type <span class="text-red-600">*</span></label>
+                            <select name="type" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-green-500 focus:ring focus:ring-green-200 transition" required>
+                                <option value="">Select Type</option>
+                                <option value="Rabies">Rabies</option>
+                                <option value="DHPP">DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)</option>
+                                <option value="Bordetella">Bordetella</option>
+                                <option value="Leptospirosis">Leptospirosis</option>
+                                <option value="Feline Distemper">Feline Distemper</option>
+                                <option value="Feline Leukemia">Feline Leukemia</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">
+                                Weight during taking the vaccine (kg) <span class="text-red-600">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                name="weight"
+                                step="0.01"
+                                min="0"
+                                value="{{ old('weight', $animal->weight) }}"
+                                class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
+                                placeholder="Enter animal weight"
+                                required
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Next Due Date</label>
+                            <input type="date" name="next_due_date" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-green-500 focus:ring focus:ring-green-200 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Remarks</label>
+                            <textarea name="remarks" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-green-500 focus:ring focus:ring-green-200 transition" placeholder="Additional notes (optional)"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Veterinarian <span class="text-red-600">*</span></label>
+                            <select name="vetID" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-green-500 focus:ring focus:ring-green-200 transition" required>
+                                <option value="">Select Veterinarian</option>
+                                @foreach($vets as $vet)
+                                    <option value="{{ $vet->id }}">{{ $vet->name }} - {{ $vet->specialization }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Cost (RM)</label>
+                            <input type="number" name="costs" step="0.01" min="0" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-green-500 focus:ring focus:ring-green-200 transition" placeholder="0.00">
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" onclick="closeVaccinationModal()" id="vaccinationCancelBtn" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
+                                Cancel
+                            </button>
+                            <button type="submit" id="vaccinationSubmitBtn" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition duration-300 flex items-center gap-2">
+                                <i class="fas fa-plus" id="vaccinationSubmitIcon"></i>
+                                <span id="vaccinationSubmitText">Add Vaccination</span>
+                                <svg class="animate-spin h-5 w-5 text-white hidden" id="vaccinationSubmitSpinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal for Animal Profile -->
+            <div id="animalProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 modal-content">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold">{{ $animalProfile ? 'Edit' : 'Add' }} Animal Profile</h2>
+                            <button onclick="closeAnimalProfileModal()" class="text-white hover:text-gray-200">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ route('animal.profile.store', $animal->id) }}" class="p-6 space-y-4" id="animalProfileForm">
+                        @csrf
+
+                        <!-- Error Display Area -->
+                        <div id="animalProfileFormErrors" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-circle text-red-500 mt-1 mr-3"></i>
+                                <div id="animalProfileFormErrorList" class="flex-1"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Size <span class="text-red-600">*</span></label>
+                            <select name="size" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" required>
+                                <option value="">Select Size</option>
+                                <option value="small" {{ old('size', $animalProfile->size ?? '') == 'small' ? 'selected' : '' }}>Small</option>
+                                <option value="medium" {{ old('size', $animalProfile->size ?? '') == 'medium' ? 'selected' : '' }}>Medium</option>
+                                <option value="large" {{ old('size', $animalProfile->size ?? '') == 'large' ? 'selected' : '' }}>Large</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Energy Level <span class="text-red-600">*</span></label>
+                            <select name="energy_level" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" required>
+                                <option value="">Select Energy Level</option>
+                                <option value="low" {{ old('energy_level', $animalProfile->energy_level ?? '') == 'low' ? 'selected' : '' }}>Low</option>
+                                <option value="medium" {{ old('energy_level', $animalProfile->energy_level ?? '') == 'medium' ? 'selected' : '' }}>Medium</option>
+                                <option value="high" {{ old('energy_level', $animalProfile->energy_level ?? '') == 'high' ? 'selected' : '' }}>High</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Good with Kids <span class="text-red-600">*</span></label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center">
+                                    <input type="radio" name="good_with_kids" value="1" class="mr-2" {{ old('good_with_kids', $animalProfile->good_with_kids ?? '') == '1' ? 'checked' : '' }} required>
+                                    <span class="text-gray-700">Yes</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="good_with_kids" value="0" class="mr-2" {{ old('good_with_kids', $animalProfile->good_with_kids ?? '') == '0' ? 'checked' : '' }}>
+                                    <span class="text-gray-700">No</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Good with Pets <span class="text-red-600">*</span></label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center">
+                                    <input type="radio" name="good_with_pets" value="1" class="mr-2" {{ old('good_with_pets', $animalProfile->good_with_pets ?? '') == '1' ? 'checked' : '' }} required>
+                                    <span class="text-gray-700">Yes</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="good_with_pets" value="0" class="mr-2" {{ old('good_with_pets', $animalProfile->good_with_pets ?? '') == '0' ? 'checked' : '' }}>
+                                    <span class="text-gray-700">No</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Temperament <span class="text-red-600">*</span></label>
+                            <select name="temperament" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" required>
+                                <option value="">Select Temperament</option>
+                                <option value="calm" {{ old('temperament', $animalProfile->temperament ?? '') == 'calm' ? 'selected' : '' }}>Calm</option>
+                                <option value="active" {{ old('temperament', $animalProfile->temperament ?? '') == 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="shy" {{ old('temperament', $animalProfile->temperament ?? '') == 'shy' ? 'selected' : '' }}>Shy</option>
+                                <option value="friendly" {{ old('temperament', $animalProfile->temperament ?? '') == 'friendly' ? 'selected' : '' }}>Friendly</option>
+                                <option value="independent" {{ old('temperament', $animalProfile->temperament ?? '') == 'independent' ? 'selected' : '' }}>Independent</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-800 font-semibold mb-2">Medical Needs <span class="text-red-600">*</span></label>
+                            <select name="medical_needs" class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-3 border focus:border-purple-500 focus:ring focus:ring-purple-200 transition" required>
+                                <option value="">Select Medical Needs</option>
+                                <option value="none" {{ old('medical_needs', $animalProfile->medical_needs ?? '') == 'none' ? 'selected' : '' }}>None</option>
+                                <option value="minor" {{ old('medical_needs', $animalProfile->medical_needs ?? '') == 'minor' ? 'selected' : '' }}>Minor</option>
+                                <option value="moderate" {{ old('medical_needs', $animalProfile->medical_needs ?? '') == 'moderate' ? 'selected' : '' }}>Moderate</option>
+                                <option value="special" {{ old('medical_needs', $animalProfile->medical_needs ?? '') == 'special' ? 'selected' : '' }}>Special</option>
+                            </select>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4">
+                            <button type="button" onclick="closeAnimalProfileModal()" id="animalProfileCancelBtn" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
+                                Cancel
+                            </button>
+                            <button type="submit" id="animalProfileSubmitBtn" class="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-purple-700 transition duration-300 flex items-center gap-2">
+                                <i class="fas fa-save" id="animalProfileSubmitIcon"></i>
+                                <span id="animalProfileSubmitText">{{ $animalProfile ? 'Update' : 'Create' }} Profile</span>
+                                <svg class="animate-spin h-5 w-5 text-white hidden" id="animalProfileSubmitSpinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- Right Column - Details -->
@@ -536,7 +874,7 @@
                     <!-- Header with Edit Button: This is displayed when the profile exists -->
                     <div class="flex justify-between items-center mb-4 border-b pb-2">
                         <!-- Button to open the modal for editing -->
-                        @role('caretaker')<button type="button" onclick="openAnimalModal()" class="text-sm text-purple-600 hover:text-purple-800 font-semibold transition flex items-center">
+                        @role('caretaker')<button type="button" onclick="openAnimalProfileModal()" class="text-sm text-purple-600 hover:text-purple-800 font-semibold transition flex items-center">
                             <i class="fas fa-edit mr-1"></i> Edit Profile
                         </button>@endrole
                     </div>
@@ -585,13 +923,16 @@
                     <p class="text-gray-500 mb-4">This animal does not have a profile yet. Click below to add one.</p>
 
                     <!-- Button to open the modal for creation -->
-                    @role('caretaker')<button type="button" onclick="openAnimalModal()" class="w-full bg-purple-100 text-purple-700 py-3 rounded-lg font-semibold hover:bg-purple-200 transition duration-300 shadow-sm">
+                    @role('caretaker')<button type="button" onclick="openAnimalProfileModal()" class="w-full bg-purple-100 text-purple-700 py-3 rounded-lg font-semibold hover:bg-purple-200 transition duration-300 shadow-sm">
                         <i class="fas fa-plus mr-2"></i>Add Profile
                     </button>@endrole
 
                 @endif
 
             </div>
+
+            @include('adopter-animal-matching.animal-modal')
+
 
             <!-- Location Card -->
             <div class="bg-white rounded-lg shadow-lg p-4">
@@ -733,13 +1074,7 @@
         </div>
     </div>
 </div>
-
-{{-- Modals --}}
-@include('animal-management.edit-modal', ['animal' => $animal])
-@include('animal-management.modals.medical-record-modal')
-@include('animal-management.modals.vaccination-modal')
-@include('adopter-animal-matching.animal-modal')
-@include('booking-adoption.visit-list')
+<!-- Include the booking modal -->
 @include('booking-adoption.book-animal')
 
 <script>
@@ -748,22 +1083,38 @@
     }
     function openMedicalModal() {
         document.getElementById('medicalModal').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        document.body.classList.add('modal-open');
+        document.documentElement.style.overflow = 'hidden';
     }
 
     function closeMedicalModal() {
         document.getElementById('medicalModal').classList.add('hidden');
-        document.body.style.overflow = 'auto';
+        document.body.classList.remove('modal-open');
+        document.documentElement.style.overflow = '';
     }
 
     function openVaccinationModal() {
         document.getElementById('vaccinationModal').classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        document.body.classList.add('modal-open');
+        document.documentElement.style.overflow = 'hidden';
     }
 
     function closeVaccinationModal() {
         document.getElementById('vaccinationModal').classList.add('hidden');
-        document.body.style.overflow = 'auto';
+        document.body.classList.remove('modal-open');
+        document.documentElement.style.overflow = '';
+    }
+
+    function openAnimalProfileModal() {
+        document.getElementById('animalProfileModal').classList.remove('hidden');
+        document.body.classList.add('modal-open');
+        document.documentElement.style.overflow = 'hidden';
+    }
+
+    function closeAnimalProfileModal() {
+        document.getElementById('animalProfileModal').classList.add('hidden');
+        document.body.classList.remove('modal-open');
+        document.documentElement.style.overflow = '';
     }
 
     // Close modals when clicking outside
@@ -776,6 +1127,140 @@
     document.getElementById('vaccinationModal')?.addEventListener('click', function(e) {
         if (e.target === this) {
             closeVaccinationModal();
+        }
+    });
+
+    document.getElementById('animalProfileModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAnimalProfileModal();
+        }
+    });
+
+    // Display Server-Side Validation Errors
+    @if($errors->any())
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check which form has errors based on the error keys
+            const errorKeys = {!! json_encode($errors->keys()) !!};
+
+            // Medical form errors
+            if (errorKeys.some(key => ['treatment_type', 'diagnosis', 'action', 'vetID'].includes(key))) {
+                const errorList = document.getElementById('medicalFormErrorList');
+                errorList.innerHTML = '<ul class="list-disc list-inside space-y-1">' +
+                    {!! json_encode($errors->all()) !!}.map(error => `<li class="text-sm">${error}</li>`).join('') +
+                    '</ul>';
+                document.getElementById('medicalFormErrors').classList.remove('hidden');
+                openMedicalModal();
+            }
+
+            // Vaccination form errors
+            if (errorKeys.some(key => ['name', 'type', 'next_due_date'].includes(key))) {
+                const errorList = document.getElementById('vaccinationFormErrorList');
+                errorList.innerHTML = '<ul class="list-disc list-inside space-y-1">' +
+                    {!! json_encode($errors->all()) !!}.map(error => `<li class="text-sm">${error}</li>`).join('') +
+                    '</ul>';
+                document.getElementById('vaccinationFormErrors').classList.remove('hidden');
+                openVaccinationModal();
+            }
+
+            // Animal profile form errors
+            if (errorKeys.some(key => ['size', 'energy_level', 'temperament', 'medical_needs'].includes(key))) {
+                const errorList = document.getElementById('animalProfileFormErrorList');
+                errorList.innerHTML = '<ul class="list-disc list-inside space-y-1">' +
+                    {!! json_encode($errors->all()) !!}.map(error => `<li class="text-sm">${error}</li>`).join('') +
+                    '</ul>';
+                document.getElementById('animalProfileFormErrors').classList.remove('hidden');
+                openAnimalProfileModal();
+            }
+        });
+    @endif
+
+    // Form Submission Handlers with Loading States
+    document.addEventListener('DOMContentLoaded', function() {
+        // Medical Form Handler
+        const medicalForm = document.getElementById('medicalForm');
+        if (medicalForm) {
+            medicalForm.addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('medicalSubmitBtn');
+                const submitText = document.getElementById('medicalSubmitText');
+                const submitIcon = document.getElementById('medicalSubmitIcon');
+                const submitSpinner = document.getElementById('medicalSubmitSpinner');
+                const cancelBtn = document.getElementById('medicalCancelBtn');
+
+                // Hide errors
+                document.getElementById('medicalFormErrors').classList.add('hidden');
+
+                // Disable button and show loading state
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+                submitBtn.classList.remove('hover:from-blue-600', 'hover:to-blue-700');
+                submitIcon.classList.add('hidden');
+                submitText.textContent = 'Saving...';
+                submitSpinner.classList.remove('hidden');
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Disable all form inputs
+                const inputs = medicalForm.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => input.disabled = true);
+            });
+        }
+
+        // Vaccination Form Handler
+        const vaccinationForm = document.getElementById('vaccinationForm');
+        if (vaccinationForm) {
+            vaccinationForm.addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('vaccinationSubmitBtn');
+                const submitText = document.getElementById('vaccinationSubmitText');
+                const submitIcon = document.getElementById('vaccinationSubmitIcon');
+                const submitSpinner = document.getElementById('vaccinationSubmitSpinner');
+                const cancelBtn = document.getElementById('vaccinationCancelBtn');
+
+                // Hide errors
+                document.getElementById('vaccinationFormErrors').classList.add('hidden');
+
+                // Disable button and show loading state
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+                submitBtn.classList.remove('hover:from-green-600', 'hover:to-green-700');
+                submitIcon.classList.add('hidden');
+                submitText.textContent = 'Saving...';
+                submitSpinner.classList.remove('hidden');
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Disable all form inputs
+                const inputs = vaccinationForm.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => input.disabled = true);
+            });
+        }
+
+        // Animal Profile Form Handler
+        const animalProfileForm = document.getElementById('animalProfileForm');
+        if (animalProfileForm) {
+            animalProfileForm.addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('animalProfileSubmitBtn');
+                const submitText = document.getElementById('animalProfileSubmitText');
+                const submitIcon = document.getElementById('animalProfileSubmitIcon');
+                const submitSpinner = document.getElementById('animalProfileSubmitSpinner');
+                const cancelBtn = document.getElementById('animalProfileCancelBtn');
+
+                // Hide errors
+                document.getElementById('animalProfileFormErrors').classList.add('hidden');
+
+                // Disable button and show loading state
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+                submitBtn.classList.remove('hover:from-purple-600', 'hover:to-purple-700');
+                submitIcon.classList.add('hidden');
+                submitText.textContent = 'Saving...';
+                submitSpinner.classList.remove('hidden');
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Disable all form inputs
+                const inputs = animalProfileForm.querySelectorAll('input, select, textarea, button');
+                inputs.forEach(input => input.disabled = true);
+            });
         }
     });
 
@@ -887,85 +1372,6 @@
             }
         });
     }
-
-    // ========================================
-    // CSRF Token Auto-Refresh & 419 Error Handler
-    // ========================================
-
-    // Refresh CSRF token every 30 minutes (before it expires)
-    setInterval(function() {
-        fetch('/refresh-csrf', {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.token) {
-                // Update meta tag
-                document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.token);
-                // Update all CSRF input fields
-                document.querySelectorAll('input[name="_token"]').forEach(input => {
-                    input.value = data.token;
-                });
-                console.log('CSRF token refreshed successfully');
-            }
-        })
-        .catch(error => {
-            console.warn('Failed to refresh CSRF token:', error);
-        });
-    }, 1800000); // 30 minutes
-
-    // Handle 419 errors globally
-    window.addEventListener('error', function(e) {
-        if (e.message && e.message.includes('419')) {
-            showSessionExpiredModal();
-        }
-    }, true);
-
-    // Show session expired modal
-    function showSessionExpiredModal() {
-        const existingModal = document.getElementById('sessionExpiredModal');
-        if (existingModal) return;
-
-        const modalHTML = `
-            <div id="sessionExpiredModal" class="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-md flex items-center justify-center z-[9999]">
-                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-bounce-in">
-                    <div class="bg-gradient-to-r from-red-500 to-red-600 text-white p-6 text-center">
-                        <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4">
-                            <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold">Session Expired</h2>
-                    </div>
-                    <div class="p-6 text-center">
-                        <p class="text-gray-700 mb-2 font-semibold">Your session has expired due to inactivity.</p>
-                        <p class="text-gray-600 text-sm mb-6">Please refresh the page to continue.</p>
-                        <button onclick="location.reload()" class="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
-                            <i class="fas fa-sync-alt"></i>
-                            Refresh Page
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    }
-
-    // Detect 419 on form submissions
-    document.addEventListener('DOMContentLoaded', function() {
-        const forms = document.querySelectorAll('form[method="POST"]');
-        forms.forEach(form => {
-            form.addEventListener('submit', function(e) {
-                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const tokenInput = form.querySelector('input[name="_token"]');
-                if (tokenInput) {
-                    tokenInput.value = token;
-                }
-            });
-        });
-    });
 </script>
 </body>
 </html>
