@@ -57,7 +57,7 @@
                     </button>
                 </div>
             @else
-                <form method="POST" action="{{ route('visit.list.confirm') }}" class="space-y-6" id="visitListForm">
+                <form method="POST" action="{{ route('visit.list.confirm') }}" class="space-y-6" id="visitListForm" onsubmit="handleVisitSubmit(event)">
                     @csrf
 
                     <!-- Animals Counter -->
@@ -260,13 +260,13 @@
                         <button type="submit"
                                 id="confirmBookingBtn"
                                 disabled
-                                class="flex-1 px-6 py-4 bg-gray-300 text-gray-500 font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed">
-                            <i class="fas fa-check-circle" id="visitSubmitIcon"></i>
-                            <span id="visitSubmitText">Confirm Visit Booking</span>
-                            <svg class="animate-spin h-5 w-5 text-white hidden" id="visitSubmitSpinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                                class="flex-1 px-6 py-4 bg-gray-300 text-gray-500 font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span id="visitBtnText">
+                                <i class="fas fa-check-circle mr-2"></i>Confirm Visit Booking
+                            </span>
+                            <span id="visitBtnLoading" class="hidden">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Processing...
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -488,13 +488,25 @@
         }
     }
 
+    // Handle visit booking submission
+    function handleVisitSubmit(event) {
+        const submitBtn = document.getElementById('confirmBookingBtn');
+        const btnText = document.getElementById('visitBtnText');
+        const btnLoading = document.getElementById('visitBtnLoading');
+
+        // Show loading state
+        submitBtn.disabled = true;
+        btnText.classList.add('hidden');
+        btnLoading.classList.remove('hidden');
+
+        // Form will submit normally, button stays disabled
+    }
+
     // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('visitListForm');
         const appointmentDate = document.getElementById('appointmentDate');
         const appointmentTime = document.getElementById('appointmentTime');
         const termsCheckbox = document.getElementById('termsCheckbox') || document.querySelector('input[name="terms"]');
-        let isSubmitting = false; // Flag to prevent double submission
 
         if(appointmentDate){
             appointmentDate.addEventListener('input', window.updateConfirmButton);
@@ -511,54 +523,6 @@
                 setTimeout(() => window.updateConfirmButton(), 0);
             });
             termsCheckbox.addEventListener('input', window.updateConfirmButton);
-        }
-
-        if(form) {
-            form.addEventListener('submit', function(e){
-                // Prevent double submission
-                if(isSubmitting) {
-                    e.preventDefault();
-                    return false;
-                }
-
-                if(!appointmentDate.value || !appointmentTime.value || !termsCheckbox.checked){
-                    e.preventDefault();
-                    alert('Please select a date, time and accept terms.');
-                    if(!appointmentDate.value) {
-                        appointmentDate.focus();
-                    } else if(!appointmentTime.value) {
-                        appointmentTime.focus();
-                    }
-                    return false;
-                } else {
-                    // Set submitting flag
-                    isSubmitting = true;
-                    // Show loading state
-                    const submitBtn = document.getElementById('confirmBookingBtn');
-                    const submitText = document.getElementById('visitSubmitText');
-                    const submitIcon = document.getElementById('visitSubmitIcon');
-                    const submitSpinner = document.getElementById('visitSubmitSpinner');
-                    const cancelBtn = document.getElementById('visitCancelBtn');
-
-                    // Disable button and show loading state
-                    submitBtn.disabled = true;
-                    submitBtn.classList.add('opacity-75');
-                    submitBtn.classList.remove('hover:from-purple-700', 'hover:to-purple-800', 'hover:shadow-xl', 'hover:scale-105');
-
-                    // Hide icon and text, show spinner
-                    submitIcon.classList.add('hidden');
-                    submitText.textContent = 'Processing...';
-                    submitSpinner.classList.remove('hidden');
-
-                    // Disable cancel button
-                    cancelBtn.disabled = true;
-                    cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
-
-                    // Disable all form inputs
-                    const inputs = form.querySelectorAll('input, select, textarea, button[type="button"]');
-                    inputs.forEach(input => input.disabled = true);
-                }
-            });
         }
 
         // Initial check
