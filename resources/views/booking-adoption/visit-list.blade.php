@@ -1,6 +1,6 @@
 <!-- IMPROVED VISIT LIST MODAL -->
 <div id="visitModal"
-     class="fixed inset-0 hidden bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300">
+     class="fixed inset-0 hidden bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 transition-opacity duration-300">
 
     <div id="visitModalContent"
          class="bg-white max-w-4xl w-full rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col
@@ -317,7 +317,6 @@
         const modal = document.getElementById('visitModal');
         const content = document.getElementById('visitModalContent');
         modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
         setTimeout(() => {
             content.classList.remove('opacity-0', 'scale-95');
             content.classList.add('opacity-100', 'scale-100');
@@ -331,7 +330,6 @@
         content.classList.remove('opacity-100', 'scale-100');
         setTimeout(() => {
             modal.classList.add('hidden');
-            document.body.style.overflow = '';
         }, 300);
     }
 

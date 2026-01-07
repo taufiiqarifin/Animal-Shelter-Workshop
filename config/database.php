@@ -71,7 +71,10 @@ return [
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'options' => [
-                PDO::ATTR_TIMEOUT => 0.5, // Reduced to 0.5 seconds for faster failure
+                // CRITICAL FIX: Increased timeout for stored procedures
+                // Medical/Vaccination/Animal Profile procedures can take 5-10 seconds with triggers
+                // Previous 0.5s timeout caused 419 Session Expired errors
+                PDO::ATTR_TIMEOUT => 60, // 60 seconds for stored procedure execution
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             ],
         ],
