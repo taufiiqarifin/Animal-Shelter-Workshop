@@ -18,6 +18,41 @@
             </button>
         </div>
 
+        <!-- Information Section -->
+        <div class="bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 p-5 mx-6 mt-6 rounded-lg">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-sm font-bold text-blue-900 mb-2">Create Your Adopter Profile</h3>
+                    <div class="text-sm text-blue-800 space-y-2">
+                        <p>Help us find your perfect companion! Complete this profile so our intelligent matching system can recommend animals that best fit your lifestyle and home environment.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                            <div class="flex items-start gap-2">
+                                <span class="text-blue-500 font-bold">✓</span>
+                                <span><strong>Personalized Matches:</strong> Get compatibility scores based on your preferences</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-blue-500 font-bold">✓</span>
+                                <span><strong>Better Outcomes:</strong> Find animals suited to your experience level</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-blue-500 font-bold">✓</span>
+                                <span><strong>Save Time:</strong> See only animals compatible with your living situation</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-blue-500 font-bold">✓</span>
+                                <span><strong>Happy Adoptions:</strong> Increase success with well-matched placements</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <form id="adopterProfileForm" action="{{ route('adopter.profile.store') }}" method="POST" class="p-6 space-y-5">
             @csrf
 

@@ -92,6 +92,41 @@
             </button>
         </div>
 
+        <!-- Information Section -->
+        <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-l-4 border-purple-500 p-5 mx-6 mt-6 rounded-lg">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-sm font-bold text-purple-900 mb-2">How Animal Matching Works</h3>
+                    <div class="text-sm text-purple-800 space-y-2">
+                        <p>We've analyzed your adopter profile to find animals that best match your lifestyle, preferences, and home environment.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                            <div class="flex items-start gap-2">
+                                <span class="text-purple-500 font-bold">•</span>
+                                <span><strong>Match Score:</strong> Higher percentages indicate better compatibility</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-purple-500 font-bold">•</span>
+                                <span><strong>Top Match:</strong> Your most compatible animal appears first</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-purple-500 font-bold">•</span>
+                                <span><strong>Match Details:</strong> See specific reasons why each animal suits you</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-purple-500 font-bold">•</span>
+                                <span><strong>View Profile:</strong> Click to learn more and schedule a visit</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Content -->
         <div class="p-6 pt-8 space-y-5">
             <div id="matchesContainer">
@@ -313,6 +348,46 @@ function displayMatches(matches) {
         `;
 
         container.innerHTML += matchCard;
+    });
+
+    // Animate score numbers after cards are rendered
+    animateScoreNumbers();
+}
+
+function animateScoreNumbers() {
+    const scoreElements = document.querySelectorAll('.score-number');
+
+    scoreElements.forEach((element, index) => {
+        const target = parseInt(element.getAttribute('data-target'));
+        const duration = 1500; // 1.5 seconds
+        const delay = index * 100; // Stagger animation by 100ms per element
+        const startTime = Date.now() + delay;
+
+        const animate = () => {
+            const now = Date.now();
+            const elapsed = now - startTime;
+
+            if (elapsed < 0) {
+                // Still waiting for delay
+                requestAnimationFrame(animate);
+                return;
+            }
+
+            if (elapsed < duration) {
+                // Calculate progress with easing (ease-out cubic)
+                const progress = elapsed / duration;
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(easeOut * target);
+
+                element.textContent = current;
+                requestAnimationFrame(animate);
+            } else {
+                // Animation complete - set to final value
+                element.textContent = target;
+            }
+        };
+
+        requestAnimationFrame(animate);
     });
 }
 

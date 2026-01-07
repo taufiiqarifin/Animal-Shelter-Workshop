@@ -15,6 +15,41 @@
             </div>
         </div>
 
+        <!-- Information Section -->
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-5 mx-6 mt-6 rounded-lg">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-sm font-bold text-green-900 mb-2">Complete Animal Profile for Better Matching</h3>
+                    <div class="text-sm text-green-800 space-y-2">
+                        <p>As a caretaker, your insights are invaluable! Complete this profile to help our matching system connect <strong>{{ $animal->name }}</strong> with the perfect adopter.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                            <div class="flex items-start gap-2">
+                                <span class="text-green-500 font-bold">🎯</span>
+                                <span><strong>Accurate Matching:</strong> Behavioral details improve compatibility scores</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-green-500 font-bold">🏡</span>
+                                <span><strong>Right Home:</strong> Find families suited to this animal's needs</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-green-500 font-bold">💚</span>
+                                <span><strong>Faster Adoption:</strong> Detailed profiles attract serious adopters</span>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-green-500 font-bold">✨</span>
+                                <span><strong>Better Outcomes:</strong> Well-matched placements reduce returns</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <form action="{{ route('animal.profile.store', ['animal' => $animal->id]) }}" method="POST" class="p-6 space-y-4" id="animalProfileForm" onsubmit="handleAnimalProfileSubmit(event)">
             @csrf
 
