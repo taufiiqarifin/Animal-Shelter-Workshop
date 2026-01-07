@@ -231,7 +231,7 @@
                 </div>
 
                 {{-- Current Images --}}
-                @if($animal->images && count($animal->images) > 0)
+                @if($animal->relationLoaded('images') && $animal->images->count() > 0)
                     <div class="space-y-4">
                         <label class="block text-gray-700 font-bold mb-3 flex items-center gap-2">
                             <i class="fas fa-images text-purple-600"></i>

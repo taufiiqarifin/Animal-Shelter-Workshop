@@ -374,6 +374,10 @@ class AnimalManagementController extends Controller
 
     public function storeOrUpdate(Request $request, $animalId)
     {
+        // CRITICAL FIX: Increase execution time for stored procedures
+        // Stored procedures with triggers can take 5-30 seconds
+        set_time_limit(60);
+
         try {
             // 1. Validate other fields (excluding 'age')
             $validated = $request->validate([
@@ -1277,6 +1281,17 @@ public function update(Request $request, $id)
 
     public function storeMedical(Request $request)
     {
+        // CRITICAL FIX: Increase execution time for stored procedures
+        // Stored procedures with triggers can take 5-30 seconds
+        set_time_limit(60);
+
+        // DEBUG: Log that we reached the controller
+        \Log::info('storeMedical: Controller method reached', [
+            'animalID' => $request->input('animalID'),
+            'has_csrf_token' => $request->has('_token'),
+            'session_id' => session()->getId()
+        ]);
+
         try {
             $validated = $request->validate([
                 'animalID' => 'required|exists:shafiqah.animal,id',
@@ -1313,6 +1328,10 @@ public function update(Request $request, $id)
 
     public function storeVaccination(Request $request)
     {
+        // CRITICAL FIX: Increase execution time for stored procedures
+        // Stored procedures with triggers can take 5-30 seconds
+        set_time_limit(60);
+
         try {
             $validated = $request->validate([
                 'animalID' => 'required|exists:shafiqah.animal,id',

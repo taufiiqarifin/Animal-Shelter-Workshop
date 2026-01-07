@@ -9,7 +9,7 @@
                 </button>
             </div>
         </div>
-        <form method="POST" action="{{ route('vaccination-records.store') }}" class="p-6 space-y-4">
+        <form method="POST" action="{{ route('vaccination-records.store') }}" class="p-6 space-y-4" id="vaccinationRecordForm" onsubmit="handleVaccinationSubmit(event)">
             @csrf
             <input type="hidden" name="animalID" value="{{ $animal->id }}">
 
@@ -77,10 +77,30 @@
                 <button type="button" onclick="closeVaccinationModal()" class="px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-300">
                     Cancel
                 </button>
-                <button type="submit" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition duration-300">
-                    <i class="fas fa-plus mr-2"></i>Add Vaccination
+                <button type="submit" id="vaccinationSubmitBtn" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span id="vaccinationBtnText">
+                        <i class="fas fa-plus mr-2"></i>Add Vaccination
+                    </span>
+                    <span id="vaccinationBtnLoading" class="hidden">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>Adding...
+                    </span>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function handleVaccinationSubmit(event) {
+    const submitBtn = document.getElementById('vaccinationSubmitBtn');
+    const btnText = document.getElementById('vaccinationBtnText');
+    const btnLoading = document.getElementById('vaccinationBtnLoading');
+
+    // Show loading state
+    submitBtn.disabled = true;
+    btnText.classList.add('hidden');
+    btnLoading.classList.remove('hidden');
+
+    // Form will submit normally, button stays disabled
+}
+</script>

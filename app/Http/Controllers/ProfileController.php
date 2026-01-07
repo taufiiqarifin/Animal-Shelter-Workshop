@@ -14,10 +14,19 @@ use App\Models\AdopterProfile;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use App\DatabaseErrorHandler;
+use App\Services\TaufiqProcedureService;
 
 class ProfileController extends Controller
 {
     use DatabaseErrorHandler;
+
+    protected TaufiqProcedureService $taufiqService;
+
+    public function __construct(TaufiqProcedureService $taufiqService)
+    {
+        $this->taufiqService = $taufiqService;
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -35,17 +44,15 @@ class ProfileController extends Controller
                 'preferred_size' => ['required', Rule::in(['small', 'medium', 'large', 'any'])],
             ]);
 
-            // 2. Upsert (Update or Insert) the Profile
-            // We look for a profile linked to the authenticated user's ID.
-            AdopterProfile::updateOrCreate(
-                ['adopterID' => Auth::id()], // Key to find the record
-                $validated                 // Data to create or update
-            );
+            // 2. Upsert (Update or Insert) the Profile using stored procedure
+            $result = $this->taufiqService->upsertAdopterProfile(Auth::id(), $validated);
 
-            // 3. Determine message based on action
-            $message = AdopterProfile::where('adopterID', Auth::id())->exists() ?
-                       'Adopter Profile updated successfully!' :
-                       'Adopter Profile created successfully!';
+            if (!$result['success']) {
+                throw new \Exception($result['message']);
+            }
+
+            // 3. Use message from procedure
+            $message = $result['message'];
 
             // 4. Return JSON for AJAX requests, redirect for regular requests
             if ($request->wantsJson() || $request->ajax()) {
@@ -187,9 +194,15 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         try {
-            $request->user()->fill($request->validated());
+            $userId = $request->user()->id;
+            $validated = $request->validated();
 
-            $request->user()->save();
+            // Update user using stored procedure
+            $result = $this->taufiqService->updateUser($userId, $validated);
+
+            if (!$result['success']) {
+                throw new \Exception($result['message']);
+            }
 
             return Redirect::route('profile.edit')->with('status', 'profile-updated');
 
@@ -220,12 +233,20 @@ class ProfileController extends Controller
 
             Auth::logout();
 
-            $user->delete();
+            // Delete user using stored procedure
+            $result = $this->taufiqService->deleteUser($userId);
+
+            if (!$result['success']) {
+                throw new \Exception($result['message']);
+            }
 
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            \Log::info('User account deleted successfully', ['user_id' => $userId]);
+            \Log::info('User account deleted successfully', [
+                'user_id' => $userId,
+                'user_name' => $result['user_name']
+            ]);
 
             return Redirect::to('/');
 
@@ -273,11 +294,15 @@ class ProfileController extends Controller
                 'password' => ['required', 'confirmed', Password::min(8)],
             ]);
 
-            // Update password and clear the requirement flag
-            $user->update([
-                'password' => Hash::make($validated['password']),
-                'require_password_reset' => false,
-            ]);
+            // Update password using stored procedure
+            $result = $this->taufiqService->updateUserPassword(
+                $user->id,
+                Hash::make($validated['password'])
+            );
+
+            if (!$result['success']) {
+                throw new \Exception($result['message']);
+            }
 
             return redirect('/')
                 ->with('success', 'Your password has been changed successfully!');
@@ -310,9 +335,15 @@ class ProfileController extends Controller
                 'current_password.current_password' => 'The provided password does not match your current password.',
             ]);
 
-            $request->user()->update([
-                'password' => Hash::make($validated['password']),
-            ]);
+            // Update password using stored procedure
+            $result = $this->taufiqService->updateUserPassword(
+                $request->user()->id,
+                Hash::make($validated['password'])
+            );
+
+            if (!$result['success']) {
+                throw new \Exception($result['message']);
+            }
 
             return redirect()->route('profile.edit')
                 ->with('status', 'password-updated');
