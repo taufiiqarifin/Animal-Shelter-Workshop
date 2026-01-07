@@ -235,7 +235,9 @@
                             <label class="flex items-start gap-3 cursor-pointer group">
                                 <input type="checkbox"
                                        name="terms"
+                                       id="termsCheckbox"
                                        required
+                                       onclick="window.updateConfirmButton();"
                                        class="mt-1 w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500 cursor-pointer">
                                 <span class="text-sm text-gray-700 flex-1">
                                         <span class="font-semibold text-gray-800 group-hover:text-purple-600 transition-colors">I understand and agree</span>
@@ -337,7 +339,7 @@
     let pendingRemoveAnimalName = '';
 
     // Open remove confirmation modal
-    function openRemoveConfirmModal(animalId, animalName) {
+    window.openRemoveConfirmModal = function(animalId, animalName) {
         pendingRemoveAnimalId = animalId;
         pendingRemoveAnimalName = animalName;
 
@@ -371,7 +373,7 @@
     }
 
     // Close remove confirmation modal
-    function closeRemoveConfirmModal() {
+    window.closeRemoveConfirmModal = function() {
         const modal = document.getElementById('removeConfirmModal');
         const content = document.getElementById('removeConfirmContent');
 
@@ -386,7 +388,7 @@
     }
 
     // Confirm and submit removal
-    function confirmRemoveAnimal() {
+    window.confirmRemoveAnimal = function() {
         if (pendingRemoveAnimalId) {
             // Show loading state
             const confirmBtn = document.getElementById('removeModalConfirmBtn');
@@ -415,7 +417,7 @@
     }
 
     // Open / Close Modal
-    function openVisitModal() {
+    window.openVisitModal = function() {
         const modal = document.getElementById('visitModal');
         const content = document.getElementById('visitModalContent');
         modal.classList.remove('hidden');
@@ -423,9 +425,14 @@
             content.classList.remove('opacity-0', 'scale-95');
             content.classList.add('opacity-100', 'scale-100');
         }, 10);
+        // Re-evaluate button state when modal opens
+        // Call multiple times to ensure it works in all contexts
+        setTimeout(() => window.updateConfirmButton(), 50);
+        setTimeout(() => window.updateConfirmButton(), 150);
+        setTimeout(() => window.updateConfirmButton(), 300);
     }
 
-    function closeVisitModal() {
+    window.closeVisitModal = function() {
         const modal = document.getElementById('visitModal');
         const content = document.getElementById('visitModalContent');
         content.classList.add('opacity-0', 'scale-95');
@@ -436,25 +443,48 @@
     }
 
     // Enable / Disable Confirm Button
-    function updateConfirmButton() {
+    window.updateConfirmButton = function() {
         const appointmentDate = document.getElementById('appointmentDate');
         const appointmentTime = document.getElementById('appointmentTime');
-        const termsCheckbox = document.querySelector('input[name="terms"]');
+        const termsCheckbox = document.getElementById('termsCheckbox') || document.querySelector('input[name="terms"]');
         const confirmBtn = document.getElementById('confirmBookingBtn');
 
-        if (!appointmentDate || !appointmentTime || !termsCheckbox) return;
+        // Safety check - ensure all elements exist
+        if (!appointmentDate || !appointmentTime || !termsCheckbox || !confirmBtn) {
+            return;
+        }
 
         const isValid = appointmentDate.value.trim() !== '' &&
             appointmentTime.value.trim() !== '' &&
             termsCheckbox.checked;
 
-        confirmBtn.disabled = !isValid;
+        // Force remove/add disabled attribute
         if (isValid) {
-            confirmBtn.classList.remove('bg-gray-300','text-gray-500','cursor-not-allowed');
-            confirmBtn.classList.add('bg-gradient-to-r','from-purple-600','to-purple-700','hover:from-purple-700','hover:to-purple-800','text-white','hover:shadow-xl','transform','hover:scale-105','cursor-pointer');
+            confirmBtn.disabled = false;
+            confirmBtn.removeAttribute('disabled');
         } else {
-            confirmBtn.classList.add('bg-gray-300','text-gray-500','cursor-not-allowed');
-            confirmBtn.classList.remove('bg-gradient-to-r','from-purple-600','to-purple-700','hover:from-purple-700','hover:to-purple-800','text-white','hover:shadow-xl','transform','hover:scale-105','cursor-pointer');
+            confirmBtn.disabled = true;
+            confirmBtn.setAttribute('disabled', 'disabled');
+        }
+
+        // Remove ALL existing inline styles and classes first
+        confirmBtn.removeAttribute('style');
+        confirmBtn.className = '';
+
+        if (isValid) {
+            // ENABLED STATE - Force with !important inline styles + classes
+            confirmBtn.style.setProperty('background', 'linear-gradient(to right, #9333ea, #7e22ce)', 'important');
+            confirmBtn.style.setProperty('color', '#ffffff', 'important');
+            confirmBtn.style.setProperty('cursor', 'pointer', 'important');
+            confirmBtn.style.setProperty('opacity', '1', 'important');
+            confirmBtn.className = 'flex-1 px-6 py-4 text-white font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-xl transform hover:scale-105';
+        } else {
+            // DISABLED STATE - Force with !important inline styles + classes
+            confirmBtn.style.setProperty('background-color', '#d1d5db', 'important');
+            confirmBtn.style.setProperty('color', '#6b7280', 'important');
+            confirmBtn.style.setProperty('cursor', 'not-allowed', 'important');
+            confirmBtn.style.setProperty('opacity', '0.6', 'important');
+            confirmBtn.className = 'flex-1 px-6 py-4 font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2';
         }
     }
 
@@ -463,21 +493,34 @@
         const form = document.getElementById('visitListForm');
         const appointmentDate = document.getElementById('appointmentDate');
         const appointmentTime = document.getElementById('appointmentTime');
-        const termsCheckbox = document.querySelector('input[name="terms"]');
+        const termsCheckbox = document.getElementById('termsCheckbox') || document.querySelector('input[name="terms"]');
+        let isSubmitting = false; // Flag to prevent double submission
 
         if(appointmentDate){
-            appointmentDate.addEventListener('input', updateConfirmButton);
-            appointmentDate.addEventListener('change', updateConfirmButton);
+            appointmentDate.addEventListener('input', window.updateConfirmButton);
+            appointmentDate.addEventListener('change', window.updateConfirmButton);
         }
+
         if(appointmentTime){
-            appointmentTime.addEventListener('change', updateConfirmButton);
+            appointmentTime.addEventListener('change', window.updateConfirmButton);
         }
+
         if(termsCheckbox){
-            termsCheckbox.addEventListener('change', updateConfirmButton);
+            termsCheckbox.addEventListener('change', window.updateConfirmButton);
+            termsCheckbox.addEventListener('click', function() {
+                setTimeout(() => window.updateConfirmButton(), 0);
+            });
+            termsCheckbox.addEventListener('input', window.updateConfirmButton);
         }
 
         if(form) {
             form.addEventListener('submit', function(e){
+                // Prevent double submission
+                if(isSubmitting) {
+                    e.preventDefault();
+                    return false;
+                }
+
                 if(!appointmentDate.value || !appointmentTime.value || !termsCheckbox.checked){
                     e.preventDefault();
                     alert('Please select a date, time and accept terms.');
@@ -486,7 +529,10 @@
                     } else if(!appointmentTime.value) {
                         appointmentTime.focus();
                     }
+                    return false;
                 } else {
+                    // Set submitting flag
+                    isSubmitting = true;
                     // Show loading state
                     const submitBtn = document.getElementById('confirmBookingBtn');
                     const submitText = document.getElementById('visitSubmitText');
@@ -516,20 +562,20 @@
         }
 
         // Initial check
-        updateConfirmButton();
+        window.updateConfirmButton();
     });
 
     // Close modal on click outside
     document.addEventListener('click', function(e){
         const modal = document.getElementById('visitModal');
         if(!modal.classList.contains('hidden') && e.target === modal){
-            closeVisitModal();
+            window.closeVisitModal();
         }
 
         // Also handle remove confirmation modal
         const removeModal = document.getElementById('removeConfirmModal');
         if(!removeModal.classList.contains('hidden') && e.target === removeModal){
-            closeRemoveConfirmModal();
+            window.closeRemoveConfirmModal();
         }
     });
 
@@ -538,9 +584,9 @@
         if(e.key === "Escape"){
             const removeModal = document.getElementById('removeConfirmModal');
             if(!removeModal.classList.contains('hidden')){
-                closeRemoveConfirmModal();
+                window.closeRemoveConfirmModal();
             } else {
-                closeVisitModal();
+                window.closeVisitModal();
             }
         }
     });
@@ -548,7 +594,7 @@
     // Auto-open modal if session flag
     @if (session('open_visit_modal'))
     document.addEventListener("DOMContentLoaded", function () {
-        openVisitModal();
+        window.openVisitModal();
     });
     @endif
 </script>
