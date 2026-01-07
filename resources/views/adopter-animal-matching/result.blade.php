@@ -45,53 +45,9 @@
                 box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             }
 
-            /* Modal entrance animations */
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(30px) scale(0.95);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                }
-            }
-
-            .modal-backdrop-enter {
-                animation: fadeIn 0.3s ease-out;
-            }
-
-            .modal-container-enter {
-                animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-
-            @keyframes fadeOut {
-                from { opacity: 1; }
-                to { opacity: 0; }
-            }
-
-            @keyframes slideDown {
-                from {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                }
-                to {
-                    opacity: 0;
-                    transform: translateY(20px) scale(0.95);
-                }
-            }
-
-            .modal-backdrop-exit {
-                animation: fadeOut 0.2s ease-out;
-            }
-
-            .modal-container-exit {
-                animation: slideDown 0.3s cubic-bezier(0.4, 0, 1, 1);
+            /* Score number styling */
+            .score-number {
+                display: inline-block;
             }
 
             /* Match score pulse animation */
@@ -184,38 +140,17 @@ function openResultModal() {
 
     modal.classList.remove('hidden');
 
-    // Add entrance animations
-    modal.classList.add('modal-backdrop-enter');
-    modalContainer.classList.add('modal-container-enter');
-
     // Reset scroll position when opening modal
     if (modalContainer) {
         modalContainer.scrollTop = 0;
     }
 
     loadMatches();
-
-    // Remove animation classes after animation completes
-    setTimeout(() => {
-        modal.classList.remove('modal-backdrop-enter');
-        modalContainer.classList.remove('modal-container-enter');
-    }, 400);
 }
 
 function closeResultModal() {
     const modal = document.getElementById('matchResultModal');
-    const modalContainer = document.getElementById('matchModalContainer');
-
-    // Add exit animations
-    modal.classList.add('modal-backdrop-exit');
-    modalContainer.classList.add('modal-container-exit');
-
-    // Hide modal after animation completes
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('modal-backdrop-exit');
-        modalContainer.classList.remove('modal-container-exit');
-    }, 300);
+    modal.classList.add('hidden');
 }
 
 async function loadMatches() {
@@ -340,7 +275,9 @@ function displayMatches(matches) {
                                 <div class="relative">
                                     <div class="${index === 0 ? 'score-badge-top' : 'score-badge'} w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white">
                                         <div class="text-center">
-                                            <div class="text-xl font-bold">${match.score}%</div>
+                                            <div class="text-xl font-bold">
+                                                <span class="score-number" data-target="${match.score}">0</span>%
+                                            </div>
                                             <div class="text-[10px]">Match</div>
                                         </div>
                                     </div>
